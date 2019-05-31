@@ -3,7 +3,10 @@
 - HOAS: http://adam.chlipala.net/cpdt/html/Hoas.html
 - Certified programming with dependent types: http://adam.chlipala.net/cpdt/
 - Software Foundations: https://softwarefoundations.cis.upenn.edu/
-- https://www.um.edu.mt/projects/behapi/behapi-workshop-etaps-2019/
+- https://www.cs.cmu.edu/~iliano/projects/metaCLF2/inc/dl/papers/lsfa17.pdf
+- Session types:
+    - https://www.um.edu.mt/projects/behapi/behapi-workshop-etaps-2019/
+    - http://groups.inf.ed.ac.uk/abcd/meeting-january2014/ornela-dardha.pdf
 
 # Notes about Coq
 
