@@ -41,13 +41,10 @@ Inductive Duality : SType → SType → Prop :=
 (* Represents the actual data over the wire.
    For some reason, going universe polymorphic with
    (A : Type) {M : A} (m : M) is not working.
-
-   FIXME: it makes no sense to send the type of a channel.
-   It is instead {S : SType} (channel s) that has to be sent.
 *)
-Inductive Message : MType → Type :=
+Inductive Message {channel : SType → Type} : MType → Type :=
 | V : ∀ {M : Set}, M → Message (Base M)
-| C : ∀ (C : SType), Message (Channel C)
+| C : ∀ {S : SType}, channel S → Message (Channel S)
 .
   
 (* Parametric HOAS representation of processes. *)
@@ -71,7 +68,7 @@ Inductive Process {channel : SType → Type} : Type :=
 *)
 | PInput
   : ∀ {m : MType} {c : SType}
-  , (Message m → channel c → Process)
+  , (Message (channel:=channel) m → channel c → Process)
   → (channel (Receive m c))
   → Process
 
@@ -83,7 +80,7 @@ Inductive Process {channel : SType → Type} : Type :=
 *)
 | POutput
   : ∀ {m : MType} {c : SType}
-  , Message m
+  , Message (channel:=channel) m
   → (channel c → Process)
   → (channel (Send m c))
   → Process
