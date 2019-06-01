@@ -1,13 +1,16 @@
 # Links
 
-- HOAS: http://adam.chlipala.net/cpdt/html/Hoas.html
-- Certified programming with dependent types: http://adam.chlipala.net/cpdt/
-- Software Foundations: https://softwarefoundations.cis.upenn.edu/
-- https://www.cs.cmu.edu/~iliano/projects/metaCLF2/inc/dl/papers/lsfa17.pdf
+- Coq:
+    - Oregon Programming Languages Summer School (OPLSS) 2011.
+    - HOAS: http://adam.chlipala.net/cpdt/html/Hoas.html
+    - Certified programming with dependent types: http://adam.chlipala.net/cpdt/
+    - Software Foundations: https://softwarefoundations.cis.upenn.edu/
 - Session types:
+    - https://www.di.fc.ul.pt/~vv/papers/vasconcelos_fundamental-sessions.pdf
     - https://www.um.edu.mt/projects/behapi/behapi-workshop-etaps-2019/
     - http://groups.inf.ed.ac.uk/abcd/meeting-january2014/ornela-dardha.pdf
 - Linearity:
+    - https://www.cs.cmu.edu/~iliano/projects/metaCLF2/inc/dl/papers/lsfa17.pdf
     - https://jpaykin.github.io/papers/pz_linearity_monad_2017.pdf
     - https://www.cis.upenn.edu/~rrand/qpl_2017.pdf
     - http://www.cs.nuim.ie/~jpower/Research/Papers/1999/power-tphols99.pdf
