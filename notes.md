@@ -7,6 +7,11 @@
 - Session types:
     - https://www.um.edu.mt/projects/behapi/behapi-workshop-etaps-2019/
     - http://groups.inf.ed.ac.uk/abcd/meeting-january2014/ornela-dardha.pdf
+- Linearity:
+    - https://jpaykin.github.io/papers/pz_linearity_monad_2017.pdf
+    - https://www.cis.upenn.edu/~rrand/qpl_2017.pdf
+    - http://www.cs.nuim.ie/~jpower/Research/Papers/1999/power-tphols99.pdf
+    - https://repository.upenn.edu/cgi/viewcontent.cgi?article=4538&context=edissertations
 
 # Notes about Coq
 
