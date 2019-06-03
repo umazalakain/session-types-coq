@@ -1,5 +1,7 @@
 Require Import Unicode.Utf8.
-Require Import Vectors.VectorDef.
+Require Import Lists.List.
+Import ListNotations.
+Require Import Sorting.Mergesort.
 
 (*
 ISSUES:
@@ -96,6 +98,9 @@ Inductive Process {CT : SType → Type} {MT : MType → MType} {f : ∀ m, Messa
 | P0 : CT End → Process
 .
 
+(* Transform the datatype parameter into a function *)
+Definition FProcess := ∀ (CT : SType → Type) (MT : MType → MType) (f : ∀ m, Message (CT := CT) m → Message (CT := CT) (MT m)) , Process (CT := CT) (MT := MT) (f := f). 
+
 (* Counts the instantiated variables.
    Channels are cast into unit, which is always available.
    Message types are cast into unit, which is always available.
@@ -110,6 +115,29 @@ Fixpoint count_vars (p : Process (CT := fun _ => unit) (MT := fun _ => Base unit
   | P0 _ => 0
   end.
 
+Fixpoint annotate (n : nat) (p : Process (CT := fun _ => nat) (MT := fun _ => Base unit) (f := fun _ _ => (V tt))) : list nat * list nat :=
+  match p with
+  | PNew _ _ _ p => let (created, used) := annotate (2+n) (p n (1+n))
+                   in (n :: (1+n) :: created, used)
+  | PInput p u => let (created, used) := annotate (1+n) (p (V tt) n)
+                 in (n :: created, u :: used)
+  | POutput _ p u => let (created, used) := annotate (1+n) (p n)
+                    in (n :: created, u :: used)
+  | PComp l r => let (created, used) := annotate n l
+                in let (created', used') := annotate (1 + fold_right max 0 created) r
+                in (created ++ created', used ++ used')
+  | P0 u  => ([], [u])
+  end
+.
+  
+Module Import NatSort := Sort NatOrder.
+
+Definition linear (p : FProcess) := let (created, used) := annotate 0 (p _ _ _)
+                                    in sort created = sort used.
+
+(*
+Fixpoint linearity {A : Type} (x : A) (p : Process (CT := CType → A) (MT := fun _ => Base unit) (f := fun _ _ => (V tt))) 
+*)
 (* How to decide linearity of processes
    ———————————————————————————————————–
 
@@ -123,10 +151,8 @@ Fixpoint count_vars (p : Process (CT := fun _ => unit) (MT := fun _ => Base unit
      - If it is not, it is not linear
 *)
 
-(* Transform the datatype parameter into a function *)
-Definition P := ∀ (CT : SType → Type) (MT : MType → MType) (f : ∀ m, Message (CT := CT) m → Message (CT := CT) (MT m)) , Process (CT := CT) (MT := MT) (f := f). 
 
-Example foo : P := fun _ _ f => (* This process can be instantiated to whatever channel and message types *)
+Example linear_example : FProcess := fun _ _ f => (* This process can be instantiated to whatever channel and message types *)
         PNew
           (* Session types for both ends *)
           (* Pertinent notation will make this nicer to write *)
@@ -151,4 +177,23 @@ Example foo : P := fun _ _ f => (* This process can be instantiated to whatever 
 
 (* We compute the amount of variables in this process:
    2 channels, 2 inputs, total of 4! *)
-Compute count_vars (foo _ _ _).
+Compute count_vars (linear_example _ _ _).
+
+Compute linear linear_example.
+
+Example nonlinear_example : FProcess := fun _ _ f =>
+        PNew
+          (Receive (Base bool) End)
+          (Send (Base bool) End)
+          (Leftwards Ends)
+
+          (fun i => fun o =>
+               PComp
+                  (PInput (fun _ => P0) i)
+                  (* Cheat the system by using the channel o twice *)
+                  (POutput (f _ (V true))
+                           (fun _ => POutput (f _ (V true))
+                                          P0 o) o)
+          ).
+
+Compute linear nonlinear_example.
