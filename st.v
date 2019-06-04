@@ -1,7 +1,7 @@
 Require Import Unicode.Utf8.
 Require Import Lists.List.
 Import ListNotations.
-Require Import Sorting.Mergesort.
+Require Import Sorting.Permutation.
 
 (*
 ISSUES:
@@ -143,10 +143,8 @@ Fixpoint annotate (n : nat) (p : Process (MT := fun _ => nat) (f := fun _ _ => 0
   end
 .
   
-Module Import NatSort := Sort NatOrder.
-
 Definition linear (p : FProcess) := let (created, used) := annotate 0 (p _ _)
-                                    in sort created = sort used.
+                                    in Permutation created used.
 
 
 Example linear_example : FProcess :=
@@ -155,7 +153,7 @@ Example linear_example : FProcess :=
     o <- (! Base bool ; ? Base bool ; ø),
     Leftwards (Rightwards Ends))
 
-    (i ?(m); !(m); P0) <|> (o !(f _ (V true)); ?(m); P0)
+    (i?(m); !(m); P0) <|> (o!(f _ (V true)); ?(m); P0)
     .
 
 (* We compute the amount of variables in this process:
@@ -171,7 +169,7 @@ Example nonlinear_example : FProcess :=
     (Leftwards Ends))
 
     (* Cheat the system by using the channel o twice *)
-    (i ?(_); P0) <|> (o !(f _ (V true)); (fun _ => o !(f _ (V true)); P0))
+    (i?(_); P0) <|> (o!(f _ (V true)); (fun _ => o!(f _ (V true)); P0))
     .
 
 Compute linear nonlinear_example.
@@ -182,9 +180,9 @@ Example channel_over_channel : FProcess :=
     o <- (! C[ ! Base bool ; ø ] ; ø),
     (Leftwards Ends))
 
-    (PInput (fun c c' => (c !(f _ (V true)); P0) <|> P0 c') i) <|>
+    (i?(c); fun a => P0 a <|> (c!(f _ (V true)); P0)) <|>
     ((new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (Leftwards Ends))
-    (o !(o'); (fun a => P0 a <|> (i' ?(_); P0)))).
+    (o!(o'); fun a => P0 a <|> (i'?(_); P0))).
 
 Compute linear channel_over_channel.
 
