@@ -49,16 +49,16 @@ Inductive Duality : SType → SType → Prop :=
    For some reason, going universe polymorphic with
    (A : Type) {M : A} (m : M) is not working.
 *)
-Inductive Message {CT : SType → Type} : MType → Type :=
+Inductive Message : MType → Type :=
 | V : ∀ {M : Set}, M → Message (Base M)
-| C : ∀ {S : SType}, CT S → Message (Channel S)
+| C : ∀ (S : SType), Message (Channel S)
 .
   
 (* Parametric HOAS representation of processes. *)
 (* A polymorphic CT makes it impossible to produce new channels unles PNew is used *)
 (* MT and f allow for all messages to be mapped into the unit type *)
 (* This allows for the process to be traversed without evaluating it *)
-Inductive Process {CT : SType → Type} {MT : MType → MType} {f : ∀ m, Message (CT := CT) m → Message (CT := CT) (MT m)}: Type := 
+Inductive Process {MT : Type → Type} {f : ∀ m, Message m → MT (Message m)}: Type := 
 
 (* For any two dual session types,
    create their corresponding channels, and
@@ -66,8 +66,8 @@ Inductive Process {CT : SType → Type} {MT : MType → MType} {f : ∀ m, Messa
 *)
 | PNew
   : ∀ (s r : SType)
-  , Duality s r
-  → (CT s → CT r → Process)
+  , Duality s r 
+  → (MT (Message (Channel s)) → MT (Message (Channel r)) → Process)
   → Process
 
 (* Await a message m and continue with
@@ -78,8 +78,8 @@ Inductive Process {CT : SType → Type} {MT : MType → MType} {f : ∀ m, Messa
 *)
 | PInput
   : ∀ {m : MType} {c : SType}
-  , (Message (CT := CT) (MT m) → CT c → Process)
-  → (CT (Receive m c))
+  , (MT (Message m) → MT (Message (Channel c)) → Process)
+  → MT (Message (Channel (Receive m c)))
   → Process
 
 (* Send a message m and continue with
@@ -90,40 +90,40 @@ Inductive Process {CT : SType → Type} {MT : MType → MType} {f : ∀ m, Messa
 *)
 | POutput
   : ∀ {m : MType} {c : SType}
-  , Message (CT := CT) (MT m)
-  → (CT c → Process)
-  → (CT (Send m c))
+  , MT (Message m)
+  → (MT (Message (Channel c)) → Process)
+  → MT (Message (Channel (Send m c)))
   → Process
 
 (* I don't know how to represent this accurately, yet. *)
 | PComp : Process → Process → Process
 
 (* The end of all things, provided we are allowed to end. *)
-| P0 : CT ø → Process
+| P0 : MT (Message (Channel ø)) → Process
 .
 
 (* Transform the datatype parameter into a function *)
-Definition FProcess := ∀ (CT : SType → Type) (MT : MType → MType) (f : ∀ m, Message (CT := CT) m → Message (CT := CT) (MT m)) , Process (CT := CT) (MT := MT) (f := f). 
+Definition FProcess := ∀ (MT : Type → Type) (f : ∀ m, Message m → MT (Message m)) , Process (MT := MT) (f := f). 
 
 (* Counts the instantiated variables.
    Channels are cast into unit, which is always available.
    Message types are cast into unit, which is always available.
    It is in this way always possible to "dive in" into processes recursively.
 *)
-Fixpoint count_vars (p : Process (CT := fun _ => unit) (MT := fun _ => Base unit) (f := fun _ _ => (V tt))) : nat :=
+Fixpoint count_vars (p : Process (MT := fun _ => unit) (f := fun _ _ => tt)) : nat :=
   match p with
   | PNew _ _ _ p => 2 + count_vars (p tt tt)
-  | PInput p _ => 1 + count_vars (p (V tt) tt)
+  | PInput p _ => 1 + count_vars (p tt tt)
   | POutput _ p _ => count_vars (p tt)
   | PComp p1 p2 => count_vars p1 + count_vars p2
   | P0 _ => 0
   end.
 
-Fixpoint annotate (n : nat) (p : Process (CT := fun _ => nat) (MT := fun _ => Base unit) (f := fun _ _ => (V tt))) : list nat * list nat :=
+Fixpoint annotate (n : nat) (p : Process (MT := fun _ => nat) (f := fun _ _ => 0)) : list nat * list nat :=
   match p with
   | PNew _ _ _ p => let (created, used) := annotate (2+n) (p n (1+n))
                    in (n :: (1+n) :: created, used)
-  | PInput p u => let (created, used) := annotate (1+n) (p (V tt) n)
+  | PInput p u => let (created, used) := annotate (1+n) (p 0 n)
                  in (n :: created, u :: used)
   | POutput _ p u => let (created, used) := annotate (1+n) (p n)
                     in (n :: created, u :: used)
@@ -136,7 +136,7 @@ Fixpoint annotate (n : nat) (p : Process (CT := fun _ => nat) (MT := fun _ => Ba
   
 Module Import NatSort := Sort NatOrder.
 
-Definition linear (p : FProcess) := let (created, used) := annotate 0 (p _ _ _)
+Definition linear (p : FProcess) := let (created, used) := annotate 0 (p _ _)
                                     in sort created = sort used.
 
 (*
@@ -156,7 +156,7 @@ Fixpoint linearity {A : Type} (x : A) (p : Process (CT := CType → A) (MT := fu
 *)
 
 
-Example linear_example : FProcess := fun _ _ f => (* This process can be instantiated to whatever channel and message types *)
+Example linear_example : FProcess := fun _ f => (* This process can be instantiated to whatever channel and message types *)
         PNew
           (* Session types for both ends *)
           (* Pertinent notation will make this nicer to write *)
@@ -181,11 +181,11 @@ Example linear_example : FProcess := fun _ _ f => (* This process can be instant
 
 (* We compute the amount of variables in this process:
    2 channels, 2 inputs, total of 4! *)
-Compute count_vars (linear_example _ _ _).
+Compute count_vars (linear_example _ _).
 
 Compute linear linear_example.
 
-Example nonlinear_example : FProcess := fun _ _ f =>
+Example nonlinear_example : FProcess := fun _ f =>
         PNew
           (? Base bool ; ø)
           (! Base bool ; ø)
@@ -198,7 +198,7 @@ Example nonlinear_example : FProcess := fun _ _ f =>
 
 Compute linear nonlinear_example.
 
-Example channel_over_channel : FProcess := fun CT MT f =>
+Example channel_over_channel : FProcess := fun MT f =>
         PNew
           (? C[ ! Base bool ; ø ] ; ø)
           (! C[ ! Base bool ; ø ] ; ø)
@@ -209,8 +209,8 @@ Example channel_over_channel : FProcess := fun CT MT f =>
                  (? Base bool ; ø)
                  (! Base bool ; ø)
                  (Leftwards Ends)
-                 (fun i' o' =>
-                    POutput (f _ (C o'))
-                            (fun _ => PInput (fun _ => P0) i') o))).
-                 
+                 (fun i' o' => POutput o' (fun _ => PInput (fun _ => P0) i') o))).
+
+Compute linear channel_over_channel.
+
                                
