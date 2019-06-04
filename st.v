@@ -26,17 +26,21 @@ Inductive MType : Type :=
    Big TODO for branching and selection.
 *)
 with SType : Type :=
-| End : SType
+| ø : SType
 | Send : MType → SType → SType
 | Receive : MType → SType → SType
 .
+
+Notation "C[ s ]" := (Channel s).
+Notation "! m ; s" := (Send m s) (at level 90, right associativity). 
+Notation "? m ; s" := (Receive m s) (at level 90, right associativity). 
 
 (* Encode the duality of session types.
    TODO: For any two session types, their duality is decidable,
    it should therefore be computed automatically in the future.
 *)
 Inductive Duality : SType → SType → Prop :=
-| Ends : Duality End End
+| Ends : Duality ø ø
 | Rightwards : ∀ {m : MType} {c₁ c₂ : SType}, Duality c₁ c₂ → Duality (Send m c₁) (Receive m c₂)
 | Leftwards : ∀ {m : MType} {c₁ c₂ : SType}, Duality c₁ c₂ → Duality (Receive m c₁) (Send m c₂)
 .
@@ -95,7 +99,7 @@ Inductive Process {CT : SType → Type} {MT : MType → MType} {f : ∀ m, Messa
 | PComp : Process → Process → Process
 
 (* The end of all things, provided we are allowed to end. *)
-| P0 : CT End → Process
+| P0 : CT ø → Process
 .
 
 (* Transform the datatype parameter into a function *)
@@ -157,18 +161,18 @@ Example linear_example : FProcess := fun _ _ f => (* This process can be instant
           (* Session types for both ends *)
           (* Pertinent notation will make this nicer to write *)
           (* NOTABLY: if you change any of this, this process won't typecheck *)
-          (Receive (Base bool) (Send (Base bool) End))
-          (Send (Base bool) (Receive (Base bool) End))
+          (? Base bool ; ! Base bool ; ø)
+          (! Base bool ; ? Base bool ; ø)
           (* This is going to be computed automatically in the future *)
           (Leftwards (Rightwards Ends))
 
           (* The magic of parametric HOAS: *)
           (* i and o represent channels with pertinent session types *)
-          (fun i => fun o =>
+          (fun i o =>
                (* Some useful typechecking should happen here *)
                PComp
                   (* Here m is the message upon arrival! *)
-                  (PInput (fun m => POutput m P0) i)
+                  (PInput (fun m => (POutput m P0)) i)
                   (* We send the value 1 over the wire. *)
                   (* We use f whenever we fabricate a value
                      so that it is cast into the relevant value. *)
@@ -183,17 +187,30 @@ Compute linear linear_example.
 
 Example nonlinear_example : FProcess := fun _ _ f =>
         PNew
-          (Receive (Base bool) End)
-          (Send (Base bool) End)
+          (? Base bool ; ø)
+          (! Base bool ; ø)
           (Leftwards Ends)
-
-          (fun i => fun o =>
-               PComp
-                  (PInput (fun _ => P0) i)
-                  (* Cheat the system by using the channel o twice *)
-                  (POutput (f _ (V true))
-                           (fun _ => POutput (f _ (V true))
-                                          P0 o) o)
+          (fun i o => PComp
+            (PInput (fun _ => P0) i)
+            (* Cheat the system by using the channel o twice *)
+            (POutput (f _ (V true)) (fun _ => POutput (f _ (V true)) P0 o) o)
           ).
 
 Compute linear nonlinear_example.
+
+Example channel_over_channel : FProcess := fun CT MT f =>
+        PNew
+          (? C[ ! Base bool ; ø ] ; ø)
+          (! C[ ! Base bool ; ø ] ; ø)
+          (Leftwards Ends)
+          (fun i o => PComp
+              (PInput (fun c _ => POutput (f _ (V true)) P0 c) i)
+              (PNew
+                 (? Base bool ; ø)
+                 (! Base bool ; ø)
+                 (Leftwards Ends)
+                 (fun i' o' =>
+                    POutput (f _ (C o'))
+                            (fun _ => PInput (fun _ => P0) i') o))).
+                 
+                               
