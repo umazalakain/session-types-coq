@@ -102,6 +102,15 @@ Inductive Process {MT : Type → Type} {f : ∀ m, Message m → MT (Message m)}
 | P0 : MT (Message (Channel ø)) → Process
 .
 
+Notation "'(new' s <- S , r <- R , SdR ) p" := (PNew S R SdR (fun s r => p))(at level 90).
+Notation "P <|> Q" := (PComp P Q)(at level 80).
+Notation "!( m ); p" := (POutput m p)(at level 80).
+Notation "c !( m ); p" := (POutput m p c)(at level 79).
+Notation "?( m ); p" := (PInput (fun m => p))(at level 80).
+Notation "c ?( m ); p" := (PInput (fun m => p) c)(at level 79).
+
+Check (new s <- ø , r <- ø , Ends) P0 s <|> P0 r.
+
 (* Transform the datatype parameter into a function *)
 Definition FProcess := ∀ (MT : Type → Type) (f : ∀ m, Message m → MT (Message m)) , Process (MT := MT) (f := f). 
 
@@ -114,8 +123,8 @@ Fixpoint count_vars (p : Process (MT := fun _ => unit) (f := fun _ _ => tt)) : n
   match p with
   | PNew _ _ _ p => 2 + count_vars (p tt tt)
   | PInput p _ => 1 + count_vars (p tt tt)
-  | POutput _ p _ => count_vars (p tt)
-  | PComp p1 p2 => count_vars p1 + count_vars p2
+  | _ !( _ ); p => count_vars (p tt)
+  | p1 <|> p2 => count_vars p1 + count_vars p2
   | P0 _ => 0
   end.
 
@@ -125,9 +134,9 @@ Fixpoint annotate (n : nat) (p : Process (MT := fun _ => nat) (f := fun _ _ => 0
                    in (n :: (1+n) :: created, used)
   | PInput p u => let (created, used) := annotate (1+n) (p 0 n)
                  in (n :: created, u :: used)
-  | POutput _ p u => let (created, used) := annotate (1+n) (p n)
+  | u !( _ ); p => let (created, used) := annotate (1+n) (p n)
                     in (n :: created, u :: used)
-  | PComp l r => let (created, used) := annotate n l
+  | l <|> r => let (created, used) := annotate n l
                 in let (created', used') := annotate (1 + fold_right max 0 created) r
                 in (created ++ created', used ++ used')
   | P0 u  => ([], [u])
@@ -139,45 +148,15 @@ Module Import NatSort := Sort NatOrder.
 Definition linear (p : FProcess) := let (created, used) := annotate 0 (p _ _)
                                     in sort created = sort used.
 
-(*
-Fixpoint linearity {A : Type} (x : A) (p : Process (CT := CType → A) (MT := fun _ => Base unit) (f := fun _ _ => (V tt))) 
-*)
-(* How to decide linearity of processes
-   ———————————————————————————————————–
 
-   - Parametrise process by channel := fun _ => nat
-     (or any other infinite set with decidable equality)
-   - Keep a set of nats representing channels that have been created
-   - Keep counter of natural of latest created channel
-   - When going into a PNew, add new naturals and increment counter
-   - When going into a send, receive or end:
-     - If the channel num they are using is in the set, remove it
-     - If it is not, it is not linear
-*)
+Example linear_example : FProcess :=
+  fun _ f => (new
+    i <- (? Base bool ; ! Base bool ; ø),
+    o <- (! Base bool ; ? Base bool ; ø),
+    Leftwards (Rightwards Ends))
 
-
-Example linear_example : FProcess := fun _ f => (* This process can be instantiated to whatever channel and message types *)
-        PNew
-          (* Session types for both ends *)
-          (* Pertinent notation will make this nicer to write *)
-          (* NOTABLY: if you change any of this, this process won't typecheck *)
-          (? Base bool ; ! Base bool ; ø)
-          (! Base bool ; ? Base bool ; ø)
-          (* This is going to be computed automatically in the future *)
-          (Leftwards (Rightwards Ends))
-
-          (* The magic of parametric HOAS: *)
-          (* i and o represent channels with pertinent session types *)
-          (fun i o =>
-               (* Some useful typechecking should happen here *)
-               PComp
-                  (* Here m is the message upon arrival! *)
-                  (PInput (fun m => (POutput m P0)) i)
-                  (* We send the value 1 over the wire. *)
-                  (* We use f whenever we fabricate a value
-                     so that it is cast into the relevant value. *)
-                  (POutput (f _ (V true)) (PInput (fun m => P0)) o)
-          ).
+    (i ?(m); !(m); P0) <|> (o !(f _ (V true)); ?(m); P0)
+    .
 
 (* We compute the amount of variables in this process:
    2 channels, 2 inputs, total of 4! *)
@@ -185,31 +164,27 @@ Compute count_vars (linear_example _ _).
 
 Compute linear linear_example.
 
-Example nonlinear_example : FProcess := fun _ f =>
-        PNew
-          (? Base bool ; ø)
-          (! Base bool ; ø)
-          (Leftwards Ends)
-          (fun i o => PComp
-            (PInput (fun _ => P0) i)
-            (* Cheat the system by using the channel o twice *)
-            (POutput (f _ (V true)) (fun _ => POutput (f _ (V true)) P0 o) o)
-          ).
+Example nonlinear_example : FProcess :=
+  fun _ f => (new
+    i <- (? Base bool ; ø),
+    o <- (! Base bool; ø),
+    (Leftwards Ends))
+
+    (* Cheat the system by using the channel o twice *)
+    (i ?(_); P0) <|> (o !(f _ (V true)); (fun _ => o !(f _ (V true)); P0))
+    .
 
 Compute linear nonlinear_example.
 
-Example channel_over_channel : FProcess := fun MT f =>
-        PNew
-          (? C[ ! Base bool ; ø ] ; ø)
-          (! C[ ! Base bool ; ø ] ; ø)
-          (Leftwards Ends)
-          (fun i o => PComp
-              (PInput (fun c _ => POutput (f _ (V true)) P0 c) i)
-              (PNew
-                 (? Base bool ; ø)
-                 (! Base bool ; ø)
-                 (Leftwards Ends)
-                 (fun i' o' => POutput o' (fun _ => PInput (fun _ => P0) i') o))).
+Example channel_over_channel : FProcess :=
+  fun _ f => (new
+    i <- (? C[ ! Base bool ; ø ] ; ø),
+    o <- (! C[ ! Base bool ; ø ] ; ø),
+    (Leftwards Ends))
+
+    (PInput (fun c c' => (c !(f _ (V true)); P0) <|> P0 c') i) <|>
+    ((new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (Leftwards Ends))
+    (o !(o'); (fun a => P0 a <|> (i' ?(_); P0)))).
 
 Compute linear channel_over_channel.
 
