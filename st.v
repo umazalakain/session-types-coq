@@ -149,7 +149,7 @@ Fixpoint annotate
     let (created, used) := annotate (2+n) (p (C _ n) (C _ (1+n))) in
     (n :: 1+n :: created, used)
 
-  | @PInput _ _ m s p c =>
+  | PInput m s p c =>
     (match m as m' return (Message ST MT m' →
                           Message ST MT (Channel s) →
                           Process ST MT) →
@@ -173,22 +173,23 @@ Fixpoint annotate
 
   | POutput _ _ m p c =>
     (* Create a channel for the subsequent process *)
+    (* Use the channel that is being outputed *)
+    (* Use the channel of the parent process *)
     let (created, used) := annotate (1+n) (p (C _ n)) in
     match m with
     | V _ _ => (n :: created, extract c :: used)
-    | C _ mc => (mc :: n :: created, extract c :: used)
+    | C _ mc => (n :: created, mc :: extract c :: used)
     end
 
   | l <|> r  =>
     let (created, used) := annotate n l in
-    let (created', used') := annotate (1 + fold_right max 0 created) r in
+    let (created', used') := annotate (1 + fold_right max (n-1) created) r in
     (created ++ created', used ++ used')
 
   | PEnd c => ([], [extract c])
   end
 .
 
-  
 Definition Linear (p : FProcess) := let (created, used) := annotate 0 (p _ _ (fun _ _ => V _ tt))
                                     in Permutation created used.
 
@@ -221,9 +222,10 @@ Example channel_over_channel : FProcess :=
     (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (Leftwards Ends))
     (new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (Leftwards Ends))
 
-    (i?(c); fun a => ε a <|> (c!(f _ true); ε))
-      <|>
-    (o!(o'); fun a => ε a <|> (i'?(_); ε)).
+    (i?(c); fun a => ε a <|> c!(f _ true); ε)
+    <|>
+    (o!(o'); fun a => ε a <|> i'?(_); ε)
+.
 
 Compute Linear channel_over_channel.
 
