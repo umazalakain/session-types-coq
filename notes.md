@@ -1,5 +1,7 @@
 # Links
 
+- Type systems for concurrent programs, Naoki kobayashi
+- Session type subtyping, Simon Gay, Malcom Hol 2015
 - Coq:
     - Oregon Programming Languages Summer School (OPLSS) 2011.
     - HOAS: http://adam.chlipala.net/cpdt/html/Hoas.html
@@ -44,3 +46,27 @@
 
 - Coq does not support induction-recursion.
 
+# Linearity
+
+- With continuation passing, channels are required to be linear.
+
+- We do HOAS, and Coq does not support linearity.
+
+- We must be able to traverse a process and check the creation and usage of
+  channels.
+
+- To do so we can use the parametricity of HOAS.
+
+- Channels can be sent over channels. To properly check the linearity of these
+  channels sent over channels, we would need to actually evaluate the process. A
+  way of avoiding that is to mark a channel as used when it's sent as a message.
+  When it is received as a message, we make a new created mark. This way we
+  avoid evaluation, at the cost of treating the same channel as two different
+  channels.
+
+- All messages cannot be treated equally: we need to know whether they are
+  channels or plain messages.
+
+# Evaluation
+
+- Evaluation requires finding two parallel processes with opposite channels
