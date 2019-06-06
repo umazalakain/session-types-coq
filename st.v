@@ -127,7 +127,7 @@ Check fun _ _ f =>
 
   
 (* Make this into a type *)
-Definition FProcess := ∀ ST MT (bf : ∀ {S: Type}, S → MT S) , Process ST MT.
+Definition FProcess := ∀ ST MT (bf : ∀ {S: Set}, S → Message ST MT (Base S)) , Process ST MT.
 
 Definition extract {MT : Type → Type} {s : SType}
            (m : Message (fun _ => nat) MT (Channel s)) : nat :=
@@ -189,7 +189,7 @@ Fixpoint annotate
 .
 
   
-Definition linear (p : FProcess) := let (created, used) := annotate 0 (p _ _ (fun _ _ => tt))
+Definition Linear (p : FProcess) := let (created, used) := annotate 0 (p _ _ (fun _ _ => V _ tt))
                                     in Permutation created used.
 
 
@@ -199,10 +199,10 @@ Example linear_example : FProcess :=
     o <- (! Base bool ; ? Base bool ; ø),
     Leftwards (Rightwards Ends))
 
-    (i?(m); !(m); ε) <|> (o!(V _ (f _ true)); ?(m); ε)
+    (i?(m); !(m); ε) <|> (o!(f _ true); ?(m); ε)
     .
 
-Compute linear linear_example.
+Compute Linear linear_example.
 
 Example nonlinear_example : FProcess :=
   fun _ _ f => (new
@@ -211,21 +211,20 @@ Example nonlinear_example : FProcess :=
     (Leftwards Ends))
 
     (* Cheat the system by using the channel o twice *)
-    i?(_); ε <|> o!(V _ (f _ true)); (fun _ => o!(V _ (f _ true)); ε)
+    i?(_); ε <|> o!(f _ true); (fun _ => o!(f _ true); ε)
     .
 
-Compute linear nonlinear_example.
+Compute Linear nonlinear_example.
 
 Example channel_over_channel : FProcess :=
-  fun _ _ f => (new
-    i <- (? C[ ! Base bool ; ø ] ; ø),
-    o <- (! C[ ! Base bool ; ø ] ; ø),
-    (Leftwards Ends))
+  fun _ _ f =>
+    (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (Leftwards Ends))
+    (new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (Leftwards Ends))
 
-    (i?(c); fun a => ε a <|> (c!(V _ (f _ true)); ε)) <|>
-    ((new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (Leftwards Ends))
-    (o!(o'); fun a => ε a <|> (i'?(_); ε))).
+    (i?(c); fun a => ε a <|> (c!(f _ true); ε))
+      <|>
+    (o!(o'); fun a => ε a <|> (i'?(_); ε)).
 
-Compute linear channel_over_channel.
+Compute Linear channel_over_channel.
 
                                
