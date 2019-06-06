@@ -9,7 +9,7 @@ ISSUES:
 [ ] How to make the duality proof compute automatically
 [x] How to avoid passing channel and message to every process constructor
 [x] How to send actual messages
-[ ] Add pretty notation
+[x] Add pretty notation
 [ ] Evaluate processes
 *)
 
@@ -49,16 +49,13 @@ Inductive Duality : SType → SType → Prop :=
    For some reason, going universe polymorphic with
    (A : Type) {M : A} (m : M) is not working.
 *)
-Inductive Message : MType → Type :=
-| V : ∀ {M : Set}, M → Message (Base M)
-| C : ∀ (S : SType), Message (Channel S)
+
+Inductive Message {ST : SType → Type} {MT : Set → Type} : MType → Type :=
+| V : ∀ {M : Set}, MT M → Message (Base M)
+| C : ∀ {S : SType}, ST S → Message (Channel S)
 .
-  
-(* Parametric HOAS representation of processes. *)
-(* A polymorphic CT makes it impossible to produce new channels unles PNew is used *)
-(* MT and f allow for all messages to be mapped into the unit type *)
-(* This allows for the process to be traversed without evaluating it *)
-Inductive Process {MT : Type → Type} {f : ∀ m, Message m → MT (Message m)}: Type := 
+
+Inductive Process {ST : SType → Type} {MT : Set → Type} : Type := 
 
 (* For any two dual session types,
    create their corresponding channels, and
@@ -67,7 +64,9 @@ Inductive Process {MT : Type → Type} {f : ∀ m, Message m → MT (Message m)}
 | PNew
   : ∀ (s r : SType)
   , Duality s r 
-  → (MT (Message (Channel s)) → MT (Message (Channel r)) → Process)
+  → ( Message (ST := ST) (MT := MT) (Channel s)
+    → Message (ST := ST) (MT := MT) (Channel r)
+    → Process)
   → Process
 
 (* Await a message m and continue with
@@ -78,8 +77,10 @@ Inductive Process {MT : Type → Type} {f : ∀ m, Message m → MT (Message m)}
 *)
 | PInput
   : ∀ {m : MType} {c : SType}
-  , (MT (Message m) → MT (Message (Channel c)) → Process)
-  → MT (Message (Channel (Receive m c)))
+  , ( Message (ST := ST) (MT := MT) m
+    → Message (ST := ST) (MT := MT) (Channel c)
+    → Process)
+  → Message (ST := ST) (MT := MT) (Channel (Receive m c))
   → Process
 
 (* Send a message m and continue with
@@ -90,16 +91,16 @@ Inductive Process {MT : Type → Type} {f : ∀ m, Message m → MT (Message m)}
 *)
 | POutput
   : ∀ {m : MType} {c : SType}
-  , MT (Message m)
-  → (MT (Message (Channel c)) → Process)
-  → MT (Message (Channel (Send m c)))
+  , Message (ST := ST) (MT := MT) m
+  → (Message (ST := ST) (MT := MT) (Channel c) → Process)
+  → Message (ST := ST) (MT := MT) (Channel (Send m c))
   → Process
 
 (* I don't know how to represent this accurately, yet. *)
 | PComp : Process → Process → Process
 
 (* The end of all things, provided we are allowed to end. *)
-| P0 : MT (Message (Channel ø)) → Process
+| P0 : Message (ST := ST) (MT := MT) (Channel ø) → Process
 .
 
 Notation "'(new' s <- S , r <- R , SdR ) p" := (PNew S R SdR (fun s r => p))(at level 90).
@@ -111,37 +112,50 @@ Notation "c ?( m ); p" := (PInput (fun m => p) c)(at level 79).
 
 Check (new s <- ø , r <- ø , Ends) P0 s <|> P0 r.
 
-(* Transform the datatype parameter into a function *)
-Definition FProcess := ∀ (MT : Type → Type) (f : ∀ m, Message m → MT (Message m)) , Process (MT := MT) (f := f). 
+(* Transform the datatype parameters into a type *)
+Definition FProcess := ∀ (ST : SType → Type) (MT : Set → Type), Process (ST := ST) (MT := MT).
 
-(* Counts the instantiated variables.
-   Channels are cast into unit, which is always available.
-   Message types are cast into unit, which is always available.
-   It is in this way always possible to "dive in" into processes recursively.
-*)
-Fixpoint count_vars (p : Process (MT := fun _ => unit) (f := fun _ _ => tt)) : nat :=
+Definition extract {MT : Set → Set} {s : SType}
+           (m : Message (ST := fun _ => nat) (MT := MT) (Channel s)) : nat :=
+  match m with
+    | C n => n
+  end
+.
+                  
+Fixpoint annotate
+         (n : nat)
+         (p : Process (ST := fun _ => nat) (MT := fun _ => unit)) : list nat * list nat :=
+  let ST := fun _ => nat in
+  let MT := fun _ => unit in
   match p with
-  | PNew _ _ _ p => 2 + count_vars (p tt tt)
-  | PInput p _ => 1 + count_vars (p tt tt)
-  | _ !( _ ); p => count_vars (p tt)
-  | p1 <|> p2 => count_vars p1 + count_vars p2
-  | P0 _ => 0
-  end.
 
-Fixpoint annotate (n : nat) (p : Process (MT := fun _ => nat) (f := fun _ _ => 0)) : list nat * list nat :=
-  match p with
-  | PNew _ _ _ p => let (created, used) := annotate (2+n) (p n (1+n))
-                   in (n :: (1+n) :: created, used)
-  | PInput p u => let (created, used) := annotate (1+n) (p 0 n)
-                 in (n :: created, u :: used)
-  | u !( _ ); p => let (created, used) := annotate (1+n) (p n)
-                    in (n :: created, u :: used)
+  | PNew _ _ _ p =>
+    let (created, used) := annotate (2+n) (p (C n) (C (1+n))) in
+    (n :: 1+n :: created, used)
+
+  | @PInput _ _ m s p c =>
+    (match m as m' return (Message (ST := ST) (MT := MT) m' →
+                          Message (ST := ST) (MT := MT) (Channel s) →
+                          Process (ST := ST) (MT := MT)) →
+                          list nat * list nat
+     with
+     | Base _ => fun p' =>
+       let (created, used) := annotate (1+n) (p' (V tt) (C n)) in
+       (n :: created, used)
+     | Channel _ => fun p' =>
+       let (created, used) := annotate (2+n) (p' (C n) (C (1+n))) in
+       (n :: 1+n :: created, used)
+     end) p
+
+  | POutput m p c => ([], [])
+
   | l <|> r => let (created, used) := annotate n l
                 in let (created', used') := annotate (1 + fold_right max 0 created) r
                 in (created ++ created', used ++ used')
-  | P0 u  => ([], [u])
+  | P0 c => ([], [extract c])
   end
 .
+
   
 Definition linear (p : FProcess) := let (created, used) := annotate 0 (p _ _)
                                     in Permutation created used.
@@ -155,10 +169,6 @@ Example linear_example : FProcess :=
 
     (i?(m); !(m); P0) <|> (o!(f _ (V true)); ?(m); P0)
     .
-
-(* We compute the amount of variables in this process:
-   2 channels, 2 inputs, total of 4! *)
-Compute count_vars (linear_example _ _).
 
 Compute linear linear_example.
 
