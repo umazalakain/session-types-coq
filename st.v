@@ -45,154 +45,186 @@ Inductive Duality : SType → SType → Prop :=
 | Leftwards : ∀ {m : MType} {c₁ c₂ : SType}, Duality c₁ c₂ → Duality (Receive m c₁) (Send m c₂)
 .
                                                       
-(* Represents the actual data over the wire.
-   For some reason, going universe polymorphic with
-   (A : Type) {M : A} (m : M) is not working.
-*)
+Section Processes.
+  Variable ST : SType → Type.
+  Variable MT : Type → Type.
+                                    
+  (* Represents the actual data over the wire.
+     For some reason, going universe polymorphic with
+     (A : Type) {M : A} (m : M) is not working.
+  *)
+  
+  Inductive Message : MType → Type :=
+  | V : ∀ {M : Set}, MT M → Message (Base M)
+  | C : ∀ {S : SType}, ST S → Message (Channel S)
+  .
+  
+  Inductive Process : Type := 
+  
+  (* For any two dual session types,
+     create their corresponding channels, and
+     continue with a process where those channels are available.
+  *)
+  | PNew
+    : ∀ (s r : SType)
+    , Duality s r 
+    → (Message (Channel s) → Message (Channel r) → Process)
+    → Process
+  
+  (* Await a message m and continue with
+     a process where a channel c is available,
+     provided that there is a channel
+     listening for a message m
+     and continuing with c upon reception.
+  *)
+  | PInput
+    : ∀ {m : MType} {c : SType}
+    , (Message m → Message (Channel c) → Process)
+    → Message (Channel (Receive m c))
+    → Process
+  
+  (* Send a message m and continue with
+     a process where a channel c is available,
+     provided that there is a channel
+     sending a message m
+     and continuing with c.
+  *)
+  | POutput
+    : ∀ {m : MType} {c : SType}
+    , Message m
+    → (Message (Channel c) → Process)
+    → Message (Channel (Send m c))
+    → Process
+  
+  (* I don't know how to represent this accurately, yet. *)
+  | PComp : Process → Process → Process
+  
+  (* The end of all things, provided we are allowed to end. *)
+  | PEnd : Message (Channel ø) → Process
+  .
+End Processes.
 
-Inductive Message {ST : SType → Type} {MT : Set → Type} : MType → Type :=
-| V : ∀ {M : Set}, MT M → Message (Base M)
-| C : ∀ {S : SType}, ST S → Message (Channel S)
-.
+Notation "'(new' s <- S , r <- R , SdR ) p" := (PNew _ _ S R SdR (fun s r => p))(at level 90).
+Notation "P <|> Q" := (PComp _ _ P Q)(at level 80).
+Notation "!( m ); p" := (POutput _ _ m p)(at level 80).
+Notation "c !( m ); p" := (POutput _ _ m p c)(at level 79).
+Notation "?( m ); p" := (PInput _ _ (fun m => p))(at level 80).
+Notation "c ?( m ); p" := (PInput _ _ (fun m => p) c)(at level 79).
+Definition ε {ST : SType → Type} {MT: Type → Type} : Message ST MT (Channel ø) → Process ST MT:= PEnd ST MT.
 
-Inductive Process {ST : SType → Type} {MT : Set → Type} : Type := 
+Arguments V [ST MT].
+Arguments C [ST MT].
+Arguments PNew [ST MT].
+Arguments PInput [ST MT].
+Arguments POutput [ST MT].
+Arguments PComp [ST MT].
+Arguments PEnd [ST MT].
 
-(* For any two dual session types,
-   create their corresponding channels, and
-   continue with a process where those channels are available.
-*)
-| PNew
-  : ∀ (s r : SType)
-  , Duality s r 
-  → ( Message (ST := ST) (MT := MT) (Channel s)
-    → Message (ST := ST) (MT := MT) (Channel r)
-    → Process)
-  → Process
+Check (new s <- ø , r <- ø , Ends) ε s <|> ε r.
+Check fun _ _ f =>
+        (new s <- ! Base bool; ø , r <- ? Base bool; ø, (Rightwards Ends))
+          s!(_); ε <|> r?(_); ε.
 
-(* Await a message m and continue with
-   a process where a channel c is available,
-   provided that there is a channel
-   listening for a message m
-   and continuing with c upon reception.
-*)
-| PInput
-  : ∀ {m : MType} {c : SType}
-  , ( Message (ST := ST) (MT := MT) m
-    → Message (ST := ST) (MT := MT) (Channel c)
-    → Process)
-  → Message (ST := ST) (MT := MT) (Channel (Receive m c))
-  → Process
+  
+(* Make this into a type *)
+Definition FProcess := ∀ ST MT (bf : ∀ {S: Type}, S → MT S) , Process ST MT.
 
-(* Send a message m and continue with
-   a process where a channel c is available,
-   provided that there is a channel
-   sending a message m
-   and continuing with c.
-*)
-| POutput
-  : ∀ {m : MType} {c : SType}
-  , Message (ST := ST) (MT := MT) m
-  → (Message (ST := ST) (MT := MT) (Channel c) → Process)
-  → Message (ST := ST) (MT := MT) (Channel (Send m c))
-  → Process
-
-(* I don't know how to represent this accurately, yet. *)
-| PComp : Process → Process → Process
-
-(* The end of all things, provided we are allowed to end. *)
-| P0 : Message (ST := ST) (MT := MT) (Channel ø) → Process
-.
-
-Notation "'(new' s <- S , r <- R , SdR ) p" := (PNew S R SdR (fun s r => p))(at level 90).
-Notation "P <|> Q" := (PComp P Q)(at level 80).
-Notation "!( m ); p" := (POutput m p)(at level 80).
-Notation "c !( m ); p" := (POutput m p c)(at level 79).
-Notation "?( m ); p" := (PInput (fun m => p))(at level 80).
-Notation "c ?( m ); p" := (PInput (fun m => p) c)(at level 79).
-
-Check (new s <- ø , r <- ø , Ends) P0 s <|> P0 r.
-
-(* Transform the datatype parameters into a type *)
-Definition FProcess := ∀ (ST : SType → Type) (MT : Set → Type), Process (ST := ST) (MT := MT).
-
-Definition extract {MT : Set → Set} {s : SType}
-           (m : Message (ST := fun _ => nat) (MT := MT) (Channel s)) : nat :=
+Definition extract {MT : Type → Type} {s : SType}
+           (m : Message (fun _ => nat) MT (Channel s)) : nat :=
   match m with
-    | C n => n
+  | C _ n => n
   end
 .
                   
 Fixpoint annotate
          (n : nat)
-         (p : Process (ST := fun _ => nat) (MT := fun _ => unit)) : list nat * list nat :=
+         (p : Process (fun _ => nat) (fun _ => unit)) : list nat * list nat :=
   let ST := fun _ => nat in
   let MT := fun _ => unit in
   match p with
 
+  (* Create two new channels *)
+  (* No channels are used *)
   | PNew _ _ _ p =>
-    let (created, used) := annotate (2+n) (p (C n) (C (1+n))) in
+    let (created, used) := annotate (2+n) (p (C _ n) (C _ (1+n))) in
     (n :: 1+n :: created, used)
 
   | @PInput _ _ m s p c =>
-    (match m as m' return (Message (ST := ST) (MT := MT) m' →
-                          Message (ST := ST) (MT := MT) (Channel s) →
-                          Process (ST := ST) (MT := MT)) →
+    (match m as m' return (Message ST MT m' →
+                          Message ST MT (Channel s) →
+                          Process ST MT) →
                           list nat * list nat
      with
+     (* A base value is received over the wire *)
+     (* Create a channel for the subsequent process *)
+     (* Use the channel of the parent process *)
      | Base _ => fun p' =>
-       let (created, used) := annotate (1+n) (p' (V tt) (C n)) in
-       (n :: created, used)
+       let (created, used) := annotate (1+n) (p' (V _ tt) (C _ n)) in
+       (n :: created, extract c :: used)
+
+     (* A channel is received over the wire *)
+     (* Create a channel for the subsequent process *)
+     (* Create a channel for the received message *)
+     (* Use the channel of the parent process *)
      | Channel _ => fun p' =>
-       let (created, used) := annotate (2+n) (p' (C n) (C (1+n))) in
-       (n :: 1+n :: created, used)
+       let (created, used) := annotate (2+n) (p' (C _ n) (C _ (1+n))) in
+       (n :: 1+n :: created, extract c :: used)
      end) p
 
-  | POutput m p c => ([], [])
+  | POutput _ _ m p c =>
+    (* Create a channel for the subsequent process *)
+    let (created, used) := annotate (1+n) (p (C _ n)) in
+    match m with
+    | V _ _ => (n :: created, extract c :: used)
+    | C _ mc => (mc :: n :: created, extract c :: used)
+    end
 
-  | l <|> r => let (created, used) := annotate n l
-                in let (created', used') := annotate (1 + fold_right max 0 created) r
-                in (created ++ created', used ++ used')
-  | P0 c => ([], [extract c])
+  | l <|> r  =>
+    let (created, used) := annotate n l in
+    let (created', used') := annotate (1 + fold_right max 0 created) r in
+    (created ++ created', used ++ used')
+
+  | PEnd c => ([], [extract c])
   end
 .
 
   
-Definition linear (p : FProcess) := let (created, used) := annotate 0 (p _ _)
+Definition linear (p : FProcess) := let (created, used) := annotate 0 (p _ _ (fun _ _ => tt))
                                     in Permutation created used.
 
 
 Example linear_example : FProcess :=
-  fun _ f => (new
+  fun ST MT f => (new
     i <- (? Base bool ; ! Base bool ; ø),
     o <- (! Base bool ; ? Base bool ; ø),
     Leftwards (Rightwards Ends))
 
-    (i?(m); !(m); P0) <|> (o!(f _ (V true)); ?(m); P0)
+    (i?(m); !(m); ε) <|> (o!(V _ (f _ true)); ?(m); ε)
     .
 
 Compute linear linear_example.
 
 Example nonlinear_example : FProcess :=
-  fun _ f => (new
+  fun _ _ f => (new
     i <- (? Base bool ; ø),
     o <- (! Base bool; ø),
     (Leftwards Ends))
 
     (* Cheat the system by using the channel o twice *)
-    (i?(_); P0) <|> (o!(f _ (V true)); (fun _ => o!(f _ (V true)); P0))
+    i?(_); ε <|> o!(V _ (f _ true)); (fun _ => o!(V _ (f _ true)); ε)
     .
 
 Compute linear nonlinear_example.
 
 Example channel_over_channel : FProcess :=
-  fun _ f => (new
+  fun _ _ f => (new
     i <- (? C[ ! Base bool ; ø ] ; ø),
     o <- (! C[ ! Base bool ; ø ] ; ø),
     (Leftwards Ends))
 
-    (i?(c); fun a => P0 a <|> (c!(f _ (V true)); P0)) <|>
+    (i?(c); fun a => ε a <|> (c!(V _ (f _ true)); ε)) <|>
     ((new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (Leftwards Ends))
-    (o!(o'); fun a => P0 a <|> (i'?(_); P0))).
+    (o!(o'); fun a => ε a <|> (i'?(_); ε))).
 
 Compute linear channel_over_channel.
 
