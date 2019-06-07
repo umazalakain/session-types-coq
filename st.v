@@ -5,12 +5,13 @@ Require Import Sorting.Permutation.
 
 (*
 ISSUES:
-[ ] How to ensure linearity
-[ ] How to make the duality proof compute automatically
+[x] How to ensure linearity
 [x] How to avoid passing channel and message to every process constructor
 [x] How to send actual messages
 [x] Add pretty notation
 [ ] Evaluate processes
+[ ] Make duality proof decidable
+[ ] Make linearity decidable
 *)
 
 (* Represents the type of a message.
@@ -49,11 +50,6 @@ Section Processes.
   Variable ST : SType → Type.
   Variable MT : Type → Type.
                                     
-  (* Represents the actual data over the wire.
-     For some reason, going universe polymorphic with
-     (A : Type) {M : A} (m : M) is not working.
-  *)
-  
   Inductive Message : MType → Type :=
   | V : ∀ {M : Set}, MT M → Message (Base M)
   | C : ∀ {S : SType}, ST S → Message (Channel S)
@@ -61,46 +57,28 @@ Section Processes.
   
   Inductive Process : Type := 
   
-  (* For any two dual session types,
-     create their corresponding channels, and
-     continue with a process where those channels are available.
-  *)
   | PNew
     : ∀ (s r : SType)
     , Duality s r 
-    → (Message (Channel s) → Message (Channel r) → Process)
+    → (Message C[s] → Message C[r] → Process)
     → Process
   
-  (* Await a message m and continue with
-     a process where a channel c is available,
-     provided that there is a channel
-     listening for a message m
-     and continuing with c upon reception.
-  *)
   | PInput
-    : ∀ {m : MType} {c : SType}
-    , (Message m → Message (Channel c) → Process)
-    → Message (Channel (Receive m c))
+    : ∀ {m : MType} {s : SType}
+    , (Message m → Message C[s] → Process)
+    → Message C[? m ; s]
     → Process
   
-  (* Send a message m and continue with
-     a process where a channel c is available,
-     provided that there is a channel
-     sending a message m
-     and continuing with c.
-  *)
   | POutput
-    : ∀ {m : MType} {c : SType}
+    : ∀ {m : MType} {s : SType}
     , Message m
-    → (Message (Channel c) → Process)
-    → Message (Channel (Send m c))
+    → (Message C[s] → Process)
+    → Message C[! m ; s]
     → Process
   
-  (* I don't know how to represent this accurately, yet. *)
   | PComp : Process → Process → Process
   
-  (* The end of all things, provided we are allowed to end. *)
-  | PEnd : Message (Channel ø) → Process
+  | PEnd : Message C[ø] → Process
   .
 End Processes.
 
@@ -181,7 +159,7 @@ Fixpoint annotate
     | C _ mc => (n :: created, mc :: extract c :: used)
     end
 
-  | l <|> r  =>
+  | PComp l r  =>
     let (created, used) := annotate n l in
     let (created', used') := annotate (1 + fold_right max (n-1) created) r in
     (created ++ created', used ++ used')
