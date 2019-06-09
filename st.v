@@ -107,8 +107,8 @@ Check fun _ _ f =>
 (* Make this into a type *)
 Definition FProcess := ∀ ST MT (bf : ∀ {S: Set}, S → Message ST MT (Base S)) , Process ST MT.
 
-Definition extract {MT : Type → Type} {s : SType}
-           (m : Message (fun _ => nat) MT (Channel s)) : nat :=
+Definition extract {MT : Type → Type} {s : SType} {A : Type}
+           (m : Message (fun _ => A) MT (Channel s)) : A :=
   match m with
   | C _ n => n
   end
