@@ -47,13 +47,16 @@ Inductive Duality : SType → SType → Prop :=
 .
                                                       
 Section Processes.
-  Variable ST : SType → Type.
+  Variable ST : Type.
   Variable MT : Type → Type.
                                     
   Inductive Message : MType → Type :=
   | V : ∀ {M : Set}, MT M → Message (Base M)
-  | C : ∀ {S : SType}, ST S → Message (Channel S)
+  | C : ∀ {S : SType}, ST → Message (Channel S)
   .
+
+  Arguments V [M].
+  Arguments C [S].
   
   Inductive Process : Type := 
   
@@ -88,13 +91,13 @@ Notation "!( m ); p" := (POutput _ _ m p)(at level 80).
 Notation "c !( m ); p" := (POutput _ _ m p c)(at level 79).
 Notation "?( m ); p" := (PInput _ _ (fun m => p))(at level 80).
 Notation "c ?( m ); p" := (PInput _ _ (fun m => p) c)(at level 79).
-Definition ε {ST : SType → Type} {MT: Type → Type} : Message ST MT (Channel ø) → Process ST MT:= PEnd ST MT.
+Definition ε {ST : Type} {MT: Type → Type} : Message ST MT (Channel ø) → Process ST MT:= PEnd ST MT.
 
 Arguments V [ST MT].
 Arguments C [ST MT].
 Arguments PNew [ST MT].
-Arguments PInput [ST MT].
-Arguments POutput [ST MT].
+Arguments PInput [ST MT m s].
+Arguments POutput [ST MT m s].
 Arguments PComp [ST MT].
 Arguments PEnd [ST MT].
 
@@ -108,7 +111,7 @@ Check fun _ _ f =>
 Definition FProcess := ∀ ST MT (bf : ∀ {S: Set}, S → Message ST MT (Base S)) , Process ST MT.
 
 Definition extract {MT : Type → Type} {s : SType} {A : Type}
-           (m : Message (fun _ => A) MT (Channel s)) : A :=
+           (m : Message A MT C[s]) : A :=
   match m with
   | C _ n => n
   end
@@ -116,8 +119,7 @@ Definition extract {MT : Type → Type} {s : SType} {A : Type}
                   
 Fixpoint annotate
          (n : nat)
-         (p : Process (fun _ => nat) (fun _ => unit)) : list nat * list nat :=
-  let ST := fun _ => nat in
+         (p : Process nat (fun _ => unit)) : list nat * list nat :=
   let MT := fun _ => unit in
   match p with
 
@@ -127,10 +129,10 @@ Fixpoint annotate
     let (created, used) := annotate (2+n) (p (C _ n) (C _ (1+n))) in
     (n :: 1+n :: created, used)
 
-  | PInput m s p c =>
-    (match m as m' return (Message ST MT m' →
-                          Message ST MT (Channel s) →
-                          Process ST MT) →
+  | @PInput _ _ m s p c =>
+    (match m as m' return (Message nat MT m' →
+                          Message nat MT (Channel s) →
+                          Process nat MT) →
                           list nat * list nat
      with
      (* A base value is received over the wire *)
@@ -149,7 +151,7 @@ Fixpoint annotate
        (n :: 1+n :: created, extract c :: used)
      end) p
 
-  | POutput _ _ m p c =>
+  | POutput m p c =>
     (* Create a channel for the subsequent process *)
     (* Use the channel that is being outputed *)
     (* Use the channel of the parent process *)
