@@ -1,7 +1,4 @@
 Require Import Unicode.Utf8.
-Require Import Lists.List.
-Import ListNotations.
-Require Import Sorting.Permutation.
 
 (*
 ISSUES:
@@ -175,79 +172,10 @@ Arguments POutput [ST MT m s].
 Arguments PComp [ST MT].
 Arguments PEnd [ST MT].
 
-Check (new s <- ø , r <- ø , Ends) ε s <|> ε r.
-Check fun _ _ f =>
-        (new s <- ! Base bool; ø , r <- ? Base bool; ø, (Rightwards Ends))
-          s!(_); ε <|> r?(_); ε.
-
-  
-Definition extract {MT : Type → Type} {s : SType} {A : Type}
-           (m : Message A MT C[s]) : A :=
-  match m with
-  | C _ n => n
-  end
-.
-                  
-Fixpoint annotate
-         (n : nat)
-         (p : Process nat (fun _ => unit)) : list nat * list nat :=
-  let MT := fun _ => unit in
-  match p with
-
-  (* Create two new channels *)
-  (* No channels are used *)
-  | PNew _ _ _ p =>
-    let (created, used) := annotate (2+n) (p (C _ n) (C _ (1+n))) in
-    (n :: 1+n :: created, used)
-
-  | @PInput _ _ m s p c =>
-    (match m as m' return (Message nat MT m' →
-                          Message nat MT (Channel s) →
-                          Process nat MT) →
-                          list nat * list nat
-     with
-     (* A base value is received over the wire *)
-     (* Create a channel for the subsequent process *)
-     (* Use the channel of the parent process *)
-     | Base _ => fun p' =>
-       let (created, used) := annotate (1+n) (p' (V _ tt) (C _ n)) in
-       (n :: created, extract c :: used)
-
-     (* A channel is received over the wire *)
-     (* Create a channel for the subsequent process *)
-     (* Create a channel for the received message *)
-     (* Use the channel of the parent process *)
-     | Channel _ => fun p' =>
-       let (created, used) := annotate (2+n) (p' (C _ n) (C _ (1+n))) in
-       (n :: 1+n :: created, extract c :: used)
-     end) p
-
-  | POutput m p c =>
-    (* Create a channel for the subsequent process *)
-    (* Use the channel that is being outputed *)
-    (* Use the channel of the parent process *)
-    let (created, used) := annotate (1+n) (p (C _ n)) in
-    match m with
-    | V _ _ => (n :: created, extract c :: used)
-    | C _ mc => (n :: created, mc :: extract c :: used)
-    end
-
-  | PComp l r  =>
-    let (created, used) := annotate n l in
-    let (created', used') := annotate (1 + fold_right max (n-1) created) r in
-    (created ++ created', used ++ used')
-
-  | PEnd c => ([], [extract c])
-  end
-.
-
 (* Make this into a type *)
 Definition FProcess := ∀ ST MT (bf : ∀ {S: Set}, S → Message ST MT (Base S)) , Process ST MT.
 Notation "P ≡ Q" := (∀ ST MT f, Congruence _ _ (P ST MT f) (Q ST MT f))(at level 80).
 Notation "P ⇒ Q" := (∀ ST MT f, Reduction _ _ (P ST MT f) (Q ST MT f))(at level 80).
-
-Definition Linear (p : FProcess) := let (created, used) := annotate 0 (p _ _ (fun _ _ => V _ tt))
-                                    in Permutation created used.
 
 Example linear_example : FProcess :=
   fun ST MT f => (new
@@ -257,8 +185,6 @@ Example linear_example : FProcess :=
 
     (i?(m); !(m); ε) <|> (o!(f _ true); ?(m); ε)
     .
-
-Compute Linear linear_example.
 
 Example linear_example2 : FProcess :=
   fun ST MT f => (new
@@ -291,8 +217,6 @@ Example nonlinear_example : FProcess :=
     i?(_); ε <|> o!(f _ true); (fun _ => o!(f _ true); ε)
     .
 
-Compute Linear nonlinear_example.
-
 Example channel_over_channel : FProcess :=
   fun _ _ f =>
     (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (Leftwards Ends))
@@ -302,5 +226,3 @@ Example channel_over_channel : FProcess :=
     <|>
     (o!(o'); fun a => ε a <|> i'?(_); ε)
 .
-
-Compute Linear channel_over_channel.
