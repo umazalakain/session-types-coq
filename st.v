@@ -45,7 +45,15 @@ Inductive Duality : SType → SType → Prop :=
 | Rightwards : ∀ {m : MType} {c₁ c₂ : SType}, Duality c₁ c₂ → Duality (Send m c₁) (Receive m c₂)
 | Leftwards : ∀ {m : MType} {c₁ c₂ : SType}, Duality c₁ c₂ → Duality (Receive m c₁) (Send m c₂)
 .
-                                                      
+
+Fixpoint inverse_duality {s r : SType} (d : Duality s r) : Duality r s :=
+  match d with
+  | Ends => Ends
+  | Rightwards d' => Leftwards (inverse_duality d')
+  | Leftwards d' => Rightwards (inverse_duality d')
+  end
+.
+                                                                  
 Section Processes.
   Variable ST : Type.
   Variable MT : Type → Type.
@@ -83,6 +91,72 @@ Section Processes.
   
   | PEnd : Message C[ø] → Process
   .
+
+  Reserved Notation "P ≡ Q" (no associativity, at level 80).
+  Inductive Congruence : Process → Process → Prop :=
+  | CCommutativity P Q :
+      PComp P Q ≡ PComp Q P
+            
+  | CAssociativity P Q R :
+      PComp (PComp P Q) R ≡ PComp P (PComp Q R)
+            
+  | CScopeExpansion s r sDr fP Q :
+      PComp (PNew s r sDr fP) Q ≡ PNew s r sDr (fun a b => PComp (fP a b) Q)
+            
+  | CScopeCommutativity s r sDr s' r' sDr' ffP :
+      PNew s r sDr (fun a b => PNew s' r' sDr' (fun c d => ffP a b c d)) ≡
+      PNew s' r' sDr' (fun c d => PNew s r sDr (fun a b => ffP a b c d))
+                    
+  | CTypeCommutativity s r sDr fP :
+      PNew s r sDr (fun a b => fP a b) ≡ PNew r s (inverse_duality sDr) (fun b a => fP a b)
+           
+  | CUnusedNew s r sDr P :
+      P ≡ PNew s r sDr (fun _ _ => P)
+
+  | CInnerNew s r sDr fP fQ :
+      (∀ (a : Message C[s]) (b : Message C[r]), fP a b ≡  fQ a b) → PNew s r sDr fP ≡ PNew s r sDr fQ
+                   
+  | CInnerOutput mt (m : Message mt) st (c : Message C[! mt; st]) fP fQ :
+      (∀ (a : Message C[st]), fP a ≡ fQ a) → POutput m fP c ≡ POutput m fQ c
+
+  | CInnerLeftRed P Q R :
+      P ≡ Q → PComp P R ≡ PComp Q R
+
+  | CInnerRightRed P Q R :
+      P ≡ Q → PComp R P ≡ PComp R Q
+                                
+  | CRefl P :
+      P ≡ P
+
+  | CSymm P Q :
+      P ≡ Q → Q ≡ P
+
+  | CTrans P Q R :
+      P ≡ Q → Q ≡ R → P ≡ R
+
+  where "P ≡ Q" := (Congruence P Q)
+  .
+
+Reserved Notation "P ⇒ Q" (at level 60).
+
+  Inductive Reduction : Process -> Process -> Prop :=
+  | RComm mt s r sDr ffP fQ : forall (m : Message mt),
+      PNew (! mt; s) (? mt; r) (Rightwards sDr)
+           (fun a b => PComp (POutput m fQ a) (PInput ffP b)) ⇒
+      PNew s r sDr
+           (fun a b => PComp (fQ a) (ffP m b))
+  | RRes s r ffP ffQ :
+      (∀ (a : Message C[s]) (b : Message C[r]), ffP a b ⇒ ffQ a b) →
+      (∀ (sDr : Duality s r), PNew s r sDr ffP ⇒ PNew s r sDr ffQ)
+      
+  | RPar P Q R :
+      P ⇒ Q → PComp P R ⇒ PComp Q R
+
+  | RStruct P P' Q Q' :
+      P ⇒ P' → Q ≡ Q' → P' ⇒ Q' → P ⇒ Q
+
+  where "P ⇒ Q" := (Reduction P Q).
+
 End Processes.
 
 Notation "'(new' s <- S , r <- R , SdR ) p" := (PNew _ _ S R SdR (fun s r => p))(at level 90).
@@ -107,9 +181,6 @@ Check fun _ _ f =>
           s!(_); ε <|> r?(_); ε.
 
   
-(* Make this into a type *)
-Definition FProcess := ∀ ST MT (bf : ∀ {S: Set}, S → Message ST MT (Base S)) , Process ST MT.
-
 Definition extract {MT : Type → Type} {s : SType} {A : Type}
            (m : Message A MT C[s]) : A :=
   match m with
@@ -170,9 +241,13 @@ Fixpoint annotate
   end
 .
 
+(* Make this into a type *)
+Definition FProcess := ∀ ST MT (bf : ∀ {S: Set}, S → Message ST MT (Base S)) , Process ST MT.
+Notation "P ≡ Q" := (∀ ST MT f, Congruence _ _ (P ST MT f) (Q ST MT f))(at level 80).
+Notation "P ⇒ Q" := (∀ ST MT f, Reduction _ _ (P ST MT f) (Q ST MT f))(at level 80).
+
 Definition Linear (p : FProcess) := let (created, used) := annotate 0 (p _ _ (fun _ _ => V _ tt))
                                     in Permutation created used.
-
 
 Example linear_example : FProcess :=
   fun ST MT f => (new
@@ -185,6 +260,27 @@ Example linear_example : FProcess :=
 
 Compute Linear linear_example.
 
+Example linear_example2 : FProcess :=
+  fun ST MT f => (new
+    o <- (! Base bool ; ? Base bool ; ø),
+    i <- (? Base bool ; ! Base bool ; ø),
+    Rightwards (Leftwards Ends))
+
+    (o!(f _ true); ?(m); ε) <|> i?(m); !(m); ε
+    .
+
+Example congruent_example : linear_example ≡ linear_example2.
+  Proof.
+    intros.
+    compute.
+    constructor 13 with ((newo <- ! Base bool; ? Base bool; ø, i <- ? Base bool; ! Base bool; ø,
+    Rightwards (Leftwards Ends)) i ?( m ); (!( m ); PEnd (MT:=MT)) <|>  o !( f bool true ); (?( _ ); PEnd (MT:=MT))).
+    constructor 5.
+    constructor 7.
+    intros.
+    constructor 1.
+  Qed.
+                                  
 Example nonlinear_example : FProcess :=
   fun _ _ f => (new
     i <- (? Base bool ; ø),
@@ -208,5 +304,3 @@ Example channel_over_channel : FProcess :=
 .
 
 Compute Linear channel_over_channel.
-
-                               
