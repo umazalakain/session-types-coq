@@ -146,6 +146,7 @@ Section Processes.
            (fun a b => PComp (POutput m fQ a) (PInput ffP b)) ⇒
       PNew s r sDr
            (fun a b => PComp (fQ a) (ffP m b))
+
   | RRes s r ffP ffQ :
       (∀ (a : Message C[s]) (b : Message C[r]), ffP a b ⇒ ffQ a b) →
       (∀ (sDr : Duality s r), PNew s r sDr ffP ⇒ PNew s r sDr ffQ)
@@ -154,7 +155,7 @@ Section Processes.
       P ⇒ Q → PComp P R ⇒ PComp Q R
 
   | RStruct P P' Q Q' :
-      P ⇒ P' → Q ≡ Q' → P' ⇒ Q' → P ⇒ Q
+      P ≡ P' → Q ≡ Q' → P ⇒ Q → P' ⇒ Q'
 
   where "P ⇒ Q" := (Reduction P Q)
   .
@@ -182,7 +183,7 @@ Definition FProcess := ∀ ST MT (mf : ∀ {S: Set}, S → Message ST MT (Base S
 Notation "P ≡ Q" := (∀ ST MT mf, Congruence _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 Notation "P ⇒ Q" := (∀ ST MT mf, Reduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 
-Ltac congruent :=
+Ltac constructors :=
   repeat (intros; compute; constructor)
 .
     
@@ -204,8 +205,30 @@ Example linear_example2 : FProcess :=
     (o!(f _ true); ?(m); ε) <|> i?(m); !(m); ε
     .
 
-Example congruent_example : linear_example ≡ linear_example2. congruent.
+Example congruent_example : linear_example ≡ linear_example2. constructors.
                                   
+Example example3 : FProcess :=
+  fun _ _ f => (new
+    o <- (? Base bool ; ø),
+    i <- (! Base bool ; ø),
+    Leftwards Ends)
+
+    (o?(m); ε) <|> i!(f _ true); ε
+    .
+  
+Example example4 : FProcess :=
+  fun _ _ f => (new
+    o <- ø,
+    i <- ø,
+    Ends)
+
+    ε o <|> ε i
+    .
+
+
+Example reduction_example : linear_example2 ⇒ example4. constructors.
+    
+        
 Example nonlinear_example : FProcess :=
   fun _ _ f => (new
     i <- (? Base bool ; ø),
@@ -236,4 +259,4 @@ Example channel_over_channel1 : FProcess :=
     (o!(o'); fun a => i'?(_); ε <|> ε a)
 .
 
-Example congruent_example : channel_over_channel ≡ channel_over_channel1. congruent.
+Example congruent_example : channel_over_channel ≡ channel_over_channel1. constructors.
