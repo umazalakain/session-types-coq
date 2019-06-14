@@ -17,7 +17,7 @@ ISSUES:
    Channels might be sent as messages.
 *)
 Inductive MType : Type :=
-| Base : Set → MType 
+| Base : Set → MType
 | Channel : SType → MType
 
 (* Represents session types of channels.
@@ -30,8 +30,8 @@ with SType : Type :=
 .
 
 Notation "C[ s ]" := (Channel s).
-Notation "! m ; s" := (Send m s) (at level 90, right associativity). 
-Notation "? m ; s" := (Receive m s) (at level 90, right associativity). 
+Notation "! m ; s" := (Send m s) (at level 90, right associativity).
+Notation "? m ; s" := (Receive m s) (at level 90, right associativity).
 
 (* Encode the duality of session types.
    TODO: For any two session types, their duality is decidable,
@@ -50,11 +50,11 @@ Fixpoint inverse_duality {s r : SType} (d : Duality s r) : Duality r s :=
   | Leftwards d' => Rightwards (inverse_duality d')
   end
 .
-                                                                  
+
 Section Processes.
   Variable ST : Type.
   Variable MT : Type → Type.
-                                    
+
   Inductive Message : MType → Type :=
   | V : ∀ {M : Set}, MT M → Message (Base M)
   | C : ∀ {S : SType}, ST → Message (Channel S)
@@ -62,30 +62,30 @@ Section Processes.
 
   Arguments V [M].
   Arguments C [S].
-  
-  Inductive Process : Type := 
-  
+
+  Inductive Process : Type :=
+
   | PNew
     : ∀ (s r : SType)
-    , Duality s r 
+    , Duality s r
     → (Message C[s] → Message C[r] → Process)
     → Process
-  
+
   | PInput
     : ∀ {m : MType} {s : SType}
     , (Message m → Message C[s] → Process)
     → Message C[? m ; s]
     → Process
-  
+
   | POutput
     : ∀ {m : MType} {s : SType}
     , Message m
     → (Message C[s] → Process)
     → Message C[! m ; s]
     → Process
-  
+
   | PComp : Process → Process → Process
-  
+
   | PEnd : Message C[ø] → Process
   .
 
@@ -93,31 +93,31 @@ Section Processes.
   Inductive Congruence : Process → Process → Prop :=
   | CCompCommutative P Q :
       PComp P Q ≡ PComp Q P
-            
+
   | CCompAssociative P Q R :
       PComp (PComp P Q) R ≡ PComp P (PComp Q R)
-            
+
   | CCompCongruent P Q R S :
       P ≡ Q → R ≡ S → PComp P R ≡ PComp Q S
 
   | CScopeExpansion s r sDr fP Q :
       PComp (PNew s r sDr fP) Q ≡ PNew s r sDr (fun a b => PComp (fP a b) Q)
-            
+
   | CScopeCommutative s r sDr s' r' sDr' ffP :
       PNew s r sDr (fun a b => PNew s' r' sDr' (fun c d => ffP a b c d)) ≡
       PNew s' r' sDr' (fun c d => PNew s r sDr (fun a b => ffP a b c d))
-                    
+
   | CNewTypesCommutative s r sDr fP fQ :
       (∀ (a : Message C[s]) (b : Message C[r]), fP a b ≡ fQ a b) →
       PNew s r sDr (fun a b => fP a b) ≡ PNew r s (inverse_duality sDr) (fun b a => fQ a b)
-           
+
   | CNewIrrelevant s r sDr P :
       P ≡ PNew s r sDr (fun _ _ => P)
 
   | CNewCongruent s r sDr fP fQ :
       (∀ (a : Message C[s]) (b : Message C[r]), fP a b ≡  fQ a b) →
       PNew s r sDr fP ≡ PNew s r sDr fQ
-                   
+
   | COutputCongruent mt (m : Message mt) st (c : Message C[! mt; st]) fP fQ :
       (∀ (a : Message C[st]), fP a ≡ fQ a) →
       POutput m fP c ≡ POutput m fQ c
@@ -125,7 +125,7 @@ Section Processes.
   | CInputCongruent mt st (c : Message C[? mt; st]) ffP ffQ :
       (∀ (a : Message mt) (b : Message C[st]), ffP a b ≡ ffQ a b) →
       PInput ffP c ≡ PInput ffQ c
-             
+
   | CReflective P :
       P ≡ P
 
@@ -150,7 +150,7 @@ Section Processes.
   | RRes s r ffP ffQ :
       (∀ (a : Message C[s]) (b : Message C[r]), ffP a b ⇒ ffQ a b) →
       (∀ (sDr : Duality s r), PNew s r sDr ffP ⇒ PNew s r sDr ffQ)
-      
+
   | RPar P Q R :
       P ⇒ Q → PComp P R ⇒ PComp Q R
 
@@ -186,7 +186,7 @@ Notation "P ⇒ Q" := (∀ ST MT mf, Reduction _ _ (P ST MT mf) (Q ST MT mf))(at
 Ltac constructors :=
   repeat (intros; compute; constructor)
 .
-    
+
 Example linear_example : FProcess :=
   fun ST MT f => (new
     i <- (? Base bool ; ! Base bool ; ø),
@@ -206,7 +206,7 @@ Example linear_example2 : FProcess :=
     .
 
 Example congruent_example : linear_example ≡ linear_example2. constructors.
-                                  
+
 Example example3 : FProcess :=
   fun _ _ f => (new
     o <- (? Base bool ; ø),
@@ -215,7 +215,7 @@ Example example3 : FProcess :=
 
     (o?(m); ε) <|> i!(f _ true); ε
     .
-  
+
 Example example4 : FProcess :=
   fun _ _ f => (new
     o <- ø,
@@ -227,8 +227,8 @@ Example example4 : FProcess :=
 
 
 Example reduction_example : linear_example2 ⇒ example4. constructors.
-    
-        
+
+
 Example nonlinear_example : FProcess :=
   fun _ _ f => (new
     i <- (? Base bool ; ø),
