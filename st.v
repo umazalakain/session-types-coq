@@ -179,7 +179,8 @@ Arguments PComp [ST MT].
 Arguments PEnd [ST MT].
 
 (* Abstract over parametric types and their constructors *)
-Definition FProcess := ∀ ST MT (mf : ∀ {S: Set}, S → Message ST MT (Base S)) , Process ST MT.
+Definition PProcess := ∀ ST MT (mf : ∀ {S: Set}, S → Message ST MT (Base S)) , Process ST MT.
+Notation "[ f ]> P" := (fun _ _ f => P)(at level 80).
 Notation "P ≡ Q" := (∀ ST MT mf, Congruence _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 Notation "P ⇒ Q" := (∀ ST MT mf, Reduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 
@@ -192,17 +193,16 @@ Ltac constructors :=
 (*               EXAMPLES                 *)
 (******************************************)
 
-Example example1 : FProcess :=
-  fun _ _ υ => (new
+Example example1 : PProcess :=
+  [υ]> (new
     i <- (? Base bool ; ! Base bool ; ø),
     o <- (! Base bool ; ? Base bool ; ø),
     Leftwards (Rightwards Ends))
 
-    (i?(m); !(m); ε) <|> (o!(υ _ true); ?(m); ε)
-    .
+    (i?(m); !(m); ε) <|> (o!(υ _ true); ?(m); ε).
 
-Example example2 : FProcess :=
-  fun _ _ υ => (new
+Example example2 : PProcess :=
+  [υ]> (new
     o <- (! Base bool ; ? Base bool ; ø),
     i <- (? Base bool ; ! Base bool ; ø),
     Rightwards (Leftwards Ends))
@@ -212,8 +212,8 @@ Example example2 : FProcess :=
 
 Example congruent_example : example1 ≡ example2. constructors.
 
-Example example3 : FProcess :=
-  fun _ _ υ => (new
+Example example3 : PProcess :=
+  [υ]> (new
     o <- ø,
     i <- ø,
     Ends)
@@ -224,8 +224,8 @@ Example example3 : FProcess :=
 
 Example reduction_example : example2 ⇒ example3. constructors.
 
-Example nonlinear_example : FProcess :=
-  fun _ _ υ => (new
+Example nonlinear_example : PProcess :=
+  [υ]> (new
     i <- (? Base bool ; ø),
     o <- (! Base bool; ø),
     (Leftwards Ends))
@@ -234,8 +234,8 @@ Example nonlinear_example : FProcess :=
     i?(_); ε <|> o!(υ _ true); (fun _ => o!(υ _ true); ε)
     .
 
-Example channel_over_channel : FProcess :=
-  fun _ _ υ =>
+Example channel_over_channel : PProcess :=
+  [υ]>
     (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (Leftwards Ends))
     (new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (Leftwards Ends))
 
@@ -244,8 +244,8 @@ Example channel_over_channel : FProcess :=
     (o!(o'); fun a => ε a <|> i'?(_); ε)
 .
 
-Example channel_over_channel1 : FProcess :=
-  fun _ _ υ =>
+Example channel_over_channel1 : PProcess :=
+  [υ]>
     (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (Leftwards Ends))
     (new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (Leftwards Ends))
 
