@@ -2,27 +2,14 @@ Require Import Unicode.Utf8.
 
 (*
 ISSUES:
-[x] How to ensure linearity
-[x] How to avoid passing channel and message to every process constructor
-[x] How to send actual messages
-[x] Add pretty notation
-[ ] Evaluate processes
-[ ] Make duality proof decidable
-[ ] Make linearity decidable
+- Mix congruence and reduction in a tactic.
+- Include linearity in the definition of well-typedness.
 *)
 
-(* Represents the type of a message.
-   The base type ranges over the set of all small types.
-   (This should be made universe polymorphic, somehow.)
-   Channels might be sent as messages.
-*)
 Inductive MType : Type :=
 | Base : Set → MType
 | Channel : SType → MType
 
-(* Represents session types of channels.
-   Big TODO for branching and selection.
-*)
 with SType : Type :=
 | ø : SType
 | Send : MType → SType → SType
@@ -33,10 +20,6 @@ Notation "C[ s ]" := (Channel s).
 Notation "! m ; s" := (Send m s) (at level 90, right associativity).
 Notation "? m ; s" := (Receive m s) (at level 90, right associativity).
 
-(* Encode the duality of session types.
-   TODO: For any two session types, their duality is decidable,
-   it should therefore be computed automatically in the future.
-*)
 Inductive Duality : SType → SType → Prop :=
 | Ends : Duality ø ø
 | Rightwards : ∀ {m : MType} {c₁ c₂ : SType}, Duality c₁ c₂ → Duality (Send m c₁) (Receive m c₂)
@@ -140,7 +123,6 @@ Section Processes.
   where "P ≡ Q" := (Congruence P Q)
   .
 
-
   Reserved Notation "P ⇒ Q" (at level 60).
   Inductive Reduction : Process -> Process -> Prop :=
   | RComm mt s r sDr ffP fQ : forall (m : Message mt),
@@ -163,6 +145,10 @@ Section Processes.
   .
 
 End Processes.
+
+(**************************)
+(*        NICETIES        *)
+(**************************)
 
 Notation "'(new' s <- S , r <- R , SdR ) p" := (PNew _ _ S R SdR (fun s r => p))(at level 90).
 Notation "P <|> Q" := (PComp _ _ P Q)(at level 80).
@@ -190,56 +176,44 @@ Ltac constructors :=
   repeat (intros; compute; constructor)
 .
 
-
 (******************************************)
 (*               EXAMPLES                 *)
 (******************************************)
 
-Example example1 : PProcess :=
-  [υ]> (new
-    i <- (? Base bool ; ! Base bool ; ø),
-    o <- (! Base bool ; ? Base bool ; ø),
-    Leftwards (Rightwards Ends))
+Example example1 : PProcess.
+  refine
+  ([υ]> (new i <- _, o <- _, _)
+    (i?(m); !(m); ε) <|> (o!(υ _ true); ?(m); ε)).
+  constructors.
+Defined.
+Print example1.
 
-    (i?(m); !(m); ε) <|> (o!(υ _ true); ?(m); ε).
+Example example2 : PProcess.
+  refine
+  ([υ]> (new o <- (! Base bool ; ? Base bool ; ø), i <- (? Base bool ; ! Base bool ; ø), _)
+    (o!(υ _ true); ?(m); ε) <|> i?(m); !(m); ε).
+  constructors.
+Defined.
 
-Example example2 : PProcess :=
-  [υ]> (new
-    o <- (! Base bool ; ? Base bool ; ø),
-    i <- (? Base bool ; ! Base bool ; ø),
-    Rightwards (Leftwards Ends))
+Example congruent_example : example1 ≡ example2. constructors. Qed.
 
-    (o!(υ _ true); ?(m); ε) <|> i?(m); !(m); ε
-    .
+Example example3 : PProcess.
+  refine
+  ([υ]> (new o <- (? Base bool ; ø), i <- (! Base bool ; ø), _)
+    (o?(m); ε) <|> i!(υ _ true); ε).
+  constructors.
+Defined.
 
-Example congruent_example : example1 ≡ example2. constructors.
+Example reduction_example : example2 ⇒ example3. constructors. Qed.
 
-Example example3 : PProcess :=
-  [υ]> (new
-    o <- ø,
-    i <- ø,
-    Ends)
+Example example4 : PProcess := [υ]> (new o <- ø, i <- ø, Ends) ε o <|> ε i.
 
-    ε o <|> ε i
-    .
-
-
-Example reduction_example : example2 ⇒ example3. constructors.
-
-Example nonlinear_example : PProcess :=
-  [υ]> (new
-    i <- (? Base bool ; ø),
-    o <- (! Base bool; ø),
-    (Leftwards Ends))
-
-    (* Cheat the system by using the channel o twice *)
-    i?(_); ε <|> o!(υ _ true); (fun _ => o!(υ _ true); ε)
-    .
+(* Example congruence_reduction_example : example2 ⇒ example4. *)
 
 Example channel_over_channel : PProcess :=
   [υ]>
     (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (Leftwards Ends))
-    (new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (Leftwards Ends))
+    (new i' <- (? Base bool ; ø), o' <- _, (Leftwards Ends))
 
     (i?(c); fun a => ε a <|> c!(υ _ true); ε)
     <|>
@@ -256,4 +230,14 @@ Example channel_over_channel1 : PProcess :=
     (o!(o'); fun a => i'?(_); ε <|> ε a)
 .
 
-Example congruent_example : channel_over_channel ≡ channel_over_channel1. constructors.
+Example congruent_example1: channel_over_channel ≡ channel_over_channel1. constructors. Qed.
+
+Example nonlinear_example : PProcess :=
+  [υ]> (new
+    i <- (? Base bool ; ø),
+    o <- (! Base bool; ø),
+    (Leftwards Ends))
+
+    (* Cheat the system by using the channel o twice *)
+    i?(_); ε <|> o!(υ _ true); (fun _ => o!(υ _ true); ε)
+    .
