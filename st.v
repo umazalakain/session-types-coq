@@ -91,51 +91,55 @@ Section Processes.
 
   Reserved Notation "P ≡ Q" (no associativity, at level 80).
   Inductive Congruence : Process → Process → Prop :=
-  | CCommutativity P Q :
+  | CCompCommutative P Q :
       PComp P Q ≡ PComp Q P
             
-  | CAssociativity P Q R :
+  | CCompAssociative P Q R :
       PComp (PComp P Q) R ≡ PComp P (PComp Q R)
             
+  | CCompCongruent P Q R S :
+      P ≡ Q → R ≡ S → PComp P R ≡ PComp Q S
+
   | CScopeExpansion s r sDr fP Q :
       PComp (PNew s r sDr fP) Q ≡ PNew s r sDr (fun a b => PComp (fP a b) Q)
             
-  | CScopeCommutativity s r sDr s' r' sDr' ffP :
+  | CScopeCommutative s r sDr s' r' sDr' ffP :
       PNew s r sDr (fun a b => PNew s' r' sDr' (fun c d => ffP a b c d)) ≡
       PNew s' r' sDr' (fun c d => PNew s r sDr (fun a b => ffP a b c d))
                     
-  | CTypeCommutativity s r sDr fP :
-      PNew s r sDr (fun a b => fP a b) ≡ PNew r s (inverse_duality sDr) (fun b a => fP a b)
+  | CNewTypesCommutative s r sDr fP fQ :
+      (∀ (a : Message C[s]) (b : Message C[r]), fP a b ≡ fQ a b) →
+      PNew s r sDr (fun a b => fP a b) ≡ PNew r s (inverse_duality sDr) (fun b a => fQ a b)
            
-  | CUnusedNew s r sDr P :
+  | CNewIrrelevant s r sDr P :
       P ≡ PNew s r sDr (fun _ _ => P)
 
-  | CInnerNew s r sDr fP fQ :
-      (∀ (a : Message C[s]) (b : Message C[r]), fP a b ≡  fQ a b) → PNew s r sDr fP ≡ PNew s r sDr fQ
+  | CNewCongruent s r sDr fP fQ :
+      (∀ (a : Message C[s]) (b : Message C[r]), fP a b ≡  fQ a b) →
+      PNew s r sDr fP ≡ PNew s r sDr fQ
                    
-  | CInnerOutput mt (m : Message mt) st (c : Message C[! mt; st]) fP fQ :
-      (∀ (a : Message C[st]), fP a ≡ fQ a) → POutput m fP c ≡ POutput m fQ c
+  | COutputCongruent mt (m : Message mt) st (c : Message C[! mt; st]) fP fQ :
+      (∀ (a : Message C[st]), fP a ≡ fQ a) →
+      POutput m fP c ≡ POutput m fQ c
 
-  | CInnerLeftRed P Q R :
-      P ≡ Q → PComp P R ≡ PComp Q R
-
-  | CInnerRightRed P Q R :
-      P ≡ Q → PComp R P ≡ PComp R Q
-                                
-  | CRefl P :
+  | CInputCongruent mt st (c : Message C[? mt; st]) ffP ffQ :
+      (∀ (a : Message mt) (b : Message C[st]), ffP a b ≡ ffQ a b) →
+      PInput ffP c ≡ PInput ffQ c
+             
+  | CReflective P :
       P ≡ P
 
-  | CSymm P Q :
+  | CSymmetric P Q :
       P ≡ Q → Q ≡ P
 
-  | CTrans P Q R :
+  | CTransitive P Q R :
       P ≡ Q → Q ≡ R → P ≡ R
 
   where "P ≡ Q" := (Congruence P Q)
   .
 
-Reserved Notation "P ⇒ Q" (at level 60).
 
+  Reserved Notation "P ⇒ Q" (at level 60).
   Inductive Reduction : Process -> Process -> Prop :=
   | RComm mt s r sDr ffP fQ : forall (m : Message mt),
       PNew (! mt; s) (? mt; r) (Rightwards sDr)
@@ -152,7 +156,8 @@ Reserved Notation "P ⇒ Q" (at level 60).
   | RStruct P P' Q Q' :
       P ⇒ P' → Q ≡ Q' → P' ⇒ Q' → P ⇒ Q
 
-  where "P ⇒ Q" := (Reduction P Q).
+  where "P ⇒ Q" := (Reduction P Q)
+  .
 
 End Processes.
 
@@ -172,11 +177,15 @@ Arguments POutput [ST MT m s].
 Arguments PComp [ST MT].
 Arguments PEnd [ST MT].
 
-(* Make this into a type *)
-Definition FProcess := ∀ ST MT (bf : ∀ {S: Set}, S → Message ST MT (Base S)) , Process ST MT.
-Notation "P ≡ Q" := (∀ ST MT f, Congruence _ _ (P ST MT f) (Q ST MT f))(at level 80).
-Notation "P ⇒ Q" := (∀ ST MT f, Reduction _ _ (P ST MT f) (Q ST MT f))(at level 80).
+(* Abstract over parametric types and their constructors *)
+Definition FProcess := ∀ ST MT (mf : ∀ {S: Set}, S → Message ST MT (Base S)) , Process ST MT.
+Notation "P ≡ Q" := (∀ ST MT mf, Congruence _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
+Notation "P ⇒ Q" := (∀ ST MT mf, Reduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 
+Ltac congruent :=
+  repeat (intros; compute; constructor)
+.
+    
 Example linear_example : FProcess :=
   fun ST MT f => (new
     i <- (? Base bool ; ! Base bool ; ø),
@@ -195,17 +204,7 @@ Example linear_example2 : FProcess :=
     (o!(f _ true); ?(m); ε) <|> i?(m); !(m); ε
     .
 
-Example congruent_example : linear_example ≡ linear_example2.
-  Proof.
-    intros.
-    compute.
-    constructor 13 with ((newo <- ! Base bool; ? Base bool; ø, i <- ? Base bool; ! Base bool; ø,
-    Rightwards (Leftwards Ends)) i ?( m ); (!( m ); PEnd (MT:=MT)) <|>  o !( f bool true ); (?( _ ); PEnd (MT:=MT))).
-    constructor 5.
-    constructor 7.
-    intros.
-    constructor 1.
-  Qed.
+Example congruent_example : linear_example ≡ linear_example2. congruent.
                                   
 Example nonlinear_example : FProcess :=
   fun _ _ f => (new
@@ -226,3 +225,15 @@ Example channel_over_channel : FProcess :=
     <|>
     (o!(o'); fun a => ε a <|> i'?(_); ε)
 .
+
+Example channel_over_channel1 : FProcess :=
+  fun _ _ f =>
+    (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (Leftwards Ends))
+    (new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (Leftwards Ends))
+
+    (i?(c); fun a => c!(f _ true); ε <|> ε a)
+    <|>
+    (o!(o'); fun a => i'?(_); ε <|> ε a)
+.
+
+Example congruent_example : channel_over_channel ≡ channel_over_channel1. congruent.
