@@ -100,31 +100,33 @@ Section Processes.
   | CCompCongruent P Q R S :
       P ≡ Q → R ≡ S → PComp P R ≡ PComp Q S
 
-  | CScopeExpansion s r sDr fP Q :
-      PComp (PNew s r sDr fP) Q ≡ PNew s r sDr (fun a b => PComp (fP a b) Q)
+  | CScopeExpansion s r sDr P Q R :
+      (∀ (a : Message C[s]) (b : Message C[r]), P a b ≡ Q a b) →
+      PComp (PNew s r sDr P) R ≡ PNew s r sDr (fun a b => PComp (Q a b) R)
 
-  | CScopeCommutative s r sDr s' r' sDr' ffP :
-      PNew s r sDr (fun a b => PNew s' r' sDr' (fun c d => ffP a b c d)) ≡
-      PNew s' r' sDr' (fun c d => PNew s r sDr (fun a b => ffP a b c d))
+  | CScopeCommutative s r sDr s' r' sDr' P Q :
+      (∀ (a : Message C[s]) (b : Message C[r]) (c : Message C[s']) (d : Message C[r']), P a b c d ≡ Q a b c d) →
+      PNew s r sDr (fun a b => PNew s' r' sDr' (fun c d => P a b c d)) ≡
+      PNew s' r' sDr' (fun c d => PNew s r sDr (fun a b => Q a b c d))
 
-  | CNewTypesCommutative s r sDr fP fQ :
-      (∀ (a : Message C[s]) (b : Message C[r]), fP a b ≡ fQ a b) →
-      PNew s r sDr (fun a b => fP a b) ≡ PNew r s (inverse_duality sDr) (fun b a => fQ a b)
+  | CNewTypesCommutative s r sDr P Q :
+      (∀ (a : Message C[s]) (b : Message C[r]), P a b ≡ Q a b) →
+      PNew s r sDr (fun a b => P a b) ≡ PNew r s (inverse_duality sDr) (fun b a => Q a b)
 
   | CNewIrrelevant s r sDr P :
       P ≡ PNew s r sDr (fun _ _ => P)
 
-  | CNewCongruent s r sDr fP fQ :
-      (∀ (a : Message C[s]) (b : Message C[r]), fP a b ≡  fQ a b) →
-      PNew s r sDr fP ≡ PNew s r sDr fQ
+  | CNewCongruent s r sDr P Q :
+      (∀ (a : Message C[s]) (b : Message C[r]), P a b ≡  Q a b) →
+      PNew s r sDr P ≡ PNew s r sDr Q
 
-  | COutputCongruent mt (m : Message mt) st (c : Message C[! mt; st]) fP fQ :
-      (∀ (a : Message C[st]), fP a ≡ fQ a) →
-      POutput m fP c ≡ POutput m fQ c
+  | COutputCongruent mt (m : Message mt) st (c : Message C[! mt; st]) P Q :
+      (∀ (a : Message C[st]), P a ≡ Q a) →
+      POutput m P c ≡ POutput m Q c
 
-  | CInputCongruent mt st (c : Message C[? mt; st]) ffP ffQ :
-      (∀ (a : Message mt) (b : Message C[st]), ffP a b ≡ ffQ a b) →
-      PInput ffP c ≡ PInput ffQ c
+  | CInputCongruent mt st (c : Message C[? mt; st]) P Q :
+      (∀ (a : Message mt) (b : Message C[st]), P a b ≡ Q a b) →
+      PInput P c ≡ PInput Q c
 
   | CReflective P :
       P ≡ P
@@ -246,8 +248,8 @@ Example channel_over_channel : PProcess :=
 
 Example channel_over_channel1 : PProcess :=
   [υ]>
-    (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (Leftwards Ends))
     (new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (Leftwards Ends))
+    (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (Leftwards Ends))
 
     (i?(c); fun a => c!(υ _ true); ε <|> ε a)
     <|>
