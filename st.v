@@ -187,37 +187,33 @@ Ltac constructors :=
   repeat (intros; compute; constructor)
 .
 
-Example linear_example : FProcess :=
-  fun ST MT f => (new
+
+(******************************************)
+(*               EXAMPLES                 *)
+(******************************************)
+
+Example example1 : FProcess :=
+  fun _ _ υ => (new
     i <- (? Base bool ; ! Base bool ; ø),
     o <- (! Base bool ; ? Base bool ; ø),
     Leftwards (Rightwards Ends))
 
-    (i?(m); !(m); ε) <|> (o!(f _ true); ?(m); ε)
+    (i?(m); !(m); ε) <|> (o!(υ _ true); ?(m); ε)
     .
 
-Example linear_example2 : FProcess :=
-  fun ST MT f => (new
+Example example2 : FProcess :=
+  fun _ _ υ => (new
     o <- (! Base bool ; ? Base bool ; ø),
     i <- (? Base bool ; ! Base bool ; ø),
     Rightwards (Leftwards Ends))
 
-    (o!(f _ true); ?(m); ε) <|> i?(m); !(m); ε
+    (o!(υ _ true); ?(m); ε) <|> i?(m); !(m); ε
     .
 
-Example congruent_example : linear_example ≡ linear_example2. constructors.
+Example congruent_example : example1 ≡ example2. constructors.
 
 Example example3 : FProcess :=
-  fun _ _ f => (new
-    o <- (? Base bool ; ø),
-    i <- (! Base bool ; ø),
-    Leftwards Ends)
-
-    (o?(m); ε) <|> i!(f _ true); ε
-    .
-
-Example example4 : FProcess :=
-  fun _ _ f => (new
+  fun _ _ υ => (new
     o <- ø,
     i <- ø,
     Ends)
@@ -226,35 +222,34 @@ Example example4 : FProcess :=
     .
 
 
-Example reduction_example : linear_example2 ⇒ example4. constructors.
-
+Example reduction_example : example2 ⇒ example3. constructors.
 
 Example nonlinear_example : FProcess :=
-  fun _ _ f => (new
+  fun _ _ υ => (new
     i <- (? Base bool ; ø),
     o <- (! Base bool; ø),
     (Leftwards Ends))
 
     (* Cheat the system by using the channel o twice *)
-    i?(_); ε <|> o!(f _ true); (fun _ => o!(f _ true); ε)
+    i?(_); ε <|> o!(υ _ true); (fun _ => o!(υ _ true); ε)
     .
 
 Example channel_over_channel : FProcess :=
-  fun _ _ f =>
+  fun _ _ υ =>
     (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (Leftwards Ends))
     (new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (Leftwards Ends))
 
-    (i?(c); fun a => ε a <|> c!(f _ true); ε)
+    (i?(c); fun a => ε a <|> c!(υ _ true); ε)
     <|>
     (o!(o'); fun a => ε a <|> i'?(_); ε)
 .
 
 Example channel_over_channel1 : FProcess :=
-  fun _ _ f =>
+  fun _ _ υ =>
     (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (Leftwards Ends))
     (new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (Leftwards Ends))
 
-    (i?(c); fun a => c!(f _ true); ε <|> ε a)
+    (i?(c); fun a => c!(υ _ true); ε <|> ε a)
     <|>
     (o!(o'); fun a => i'?(_); ε <|> ε a)
 .
