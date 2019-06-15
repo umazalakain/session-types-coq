@@ -34,6 +34,9 @@ Fixpoint inverse_duality {s r : SType} (d : Duality s r) : Duality r s :=
   end
 .
 
+Transparent inverse_duality.
+Hint Unfold inverse_duality.
+
 Section Processes.
   Variable ST : Type.
   Variable MT : Type → Type.
@@ -125,21 +128,22 @@ Section Processes.
 
   Reserved Notation "P ⇒ Q" (at level 60).
   Inductive Reduction : Process -> Process -> Prop :=
-  | RComm mt s r sDr ffP fQ : forall (m : Message mt),
+  | RComm mt s r sDr P Q R : forall (m : Message mt),
+      PNew s r sDr (fun a b => PComp (Q a) (P m b)) ⇒ R →
       PNew (! mt; s) (? mt; r) (Rightwards sDr)
-           (fun a b => PComp (POutput m fQ a) (PInput ffP b)) ⇒
-      PNew s r sDr
-           (fun a b => PComp (fQ a) (ffP m b))
+           (fun a b => PComp (POutput m Q a) (PInput P b)) ⇒ R
 
-  | RRes s r ffP ffQ :
-      (∀ (a : Message C[s]) (b : Message C[r]), ffP a b ⇒ ffQ a b) →
-      (∀ (sDr : Duality s r), PNew s r sDr ffP ⇒ PNew s r sDr ffQ)
+  | RRes s r P Q :
+      (∀ (a : Message C[s]) (b : Message C[r]), P a b ⇒ Q a b) →
+      (∀ (sDr : Duality s r), PNew s r sDr P ⇒ PNew s r sDr Q)
 
   | RPar P Q R :
       P ⇒ Q → PComp P R ⇒ PComp Q R
 
-  | RStruct P Q :
-      P ≡ Q → P ⇒ Q
+  | RStruct P Q R :
+      P ≡ Q → Q ⇒ R → P ⇒ R
+
+  | RSym P : P ⇒ P
 
   where "P ⇒ Q" := (Reduction P Q)
   .
@@ -195,7 +199,7 @@ Example example2 : PProcess.
   constructors.
 Defined.
 
-Example congruent_example1 : example1 ⇒ example2. constructors. Qed.
+Example congruent_example1 : example1 ≡ example2. constructors. Qed.
 
 Example example3 : PProcess.
   refine
@@ -213,22 +217,26 @@ Example example4 : PProcess.
   constructors.
 Defined.
 
-Example congruent_example2 : example3 ⇒ example4. constructors. Qed.
+Example congruent_example2 : example3 ≡ example4. constructors. Qed.
 
 Example example5 : PProcess :=
   ([υ]> (new i <- ø, o <- ø, Ends) (ε i <|> ε o)).
 
 Example reduction_example2 : example4 ⇒ example5. constructors. Qed.
 
-(************ TODO *************)
-Hint Constructors Congruence.
-Hint Constructors Reduction.
-Hint Resolve RComm.
-Hint Resolve RStruct.
+(* Naive tactic that combines congruence and reduction *)
+Ltac reduction_step :=
+  intros; compute;
+  repeat match goal with
+  | [ |- Reduction _ _ (PNew (? _; _) (! _; _) ?D ?P) _ ] =>
+    apply RStruct with (PNew _ _ (inverse_duality D) (fun a b => P b a))
+  | [ |- Reduction _ _ (PNew _ _ ?D (fun a b => b?(m); ?PB <|> a!(?M); ?PA)) _ ] =>
+    apply RStruct with (PNew _ _ D (fun a b => a!(M); PA <|> b?(m); PB))
+  end;
+  constructors
+.
 
-Ltac big_step_reduction := idtac.
-Example big_step_reduction : example1 ⇒ example5. big_step_reduction. Qed.
-(*******************************)
+Example big_step_reduction : example1 ⇒ example5. repeat reduction_step. Qed.
 
 Example channel_over_channel : PProcess :=
   [υ]>
