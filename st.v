@@ -128,10 +128,11 @@ Section Processes.
 
   Reserved Notation "P ⇒ Q" (at level 60).
   Inductive Reduction : Process -> Process -> Prop :=
-  | RComm mt s r sDr P Q R : forall (m : Message mt),
-      PNew s r sDr (fun a b => PComp (Q a) (P m b)) ⇒ R →
+  | RComm mt s r sDr P Q : forall (m : Message mt),
       PNew (! mt; s) (? mt; r) (Rightwards sDr)
-           (fun a b => PComp (POutput m Q a) (PInput P b)) ⇒ R
+           (fun a b => PComp (POutput m Q a) (PInput P b)) ⇒
+      PNew s r sDr
+           (fun a b => PComp (Q a) (P m b))
 
   | RRes s r P Q :
       (∀ (a : Message C[s]) (b : Message C[r]), P a b ⇒ Q a b) →
@@ -143,11 +144,16 @@ Section Processes.
   | RStruct P Q R :
       P ≡ Q → Q ⇒ R → P ⇒ R
 
-  | RSym P : P ⇒ P
-
   where "P ⇒ Q" := (Reduction P Q)
   .
 
+  Reserved Notation "P ⇒⇒ Q" (at level 60).
+  Inductive BigStepReduction : Process → Process → Prop :=
+  | RSmall P Q : P ⇒ Q → P ⇒⇒ Q
+  | RTrans P Q R : P ⇒⇒ Q → Q ⇒⇒ R → P ⇒⇒ R
+  | RRefl P : P ⇒⇒ P
+  where "P ⇒⇒ Q" := (BigStepReduction P Q)
+  .
 End Processes.
 
 (**************************)
@@ -175,6 +181,7 @@ Definition PProcess := ∀ ST MT (mf : ∀ {S: Set}, S → Message ST MT (Base S
 Notation "[ f ]> P" := (fun _ _ f => P)(at level 80).
 Notation "P ≡ Q" := (∀ ST MT mf, Congruence _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 Notation "P ⇒ Q" := (∀ ST MT mf, Reduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
+Notation "P ⇒⇒ Q" := (∀ ST MT mf, BigStepReduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 
 Ltac constructors :=
   repeat (intros; compute; constructor)
@@ -236,7 +243,11 @@ Ltac reduction_step :=
   constructors
 .
 
-Example big_step_reduction : example1 ⇒ example5. repeat reduction_step. Qed.
+Ltac big_step_reduction :=
+  repeat intros; compute; eapply RTrans; eapply RSmall; try reduction_step
+.
+
+Example big_step_reduction : example1 ⇒⇒ example5. big_step_reduction. Qed.
 
 Example channel_over_channel : PProcess :=
   [υ]>
