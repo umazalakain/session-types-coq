@@ -138,8 +138,8 @@ Section Processes.
   | RPar P Q R :
       P ⇒ Q → PComp P R ⇒ PComp Q R
 
-  | RStruct P P' Q Q' :
-      P ≡ P' → Q ≡ Q' → P ⇒ Q → P' ⇒ Q'
+  | RStruct P Q :
+      P ≡ Q → P ⇒ Q
 
   where "P ⇒ Q" := (Reduction P Q)
   .
@@ -195,7 +195,7 @@ Example example2 : PProcess.
   constructors.
 Defined.
 
-Example congruent_example : example1 ≡ example2. constructors. Qed.
+Example congruent_example1 : example1 ⇒ example2. constructors. Qed.
 
 Example example3 : PProcess.
   refine
@@ -204,11 +204,31 @@ Example example3 : PProcess.
   constructors.
 Defined.
 
-Example reduction_example : example2 ⇒ example3. constructors. Qed.
+Example reduction_example1 : example2 ⇒ example3. constructors. Qed.
 
-Example example4 : PProcess := [υ]> (new o <- ø, i <- ø, Ends) ε o <|> ε i.
+Example example4 : PProcess.
+  refine
+  ([υ]> (new i <- (! Base bool ; ø), o <- (? Base bool ; ø), _)
+    (i!(υ _ true); ε <|> o?(m); ε)).
+  constructors.
+Defined.
 
-(* Example congruence_reduction_example : example2 ⇒ example4. *)
+Example congruent_example2 : example3 ⇒ example4. constructors. Qed.
+
+Example example5 : PProcess :=
+  ([υ]> (new i <- ø, o <- ø, Ends) (ε i <|> ε o)).
+
+Example reduction_example2 : example4 ⇒ example5. constructors. Qed.
+
+(************ TODO *************)
+Hint Constructors Congruence.
+Hint Constructors Reduction.
+Hint Resolve RComm.
+Hint Resolve RStruct.
+
+Ltac big_step_reduction := idtac.
+Example big_step_reduction : example1 ⇒ example5. big_step_reduction. Qed.
+(*******************************)
 
 Example channel_over_channel : PProcess :=
   [υ]>
@@ -230,7 +250,7 @@ Example channel_over_channel1 : PProcess :=
     (o!(o'); fun a => i'?(_); ε <|> ε a)
 .
 
-Example congruent_example1: channel_over_channel ≡ channel_over_channel1. constructors. Qed.
+Example congruent_example3: channel_over_channel ≡ channel_over_channel1. constructors. Qed.
 
 Example nonlinear_example : PProcess :=
   [υ]> (new
