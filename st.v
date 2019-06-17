@@ -1,4 +1,7 @@
 Require Import Unicode.Utf8.
+Require Import Lists.List.
+Require Import Sorting.Permutation.
+Require Import Coq.Program.Equality.
 
 (*
 ISSUES:
@@ -176,16 +179,101 @@ Arguments POutput [ST MT m s].
 Arguments PComp [ST MT].
 Arguments PEnd [ST MT].
 
+(**************************)
+(*       LINEARITY        *)
+(**************************)
+
+Definition extract {MT : Type → Type} {s : SType} {A : Type}
+           (m : Message A MT C[s]) : A :=
+  match m with
+  | C _ n => n
+  end
+.
+
+Fixpoint count_channel (p : Process bool (fun _ => unit)) : nat :=
+  let MT := fun _ => unit in
+  match p with
+  | PNew _ _ _ p => count_channel (p (C _ false) (C _ false))
+  | @PInput _ _ m s p c =>
+    (match m as m' return (Message bool MT m' → Message bool MT (Channel s) → Process bool MT) → nat with
+     | Base _ => fun p' => count_channel (p' (V _ tt) (C _ false))
+     | Channel _ => fun p' => count_channel (p' (C _ false) (C _ false))
+     end) p + if extract c then 1 else 0
+  | POutput m p c => count_channel (p (C _ false)) + if extract c then 1 else 0
+  | PComp l r  => count_channel l + count_channel r
+  | PEnd c => if extract c then 1 else 0
+  end
+.
+
+Fixpoint linear (p : Process bool (fun _ => unit)) : Prop :=
+  let MT := fun _ => unit in
+  match p with
+  | PNew _ _ _ p =>
+    count_channel (p (C _ true) (C _ false)) = 1 /\
+    count_channel (p (C _ false) (C _ true)) = 1 /\
+    linear (p (C _ false) (C _ false))
+  | @PInput _ _ m s p c =>
+    (match m as m' return (Message bool MT m' → Message bool MT (Channel s) → Process bool MT) → Prop with
+     | Base _ => fun p' =>
+                  count_channel (p' (V _ tt) (C _ true)) = 1 /\
+                  linear (p' (V _ tt) (C _ false))
+     | Channel _ => fun p' =>
+                     count_channel (p' (C _ true) (C _ false)) = 1 /\
+                     count_channel (p' (C _ false) (C _ true)) = 1 /\
+                     linear (p' (C _ false) (C _ false))
+     end) p
+  | POutput m p c => count_channel (p (C _ true)) = 1 /\
+                    linear (p (C _ false))
+  | PComp l r => linear l /\ linear r
+  | PEnd c => True
+  end
+.
+
+(******************************)
+(*  PARAMETRIC GENERALISATION *)
+(******************************)
+
 (* Abstract over parametric types and their constructors *)
 Definition PProcess := ∀ ST MT (mf : ∀ {S: Set}, S → Message ST MT (Base S)) , Process ST MT.
+Definition Linear (p : PProcess) : Prop := linear (p bool (fun _ => unit) (fun _ _ => (V _ tt))).
 Notation "[ f ]> P" := (fun _ _ f => P)(at level 80).
 Notation "P ≡ Q" := (∀ ST MT mf, Congruence _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 Notation "P ⇒ Q" := (∀ ST MT mf, Reduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 Notation "P ⇒⇒ Q" := (∀ ST MT mf, BigStepReduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 
+(*********************************)
+(*      REDUCTION TACTICS        *)
+(*********************************)
+
 Ltac constructors :=
   repeat (intros; compute; constructor)
 .
+
+Ltac reduction_step :=
+  intros; compute;
+  repeat match goal with
+  | [ |- Reduction _ _ (PNew (? _; _) (! _; _) ?D ?P) _ ] =>
+    apply RStruct with (PNew _ _ (inverse_duality D) (fun a b => P b a))
+  | [ |- Reduction _ _ (PNew _ _ ?D (fun a b => b?(m); ?PB <|> a!(?M); ?PA)) _ ] =>
+    apply RStruct with (PNew _ _ D (fun a b => a!(M); PA <|> b?(m); PB))
+  end;
+  constructors
+.
+
+Ltac big_step_reduction :=
+  repeat intros; compute; eapply RTrans; eapply RSmall; try reduction_step
+.
+
+(******************************************)
+(*              TYPE SAFETY               *)
+(******************************************)
+
+Theorem TypeSafety : ∀ (P Q : PProcess), Linear P → P ⇒ Q → Linear Q.
+Proof.
+  compute. intros P Q lP PrQ.
+  dependent destruction PrQ.
+  dependent induction P0.
+Admitted.
 
 (******************************************)
 (*               EXAMPLES                 *)
@@ -231,22 +319,6 @@ Example example5 : PProcess :=
 
 Example reduction_example2 : example4 ⇒ example5. constructors. Qed.
 
-(* Naive tactic that combines congruence and reduction *)
-Ltac reduction_step :=
-  intros; compute;
-  repeat match goal with
-  | [ |- Reduction _ _ (PNew (? _; _) (! _; _) ?D ?P) _ ] =>
-    apply RStruct with (PNew _ _ (inverse_duality D) (fun a b => P b a))
-  | [ |- Reduction _ _ (PNew _ _ ?D (fun a b => b?(m); ?PB <|> a!(?M); ?PA)) _ ] =>
-    apply RStruct with (PNew _ _ D (fun a b => a!(M); PA <|> b?(m); PB))
-  end;
-  constructors
-.
-
-Ltac big_step_reduction :=
-  repeat intros; compute; eapply RTrans; eapply RSmall; try reduction_step
-.
-
 Example big_step_reduction : example1 ⇒⇒ example5. big_step_reduction. Qed.
 
 Example channel_over_channel : PProcess :=
@@ -280,3 +352,5 @@ Example nonlinear_example : PProcess :=
     (* Cheat the system by using the channel o twice *)
     i?(_); ε <|> o!(υ _ true); (fun _ => o!(υ _ true); ε)
     .
+
+Example linear_example1 : Linear example1. compute. tauto. Qed.
