@@ -268,9 +268,61 @@ Ltac big_step_reduction :=
 (*              TYPE SAFETY               *)
 (******************************************)
 
+Require Import Arith.
+
+Theorem LinearityCongruence : ∀ (P Q : PProcess), Linear P → P ≡ Q → Linear Q.
+Proof.
+  intros P Q lP PcQ.
+  unfold PProcess in P, Q.
+  unfold Linear.
+  unfold Linear in lP.
+  set (ST := bool).
+  set (MT := fun _ => unit).
+  set (fM := fun _ _ => V _ tt).
+  refine (
+      (match (P ST MT fM) as P'
+             return linear P' → Congruence _ _ P' (Q ST MT fM) → linear (Q ST MT fM) with
+       | PNew _ _ _ _ => _
+       | PInput _ _ => _
+       | POutput _ _ _ => _
+       | PComp _ _ => _
+       | PEnd _ => _
+       end) lP (PcQ ST MT fM)).
+  all: intros slP sPcQ.
+  - induction sPcQ.
+    + destruct slP.
+      split.
+      assumption.
+      assumption.
+    + destruct slP.
+      destruct H.
+      split.
+      assumption.
+      split.
+      assumption.
+      assumption.
+    + destruct slP.
+      split.
+      apply (IHsPcQ1 H).
+      apply (IHsPcQ2 H0).
+    + destruct slP.
+      destruct H1.
+      destruct H3.
+      simpl.
+      split.
+      admit.
+      split.
+      admit.
+      split.
+      exact (H0 (C _ false) (C _ false) H4).
+      exact H2.
+Admitted.
+
+
 Theorem TypeSafety : ∀ (P Q : PProcess), Linear P → P ⇒ Q → Linear Q.
 Proof.
-  compute. intros P Q lP PrQ.
+  compute.
+  intros P Q lP PrQ.
   dependent destruction PrQ.
   dependent induction P0.
 Admitted.
@@ -354,3 +406,8 @@ Example nonlinear_example : PProcess :=
     .
 
 Example linear_example1 : Linear example1. compute. tauto. Qed.
+
+Example nonlinear_example1 : ~ (Linear nonlinear_example).
+Proof.
+  compute; intros; decompose [and] H; discriminate.
+Qed.
