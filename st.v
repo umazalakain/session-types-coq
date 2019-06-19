@@ -215,17 +215,20 @@ Fixpoint linear (p : Process bool (fun _ => unit)) : Prop :=
   | @PInput _ _ m s p c =>
     (match m as m' return (Message bool MT m' → Message bool MT (Channel s) → Process bool MT) → Prop with
      | Base _ => fun p' =>
+                  extract c = false /\
                   count_channel (p' (V _ tt) (C _ true)) = 1 /\
                   linear (p' (V _ tt) (C _ false))
      | Channel _ => fun p' =>
+                     extract c = false /\
                      count_channel (p' (C _ true) (C _ false)) = 1 /\
                      count_channel (p' (C _ false) (C _ true)) = 1 /\
                      linear (p' (C _ false) (C _ false))
      end) p
-  | POutput m p c => count_channel (p (C _ true)) = 1 /\
+  | POutput m p c => extract c = false /\
+                    count_channel (p (C _ true)) = 1 /\
                     linear (p (C _ false))
   | PComp l r => linear l /\ linear r
-  | PEnd c => True
+  | PEnd c => extract c = false
   end
 .
 
@@ -268,7 +271,44 @@ Ltac big_step_reduction :=
 (*              TYPE SAFETY               *)
 (******************************************)
 
-Require Import Arith.
+Lemma linearity_count : ∀ P, linear P → count_channel P = 0.
+Proof.
+  intros.
+  dependent induction P.
+  + destruct H0.
+    destruct H1.
+    simpl.
+    exact (H (C _ false) (C _ false) H2).
+  + simpl.
+    dependent induction m.
+    dependent induction m0.
+    - destruct H0.
+      destruct H1.
+      rewrite H0.
+      rewrite (H (V _ tt) (C _ false) H2).
+      trivial.
+    - destruct H0.
+      rewrite H0.
+      destruct H1.
+      destruct H2.
+      rewrite (H (C _ false) (C _ false) H3).
+      trivial.
+  + simpl.
+    destruct H0.
+    destruct H1.
+    rewrite H0.
+    rewrite (H (C _ false) H2).
+    trivial.
+  + destruct H.
+    simpl.
+    rewrite (IHP1 H).
+    rewrite (IHP2 H0).
+    trivial.
+  + unfold linear in H.
+    simpl.
+    rewrite H.
+    trivial.
+Qed.
 
 Theorem LinearityCongruence : ∀ (P Q : PProcess), Linear P → P ≡ Q → Linear Q.
 Proof.
