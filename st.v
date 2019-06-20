@@ -328,54 +328,96 @@ Proof.
        | _ => _
        end) lP (PcQ ST MT fM)).
   all: intros slP sPcQ.
-  - induction sPcQ.
-    all: simpl; try split; try destruct H; try destruct slP; eauto; try ring .
-    + destruct H.
-      eauto.
-    + destruct H.
-      eauto.
-    + rewrite <- (congruence_count _ _ (H _ _)).
-      rewrite (linearity_count _ H2).
-      destruct H1.
-      destruct H3.
-      rewrite H1.
-      ring .
-    + rewrite (linearity_count _ H2).
-      destruct H1.
-      destruct H3.
-      rewrite <- (congruence_count _ _ (H _ _)).
-      rewrite H3.
-      split.
-      ring .
-      split.
-      exact (H0 _ _ H4).
-      assumption.
-    + admit.
-    + repeat (rewrite <- (congruence_count _ _ (H _ _ _ _))).
-      destruct H2.
-      destruct H3.
-      destruct H4.
-      simpl in H1, H2.
-      repeat split.
-      all: try assumption.
-      exact (H0 _ _ _ _ H5).
-    + destruct H2.
-      rewrite <- (congruence_count _ _ (H _ _)).
-      assumption.
-    + split.
-      rewrite <- (congruence_count _ _ (H _ _)).
-      assumption.
-      destruct H2.
-      exact (H0 _ _ H3).
+  induction sPcQ.
+  all: simpl; try split; try destruct H; try destruct slP; eauto; try ring .
+  + destruct H.
+    eauto.
+  + destruct H.
+    eauto.
+  + rewrite <- (congruence_count _ _ (H _ _)).
+    rewrite (linearity_count _ H2).
+    destruct H1.
+    destruct H3.
+    rewrite H1.
+    ring .
+  + rewrite (linearity_count _ H2).
+    destruct H1.
+    destruct H3.
+    rewrite <- (congruence_count _ _ (H _ _)).
+    rewrite H3.
+    split.
+    ring .
+    split.
+    exact (H0 _ _ H4).
+    assumption.
+  + admit.
+  + repeat (rewrite <- (congruence_count _ _ (H _ _ _ _))).
+    destruct H2.
+    destruct H3.
+    destruct H4.
+    simpl in H1, H2.
+    repeat split.
+    all: try assumption.
+    exact (H0 _ _ _ _ H5).
+  + destruct H2.
+    rewrite <- (congruence_count _ _ (H _ _)).
+    assumption.
+  + split.
+    rewrite <- (congruence_count _ _ (H _ _)).
+    assumption.
+    destruct H2.
+    exact (H0 _ _ H3).
+  + admit.
+  + admit.
+  + rewrite <- (congruence_count _ _ (H _ _)).
+    assumption.
+  + destruct H2.
+    split.
+    rewrite <- (congruence_count _ _ (H _ _)).
+    assumption.
+    exact (H0 _ _ H3).
+  + destruct H2.
+    split.
+    rewrite <- (congruence_count _ _ (H _)).
+    assumption.
+    exact (H0 _ H3).
+  + dependent induction mt.
+    all: destruct slP; destruct H2; repeat split.
+    assumption.
+    rewrite <- (congruence_count _ _ (H _ _)).
+    assumption.
+    exact (H0 _ _ H3).
+    assumption.
+    rewrite <- (congruence_count _ _ (H _ _)).
+    assumption.
+    destruct H3.
+    rewrite <- (congruence_count _ _ (H _ _)).
+    assumption.
+    destruct H3.
+    exact (H0 _ _ H4).
+  + admit.
 Admitted.
+
 
 
 Theorem TypeSafety : ∀ (P Q : PProcess), Linear P → P ⇒ Q → Linear Q.
 Proof.
-  compute.
   intros P Q lP PrQ.
-  dependent destruction PrQ.
-  dependent induction P0.
+  unfold PProcess in P, Q.
+  unfold Linear.
+  unfold Linear in lP.
+  set (ST := bool).
+  set (MT := fun _ => unit).
+  set (fM := fun _ _ => V _ tt).
+  refine (
+      (match (P ST MT fM) as P'
+             return linear P' → Reduction _ _ P' (Q ST MT fM) → linear (Q ST MT fM)
+       with
+       | _ => _
+       end) lP (PrQ ST MT fM)).
+  all: intros slP sPrQ.
+  induction sPrQ.
+  all: simpl; try split; try destruct H; try destruct slP; eauto; try ring   .
 Admitted.
 
 (******************************************)
