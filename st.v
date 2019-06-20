@@ -2,6 +2,7 @@ Require Import Unicode.Utf8.
 Require Import Lists.List.
 Require Import Sorting.Permutation.
 Require Import Coq.Program.Equality.
+Require Import Arith.
 
 (*
 ISSUES:
@@ -273,42 +274,43 @@ Ltac big_step_reduction :=
 
 Lemma linearity_count : ∀ P, linear P → count_channel P = 0.
 Proof.
-  intros.
-  dependent induction P.
-  + destruct H0.
+  intros P lP.
+  induction P.
+  all: simpl.
+  + destruct lP.
     destruct H1.
-    simpl.
     exact (H (C _ false) (C _ false) H2).
-  + simpl.
-    dependent induction m.
+  + dependent induction m.
     dependent induction m0.
-    - destruct H0.
-      destruct H1.
-      rewrite H0.
-      rewrite (H (V _ tt) (C _ false) H2).
-      trivial.
-    - destruct H0.
-      rewrite H0.
-      destruct H1.
-      destruct H2.
+    all: destruct lP; destruct H1; rewrite H0.
+    - rewrite (H (V _ tt) (C _ false) H2).
+      reflexivity.
+    - destruct H2.
       rewrite (H (C _ false) (C _ false) H3).
-      trivial.
-  + simpl.
-    destruct H0.
+      reflexivity.
+  + destruct lP.
     destruct H1.
     rewrite H0.
     rewrite (H (C _ false) H2).
-    trivial.
-  + destruct H.
-    simpl.
+    reflexivity.
+  + destruct lP.
     rewrite (IHP1 H).
     rewrite (IHP2 H0).
-    trivial.
-  + unfold linear in H.
-    simpl.
-    rewrite H.
-    trivial.
+    reflexivity.
+  + rewrite lP.
+    reflexivity.
 Qed.
+
+Lemma congruence_count : ∀ P Q, Congruence _ _ P Q → count_channel P = count_channel Q.
+Proof.
+  intros P Q PcQ.
+  induction PcQ.
+  all: simpl; eauto; try ring.
+  - induction mt; eauto.
+  - rewrite IHPcQ1. rewrite IHPcQ2. reflexivity.
+Qed.
+
+Hint Resolve congruence_count.
 
 Theorem LinearityCongruence : ∀ (P Q : PProcess), Linear P → P ≡ Q → Linear Q.
 Proof.
@@ -321,41 +323,50 @@ Proof.
   set (fM := fun _ _ => V _ tt).
   refine (
       (match (P ST MT fM) as P'
-             return linear P' → Congruence _ _ P' (Q ST MT fM) → linear (Q ST MT fM) with
-       | PNew _ _ _ _ => _
-       | PInput _ _ => _
-       | POutput _ _ _ => _
-       | PComp _ _ => _
-       | PEnd _ => _
+             return linear P' → Congruence _ _ P' (Q ST MT fM) → linear (Q ST MT fM)
+       with
+       | _ => _
        end) lP (PcQ ST MT fM)).
   all: intros slP sPcQ.
   - induction sPcQ.
-    + destruct slP.
-      split.
-      assumption.
-      assumption.
-    + destruct slP.
-      destruct H.
-      split.
-      assumption.
-      split.
-      assumption.
-      assumption.
-    + destruct slP.
-      split.
-      apply (IHsPcQ1 H).
-      apply (IHsPcQ2 H0).
-    + destruct slP.
+    all: simpl; try split; try destruct H; try destruct slP; eauto; try ring .
+    + destruct H.
+      eauto.
+    + destruct H.
+      eauto.
+    + rewrite <- (congruence_count _ _ (H _ _)).
+      rewrite (linearity_count _ H2).
       destruct H1.
       destruct H3.
-      simpl.
+      rewrite H1.
+      ring .
+    + rewrite (linearity_count _ H2).
+      destruct H1.
+      destruct H3.
+      rewrite <- (congruence_count _ _ (H _ _)).
+      rewrite H3.
       split.
-      admit.
+      ring .
       split.
-      admit.
-      split.
-      exact (H0 (C _ false) (C _ false) H4).
-      exact H2.
+      exact (H0 _ _ H4).
+      assumption.
+    + admit.
+    + repeat (rewrite <- (congruence_count _ _ (H _ _ _ _))).
+      destruct H2.
+      destruct H3.
+      destruct H4.
+      simpl in H1, H2.
+      repeat split.
+      all: try assumption.
+      exact (H0 _ _ _ _ H5).
+    + destruct H2.
+      rewrite <- (congruence_count _ _ (H _ _)).
+      assumption.
+    + split.
+      rewrite <- (congruence_count _ _ (H _ _)).
+      assumption.
+      destruct H2.
+      exact (H0 _ _ H3).
 Admitted.
 
 
