@@ -1,10 +1,42 @@
 \documentclass{mproj}
 \usepackage{graphicx}
 
+\usepackage[utf8]{inputenc}
 \usepackage{url}
 \usepackage{fancyvrb}
 \usepackage[final]{pdfpages}
 \usepackage{times}
+\usepackage{todonotes}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\setlist{nolistsep}
+
+% Links and their colors
+\usepackage[
+  colorlinks=true,
+  linkcolor=darkgray,
+  citecolor=darkgray,
+  urlcolor=darkgray,
+  ]{hyperref}
+
+% Use a single line for chapter headers
+\titleformat{\chapter}[hang]{\normalfont\huge\bfseries}{\thechapter.}{1em}{} 
+% Remove the space before chapter titles
+\titlespacing*{\chapter}{0pt}{0pt}{40pt}
+
+% Appendices
+\usepackage[header,title,titletoc]{appendix}
+\renewcommand{\appendixname}{Appendix}
+
+% License
+\usepackage[
+    type={CC},
+    modifier={by-sa},
+    version={3.0},
+]{doclicense}
+
+% Add bibliography to TOC
+\usepackage[nottoc,numbib]{tocbibind}
 
 % for alternative page numbering use the following package
 % and see documentation for commands
@@ -20,9 +52,10 @@
 \begin{document}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\title{Title of project placed here}
-\author{Name of author placed here}
-\date{Date of submission placed here}
+\title{$\pi$-calculus session types in Coq \\
+\large Using a parametric higher order abstract syntax with dependent types}
+\author{Uma Zalakain}
+\date{2019-09-06}
 \maketitle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -34,10 +67,11 @@ abstract goes here
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \educationalconsent
-
+\vfill{}
+\doclicenseThis
+\newpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\newpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Acknowledgements}
 
@@ -50,29 +84,60 @@ acknowledgements go here
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Introduction}\label{intro}
 
-\section{A section}
-\subsection{A subsection}
-Please note your proposal need not follow the included section headings - this is only a suggested structure. Also add subsections etc as required
+The pi calculus models the exchange of messages between processes over
+two-endpoint communication channels. Computation advances when two processes
+exchange a message through a channel: the receiving process gets reduced through
+substitution. Channels themselves can also be sent as messages, and then be used
+for further communication.
 
-\cite{BK08}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Survey}\label{survey}
+It is often desirable to restrict the processes that can be expressed to those
+that are deemed meaningful, leaving out the ones with undesirable features.
+This is usually accomplished by adding a type system to the calculus. In the pi
+calculus, session types can be used to impose types onto communication channels
+-- the session type of a channel is a finite sequence of types, each with an
+associated direction.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Further chapters}
+The two endpoints of a channel must have dual session types: if one end is
+sending data of type \texttt{T}, the other must be receiving data of type
+\texttt{T} -- ensuring \textit{communication safety}. The endpoints of a channel
+can be passed along as messages, but can never be duplicated: communication can
+only ever happen between two processes -- ensuring \textit{privacy}.  Processes
+must follow the session types of channel endpoints: channels must be used as per
+their specification -- ensuring \textit{session fidelity}. As communication
+occurs and messages are exchanged, the session types of channels advance.
+Ensuring that this reduction process follows the session types involves proving
+both \textit{subject reduction} and \textit{type soundness}.
+\cite{Dardha2016m}
 
+Using a proof assistant to prove these theorems provides a strong guarantee of
+the correctness of the proofs. Moreover, it means that any process described in
+these terms will have these theorems automatically derived. From the numerous
+proof assistants available, Coq has been chosen to formalise the pi calculus
+with session types. Amongst its features, Coq includes a powerful tactic engine
+and a dependent type system, both key for the development of this project.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Conclusion}\label{conclusion}
+Past efforts in formalising session types in Coq have created an object language
+and then handled variable references, typing contexts, and typing judgments
+themselves \cite{Dilmore2019}. The present work lifts those responsibilities to
+the metalanguage by using a parametric higher order abstract syntax to model
+processes. This results in the following key features:
 
-\appendix % first appendix
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{First appendix}
+\begin{itemize}
+    \item Variable references are handled by Coq: no substitution related
+        theorems are required, references to both messages and channels feel
+        natural.
+    \item Parametrising the channel type guarantees that channels are only
+        created as defined by the calculus -- no cheating is allowed.
+    \item The subject reduction of session types is driven by continuation
+        passing of channels. Guaranteeing linearity is therefore essential.
+    \item Congruence and reduction are relations defined inductively on
+        processes; reduction entails pattern matching against functions.
+    \item Tactics are used to find congruent processes that reduce.
+    \item With the exception of linearity, processes are correct by
+        construction. Type safety is therefore defined as: if $P$ is linear and
+        $P$ reduces to $Q$, then $Q$ is linear.
+\end{itemize}
 
-\section{Section of first appendix}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Second appendix}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % it is fine to change the bibliography style if you want
