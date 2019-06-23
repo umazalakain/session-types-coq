@@ -300,6 +300,18 @@ Ltac big_step_reduction :=
   repeat intros; compute; eapply RTrans; eapply RSmall; try reduction_step
 .
 
+Ltac destruct_linear :=
+  repeat
+  match goal with
+  | [ H : linear _ |- _ ] => destruct H
+  end;
+  repeat
+  match goal with
+  | [ H : and _ _ |- _ ] => destruct H
+  end
+.
+
+
 (******************************************)
 (*          TYPE PRESERVATION             *)
 (******************************************)
@@ -308,27 +320,24 @@ Lemma linearity_count : ∀ P, linear P → count_marked P = 0.
 Proof.
   intros P lP.
   induction P.
-  all: simpl.
-  + destruct lP.
-    destruct H1.
-    exact (H _ _ H2).
+  all: simpl; eauto.
+  + destruct_linear.
+    eauto.
   + dependent induction m.
     dependent induction m0.
-    all: destruct lP; destruct H1; rewrite H0.
-    - rewrite (H _ _ H2).
-      reflexivity.
-    - destruct H2.
-      rewrite (H _ _ H3).
-      reflexivity.
+    all: destruct_linear; rewrite H0; eauto.
   + dependent induction m.
-    all: dependent induction m0; destruct lP; destruct H1; destruct H2; rewrite H0; rewrite (H _).
+    dependent induction m0.
+    all: destruct_linear; rewrite H0; rewrite (H _).
     all: try rewrite H3; eauto.
-  + destruct lP.
+  + destruct_linear.
     rewrite (IHP1 H).
     rewrite (IHP2 H0).
     reflexivity.
-  + rewrite lP.
-    reflexivity.
+  + dependent induction m.
+    induction s.
+    discriminate.
+    trivial.
 Qed.
 
 Hint Resolve linearity_count.
@@ -361,40 +370,33 @@ Proof.
        end) lP (PcQ ST MT fM)).
   all: intros slP sPcQ.
   induction sPcQ.
-  all: simpl; try destruct H; try destruct slP; eauto.
-  + destruct H.
-    eauto.
+  all: simpl; destruct_linear; eauto.
   + repeat rewrite <- (congruence_count _ _ (H _ _)).
     rewrite (linearity_count _ H2).
-    destruct H1.
-    destruct H3.
     rewrite H1.
     rewrite H3.
+    eauto.
+  + repeat rewrite <- (congruence_count _ _ (H _ _ _ _)).
+    destruct_linear.
     all: try split; eauto.
-  + destruct H2.
-    destruct H3.
-    destruct H4.
-    repeat rewrite <- (congruence_count _ _ (H _ _ _ _)).
-    all: try split; eauto.
-  + destruct H2.
-    repeat rewrite <- (congruence_count _ _ (H _ _)).
-    all: try split; eauto.
-  + destruct H2.
-    repeat rewrite <- (congruence_count _ _ (H _ _)).
-    all: try split; eauto.
+  + repeat rewrite <- (congruence_count _ _ (H _ _)).
+    all: eauto.
+  + repeat rewrite <- (congruence_count _ _ (H _ _)).
+    all: eauto.
   + dependent induction mt.
-    all: destruct H2; destruct H3; rewrite <- (congruence_count _ _ (H _)).
-    eauto.
-    destruct H4.
-    eauto.
+    all: rewrite <- (congruence_count _ _ (H _)).
+    all: eauto.
   + dependent induction mt.
-    all: destruct H2; repeat rewrite <- (congruence_count _ _ (H _ _)).
-    eauto.
-    destruct H3.
-    auto.
+    all: repeat rewrite <- (congruence_count _ _ (H _ _)).
+    all: destruct_linear; eauto.
   + admit.
 Admitted.
 
+
+Lemma mark_count : ∀ s (P : Message _ _ C[s] → Process _ _) (m : Message bool _ C[s]),
+    count_marked (P m) = (count_if_marked m) + count_marked (P unmarked).
+Proof.
+Admitted.
 
 Lemma reduction_count : ∀ P Q, Reduction _ _ P Q → count_marked P = count_marked Q.
 Proof.
@@ -402,14 +404,15 @@ Proof.
   induction PrQ.
   all: simpl; eauto.
   - dependent induction m.
-    induction m.
-    auto.
-    induction s0.
-    admit.
-    admit.
+    destruct m.
+    eauto.
+    rewrite (mark_count _ (fun c => P c unmarked) (C s0)).
+    ring.
   - rewrite <- IHPrQ.
     apply (congruence_count _ _ H).
-Admitted.
+Qed.
+
+Hint Resolve reduction_count.
 
 Theorem TypePreservation : ∀ (P Q : PProcess), Linear P → P ⇒ Q → Linear Q.
 Proof.
@@ -427,15 +430,16 @@ Proof.
        | _ => _
        end) lP (PrQ ST MT fM)).
   all: intros slP sPrQ.
-  induction sPrQ.
-  all: try destruct slP; try destruct H0.
+  induction (sPrQ).
   - simpl.
+    destruct slP.
+    destruct H0.
+    destruct H1.
+    dependent induction m.
+    rewrite <- (linearity_count _ H1).
+    destruct (mark_count _ Q0 marked).
     admit.
-  - destruct H2.
-    simpl.
-    repeat split.
-
-
+    admit.
 Admitted.
 
 (******************************************)
