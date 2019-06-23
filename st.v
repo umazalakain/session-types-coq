@@ -401,9 +401,23 @@ Qed.
 
 Hint Resolve reduction_count.
 
-Theorem TypePreservation : ∀ (P Q : PProcess), Linear P → P ⇒ Q → Linear Q.
+Theorem linearity_preservation : ∀ P Q, Reduction _ _ P Q → linear P → linear Q.
+  intros P Q PrQ lP.
+  induction PrQ.
+  all: simpl; destruct_linear; eauto.
+  - dependent induction m.
+    rewrite <- (linearity_count _ H1).
+    destruct (mark_count _ Q marked).
+    admit.
+    admit.
+  - repeat rewrite <- (reduction_count _ _ (H _ _)).
+    eauto.
+  - exact (IHPrQ (linearity_congruence _ _ H lP)).
+Admitted.
+
+Theorem TypePreservation : ∀ (P Q : PProcess), P ⇒ Q → Linear P → Linear Q.
 Proof.
-  intros P Q lP PrQ.
+  intros P Q PrQ lP.
   unfold PProcess in P, Q.
   unfold Linear.
   unfold Linear in lP.
@@ -417,21 +431,8 @@ Proof.
        | _ => _
        end) lP (PrQ ST MT fM)).
   all: intros slP sPrQ.
-  induction (sPrQ).
-  all: simpl.
-  - destruct_linear.
-    dependent induction m.
-    rewrite <- (linearity_count _ H1).
-    destruct (mark_count _ Q0 marked).
-    admit.
-    admit.
-  - destruct_linear.
-    repeat rewrite <- (reduction_count _ _ (H _ _)).
-    eauto.
-  - destruct_linear.
-    eauto.
-  - exact (IHr (linearity_congruence _ _ H slP) r).
-Admitted.
+  exact (linearity_preservation (P _ _ _) (Q _ _ _) sPrQ slP).
+Qed.
 
 (******************************************)
 (*               EXAMPLES                 *)
