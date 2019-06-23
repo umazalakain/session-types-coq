@@ -103,9 +103,6 @@ Section Processes.
       (∀ (a : Message C[s]) (b : Message C[r]), P a b ≡ Q a b) →
       PNew s r sDr (fun a b => P a b) ≡ PNew r s (inverse_duality sDr) (fun b a => Q a b)
 
-  | CNewIrrelevant s r sDr P :
-      P ≡ PNew s r sDr (fun _ _ => P)
-
   | CNewCongruent s r sDr P Q :
       (∀ (a : Message C[s]) (b : Message C[r]), P a b ≡  Q a b) →
       PNew s r sDr P ≡ PNew s r sDr Q
@@ -364,42 +361,27 @@ Proof.
        end) lP (PcQ ST MT fM)).
   all: intros slP sPcQ.
   induction sPcQ.
-  all: simpl; try split; try destruct H; try destruct slP; eauto.
+  all: simpl; try destruct H; try destruct slP; eauto.
   + destruct H.
     eauto.
-  + destruct H.
-    eauto.
-  + rewrite <- (congruence_count _ _ (H _ _)).
+  + repeat rewrite <- (congruence_count _ _ (H _ _)).
     rewrite (linearity_count _ H2).
     destruct H1.
     destruct H3.
     rewrite H1.
-    eauto.
-  + rewrite (linearity_count _ H2).
-    destruct H1.
-    destruct H3.
-    rewrite <- (congruence_count _ _ (H _ _)).
     rewrite H3.
-    eauto.
-  + admit.
-  + repeat (rewrite <- (congruence_count _ _ (H _ _ _ _))).
-    destruct H2.
+    all: try split; eauto.
+  + destruct H2.
     destruct H3.
     destruct H4.
-    eauto.
+    repeat rewrite <- (congruence_count _ _ (H _ _ _ _)).
+    all: try split; eauto.
   + destruct H2.
-    rewrite <- (congruence_count _ _ (H _ _)).
-    assumption.
-  + rewrite <- (congruence_count _ _ (H _ _)).
-    destruct H2.
-    eauto.
-  + admit.
-  + admit.
-  + rewrite <- (congruence_count _ _ (H _ _)).
-    assumption.
+    repeat rewrite <- (congruence_count _ _ (H _ _)).
+    all: try split; eauto.
   + destruct H2.
-    rewrite <- (congruence_count _ _ (H _ _)).
-    eauto.
+    repeat rewrite <- (congruence_count _ _ (H _ _)).
+    all: try split; eauto.
   + dependent induction mt.
     all: destruct H2; destruct H3; rewrite <- (congruence_count _ _ (H _)).
     eauto.
