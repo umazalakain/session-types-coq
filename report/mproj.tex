@@ -101,31 +101,31 @@ The two endpoints of a channel must have dual session types: if one end is
 sending data of type \texttt{T}, the other must be receiving data of type
 \texttt{T} -- ensuring \textit{communication safety}. Channel endpoints can be
 passed along as messages, but can never be duplicated: communication must only
-ever happen between two processes -- ensuring \textit{privacy}.  Processes must
+ever occur between two processes -- ensuring \textit{privacy}.  Processes must
 follow the session types of channel endpoints: channels must be used as per
 their specification -- ensuring \textit{session fidelity}. As communication
 occurs and messages are exchanged, the session types of channels advance.
-Ensuring that this reduction process respects the session types involves proving
+Ensuring that this reduction process respects session types involves proving
 both \textit{subject reduction} and \textit{type soundness}. \cite{Dardha2016m}
 
 Using a proof assistant to prove these theorems provides a strong guarantee of
-the correctness of the proofs. Moreover, it means that any process described in
-these terms will have these theorems automatically derived. From the numerous
-proof assistants available, this project uses Coq to formalise the pi calculus
-with session types. Amongst its features, Coq includes a powerful tactic engine
-and a dependent type system, both key for the development of this project.
+the correctness. Moreover, it means that any process described in these terms
+will have these theorems automatically derived. From the numerous proof
+assistants available, this project uses Coq to formalise the pi calculus with
+session types. Amongst its features, Coq includes a powerful tactic engine and a
+dependent type system, both key for the development of this project.
 
 Past efforts in formalising session types in Coq have created an object language
-and then handled variable references, typing contexts, and typing judgments
-manually \cite{Dilmore2019}. The present work lifts those responsibilities to
-the metalanguage by using a parametric higher order abstract syntax to model
+and handled variable references, typing contexts, and typing judgments manually
+\cite{Dilmore2019}. The present work lifts those responsibilities to the
+metalanguage by using a parametric higher order abstract syntax to model
 processes. This results in the following key features:
 
 \begin{itemize}
     \item \textbf{Variable references are handled by Coq}: no substitution
         related theorems are required, references to both messages and channels
         feel natural.
-    \item \textbf{The channel type is parametrised}, ensuring that channels can
+    \item \textbf{Channel types are parametrised}, ensuring that channels can
         only be created as defined by the calculus -- no cheating is allowed.
     \item Congruence and reduction are defined inductively on processes;
         reduction entails pattern matching against functions. \textbf{Tactics
@@ -133,8 +133,10 @@ processes. This results in the following key features:
     \item With the exception of linearity, \textbf{processes are correct by
         construction}: subject reduction of session types is driven by the
         \textbf{continuation passing} of channels. Type preservation is
-        therefore defined as: if $P$ is linear and $P$ reduces to $Q$, then $Q$
-        is linear.
+        therefore defined as follows:
+        
+    \centering
+        If $P$ is linear and $P$ reduces to $Q$, then $Q$ is linear.
 \end{itemize}
 
 
