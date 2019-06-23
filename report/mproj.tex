@@ -85,57 +85,56 @@ acknowledgements go here
 \chapter{Introduction}\label{intro}
 
 The pi calculus models the exchange of messages between processes over
-two-endpoint communication channels. Computation advances when two processes
-exchange a message through a channel: the receiving process gets reduced through
-substitution. Channels themselves can also be sent as messages, and then be used
-for further communication.
+two-endpoint communication channels. When two processes exchange a message
+through a channel computation advances: the receiving process gets reduced
+through substitution. Channels themselves can also be sent as messages, and then
+be used for further communication.
 
-It is often desirable to restrict the processes that can be expressed to those
-that are deemed meaningful, leaving out the ones with undesirable features.
-This is usually accomplished by adding a type system to the calculus. In the pi
-calculus, session types can be used to impose types onto communication channels
--- the session type of a channel is a finite sequence of types, each with an
-associated direction.
+It is often desirable to restrict the processes that are expressible to those
+that are deemed meaningful, leaving out the ones with undesirable features. This
+is usually accomplished by adding a type system to the calculus. In the pi
+calculus, session types can be used to impose types onto channel endpoints --
+the session type of a channel endpoint is a finite sequence of types, each with
+an associated direction.
 
 The two endpoints of a channel must have dual session types: if one end is
 sending data of type \texttt{T}, the other must be receiving data of type
-\texttt{T} -- ensuring \textit{communication safety}. The endpoints of a channel
-can be passed along as messages, but can never be duplicated: communication can
-only ever happen between two processes -- ensuring \textit{privacy}.  Processes
-must follow the session types of channel endpoints: channels must be used as per
+\texttt{T} -- ensuring \textit{communication safety}. Channel endpoints can be
+passed along as messages, but can never be duplicated: communication must only
+ever happen between two processes -- ensuring \textit{privacy}.  Processes must
+follow the session types of channel endpoints: channels must be used as per
 their specification -- ensuring \textit{session fidelity}. As communication
 occurs and messages are exchanged, the session types of channels advance.
-Ensuring that this reduction process follows the session types involves proving
-both \textit{subject reduction} and \textit{type soundness}.
-\cite{Dardha2016m}
+Ensuring that this reduction process respects the session types involves proving
+both \textit{subject reduction} and \textit{type soundness}. \cite{Dardha2016m}
 
 Using a proof assistant to prove these theorems provides a strong guarantee of
 the correctness of the proofs. Moreover, it means that any process described in
 these terms will have these theorems automatically derived. From the numerous
-proof assistants available, Coq has been chosen to formalise the pi calculus
+proof assistants available, this project uses Coq to formalise the pi calculus
 with session types. Amongst its features, Coq includes a powerful tactic engine
 and a dependent type system, both key for the development of this project.
 
 Past efforts in formalising session types in Coq have created an object language
 and then handled variable references, typing contexts, and typing judgments
-themselves \cite{Dilmore2019}. The present work lifts those responsibilities to
+manually \cite{Dilmore2019}. The present work lifts those responsibilities to
 the metalanguage by using a parametric higher order abstract syntax to model
 processes. This results in the following key features:
 
 \begin{itemize}
-    \item Variable references are handled by Coq: no substitution related
-        theorems are required, references to both messages and channels feel
-        natural.
-    \item Parametrising the channel type guarantees that channels are only
-        created as defined by the calculus -- no cheating is allowed.
-    \item The subject reduction of session types is driven by continuation
-        passing of channels. Guaranteeing linearity is therefore essential.
-    \item Congruence and reduction are relations defined inductively on
-        processes; reduction entails pattern matching against functions.
-    \item Tactics are used to find congruent processes that reduce.
-    \item With the exception of linearity, processes are correct by
-        construction. Type safety is therefore defined as: if $P$ is linear and
-        $P$ reduces to $Q$, then $Q$ is linear.
+    \item \textbf{Variable references are handled by Coq}: no substitution
+        related theorems are required, references to both messages and channels
+        feel natural.
+    \item \textbf{The channel type is parametrised}, ensuring that channels can
+        only be created as defined by the calculus -- no cheating is allowed.
+    \item Congruence and reduction are defined inductively on processes;
+        reduction entails pattern matching against functions. \textbf{Tactics
+        are used to find congruent processes that reduce}.
+    \item With the exception of linearity, \textbf{processes are correct by
+        construction}: subject reduction of session types is driven by the
+        \textbf{continuation passing} of channels. Type preservation is
+        therefore defined as: if $P$ is linear and $P$ reduces to $Q$, then $Q$
+        is linear.
 \end{itemize}
 
 
