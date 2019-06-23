@@ -353,23 +353,10 @@ Qed.
 
 Hint Resolve congruence_count.
 
-Theorem linearity_congruence : ∀ (P Q : PProcess), Linear P → P ≡ Q → Linear Q.
+Theorem linearity_congruence : ∀ P Q, Congruence _ _ P Q → linear P → linear Q.
 Proof.
-  intros P Q lP PcQ.
-  unfold PProcess in P, Q.
-  unfold Linear.
-  unfold Linear in lP.
-  set (ST := bool).
-  set (MT := fun _ => unit).
-  set (fM := fun _ _ => V tt).
-  refine (
-      (match (P ST MT fM) as P'
-             return linear P' → Congruence _ _ P' (Q ST MT fM) → linear (Q ST MT fM)
-       with
-       | _ => _
-       end) lP (PcQ ST MT fM)).
-  all: intros slP sPcQ.
-  induction sPcQ.
+  intros P Q PcQ lP.
+  induction PcQ.
   all: simpl; destruct_linear; eauto.
   + repeat rewrite <- (congruence_count _ _ (H _ _)).
     rewrite (linearity_count _ H2).
@@ -431,15 +418,19 @@ Proof.
        end) lP (PrQ ST MT fM)).
   all: intros slP sPrQ.
   induction (sPrQ).
-  - simpl.
-    destruct slP.
-    destruct H0.
-    destruct H1.
+  all: simpl.
+  - destruct_linear.
     dependent induction m.
     rewrite <- (linearity_count _ H1).
     destruct (mark_count _ Q0 marked).
     admit.
     admit.
+  - destruct_linear.
+    repeat rewrite <- (reduction_count _ _ (H _ _)).
+    eauto.
+  - destruct_linear.
+    eauto.
+  - exact (IHr (linearity_congruence _ _ H slP) r).
 Admitted.
 
 (******************************************)
