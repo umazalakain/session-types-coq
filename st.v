@@ -172,8 +172,8 @@ Notation "?( m ); p" := (PInput _ _ (fun m => p))(at level 80).
 Notation "c ?( m ); p" := (PInput _ _ (fun m => p) c)(at level 79).
 Definition ε {ST : Type} {MT: Type → Type} : Message ST MT (Channel ø) → Process ST MT:= PEnd ST MT.
 
-Arguments V [ST MT].
-Arguments C [ST MT].
+Arguments V [ST MT M].
+Arguments C [ST MT S].
 Arguments PNew [ST MT].
 Arguments PInput [ST MT m s].
 Arguments POutput [ST MT m s].
@@ -184,52 +184,87 @@ Arguments PEnd [ST MT].
 (*       LINEARITY        *)
 (**************************)
 
-Definition extract {MT : Type → Type} {s : SType} {A : Type}
+Definition is_marked {MT : Type → Type} {s : SType} {A : Type}
            (m : Message A MT C[s]) : A :=
   match m with
-  | C _ n => n
+  | C n => n
+  end
+.
+Notation "'count_if_marked' c" := (if is_marked c then 1 else 0)(at level 50).
+Definition marked : ∀ s, Message bool (fun _ => unit) C[s] := fun s => C true.
+Definition unmarked : ∀ s, Message bool (fun _ => unit) C[s] := fun s => C false.
+Arguments marked [s].
+Arguments unmarked [s].
+
+(* Always recurse by passing unmarked arguments.
+   If the constructor accepts a channel as an argument, it has been used.
+   If a channel is sent as output, it has been used.
+   Channels received as input are considered fresh.
+*)
+
+Fixpoint count_marked (p : Process bool (fun _ => unit)) : nat :=
+  let MT := fun _ => unit in
+  match p with
+  | PNew _ _ _ p => count_marked (p unmarked unmarked)
+
+  | @PInput _ _ mt s p c =>
+    count_if_marked c +
+    (match mt as mt'
+           return (Message bool MT mt' → Message bool MT (Channel s) → Process bool MT) → nat
+     with
+     | Base _ => fun p' => count_marked (p' (V tt) unmarked)
+     | Channel _ => fun p' => count_marked (p' unmarked unmarked)
+     end) p
+
+  | @POutput _ _ mt s m p c =>
+    count_if_marked c + count_marked (p unmarked) +
+    (match mt as mt' return (Message bool MT mt') → nat with
+     | Base _ => fun m' => 0
+     | Channel _ => fun m' => count_if_marked m'
+     end) m
+
+  | PComp l r  => count_marked l + count_marked r
+
+  | PEnd c => count_if_marked c
   end
 .
 
-Fixpoint count_channel (p : Process bool (fun _ => unit)) : nat :=
-  let MT := fun _ => unit in
-  match p with
-  | PNew _ _ _ p => count_channel (p (C _ false) (C _ false))
-  | @PInput _ _ m s p c =>
-    (match m as m' return (Message bool MT m' → Message bool MT (Channel s) → Process bool MT) → nat with
-     | Base _ => fun p' => count_channel (p' (V _ tt) (C _ false))
-     | Channel _ => fun p' => count_channel (p' (C _ false) (C _ false))
-     end) p + if extract c then 1 else 0
-  | POutput m p c => count_channel (p (C _ false)) + if extract c then 1 else 0
-  | PComp l r  => count_channel l + count_channel r
-  | PEnd c => if extract c then 1 else 0
-  end
-.
+Notation "'single_marked' p" := (count_marked p = 1)(at level 50).
 
 Fixpoint linear (p : Process bool (fun _ => unit)) : Prop :=
   let MT := fun _ => unit in
   match p with
   | PNew _ _ _ p =>
-    count_channel (p (C _ true) (C _ false)) = 1 /\
-    count_channel (p (C _ false) (C _ true)) = 1 /\
-    linear (p (C _ false) (C _ false))
-  | @PInput _ _ m s p c =>
-    (match m as m' return (Message bool MT m' → Message bool MT (Channel s) → Process bool MT) → Prop with
+    single_marked (p marked unmarked) /\
+    single_marked (p unmarked marked) /\
+    linear (p unmarked unmarked)
+
+  | @PInput _ _ mt s p c =>
+    is_marked c = false /\
+    (match mt as mt'
+           return (Message bool MT mt' → Message bool MT (Channel s) → Process bool MT) → Prop
+     with
      | Base _ => fun p' =>
-                  extract c = false /\
-                  count_channel (p' (V _ tt) (C _ true)) = 1 /\
-                  linear (p' (V _ tt) (C _ false))
+                  single_marked (p' (V tt) marked) /\
+                  linear (p' (V tt) unmarked)
      | Channel _ => fun p' =>
-                     extract c = false /\
-                     count_channel (p' (C _ true) (C _ false)) = 1 /\
-                     count_channel (p' (C _ false) (C _ true)) = 1 /\
-                     linear (p' (C _ false) (C _ false))
+                     single_marked (p' marked unmarked) /\
+                     single_marked (p' unmarked marked) /\
+                     linear (p' unmarked unmarked)
      end) p
-  | POutput m p c => extract c = false /\
-                    count_channel (p (C _ true)) = 1 /\
-                    linear (p (C _ false))
+
+  | @POutput _ _ mt s m p c =>
+    is_marked c = false /\
+    single_marked (p marked) /\
+    linear (p unmarked) /\
+    (match mt as mt' return (Message bool MT mt') → Prop with
+     | Base _ => fun m' => True
+     | Channel _ => fun m' => is_marked m' = false
+     end) m
+
   | PComp l r => linear l /\ linear r
-  | PEnd c => extract c = false
+
+  | PEnd c => is_marked c = false
   end
 .
 
@@ -239,7 +274,7 @@ Fixpoint linear (p : Process bool (fun _ => unit)) : Prop :=
 
 (* Abstract over parametric types and their constructors *)
 Definition PProcess := ∀ ST MT (mf : ∀ {S: Set}, S → Message ST MT (Base S)) , Process ST MT.
-Definition Linear (p : PProcess) : Prop := linear (p bool (fun _ => unit) (fun _ _ => (V _ tt))).
+Definition Linear (p : PProcess) : Prop := linear (p bool (fun _ => unit) (fun _ _ => (V tt))).
 Notation "[ f ]> P" := (fun _ _ f => P)(at level 80).
 Notation "P ≡ Q" := (∀ ST MT mf, Congruence _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 Notation "P ⇒ Q" := (∀ ST MT mf, Reduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
@@ -269,30 +304,28 @@ Ltac big_step_reduction :=
 .
 
 (******************************************)
-(*              TYPE SAFETY               *)
+(*          TYPE PRESERVATION             *)
 (******************************************)
 
-Lemma linearity_count : ∀ P, linear P → count_channel P = 0.
+Lemma linearity_count : ∀ P, linear P → count_marked P = 0.
 Proof.
   intros P lP.
   induction P.
   all: simpl.
   + destruct lP.
     destruct H1.
-    exact (H (C _ false) (C _ false) H2).
+    exact (H _ _ H2).
   + dependent induction m.
     dependent induction m0.
     all: destruct lP; destruct H1; rewrite H0.
-    - rewrite (H (V _ tt) (C _ false) H2).
+    - rewrite (H _ _ H2).
       reflexivity.
     - destruct H2.
-      rewrite (H (C _ false) (C _ false) H3).
+      rewrite (H _ _ H3).
       reflexivity.
-  + destruct lP.
-    destruct H1.
-    rewrite H0.
-    rewrite (H (C _ false) H2).
-    reflexivity.
+  + dependent induction m.
+    all: dependent induction m0; destruct lP; destruct H1; destruct H2; rewrite H0; rewrite (H _).
+    all: try rewrite H3; eauto.
   + destruct lP.
     rewrite (IHP1 H).
     rewrite (IHP2 H0).
@@ -301,7 +334,9 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma congruence_count : ∀ P Q, Congruence _ _ P Q → count_channel P = count_channel Q.
+Hint Resolve linearity_count.
+
+Lemma congruence_count : ∀ P Q, Congruence _ _ P Q → count_marked P = count_marked Q.
 Proof.
   intros P Q PcQ.
   induction PcQ.
@@ -312,7 +347,7 @@ Qed.
 
 Hint Resolve congruence_count.
 
-Theorem LinearityCongruence : ∀ (P Q : PProcess), Linear P → P ≡ Q → Linear Q.
+Theorem linearity_congruence : ∀ (P Q : PProcess), Linear P → P ≡ Q → Linear Q.
 Proof.
   intros P Q lP PcQ.
   unfold PProcess in P, Q.
@@ -320,7 +355,7 @@ Proof.
   unfold Linear in lP.
   set (ST := bool).
   set (MT := fun _ => unit).
-  set (fM := fun _ _ => V _ tt).
+  set (fM := fun _ _ => V tt).
   refine (
       (match (P ST MT fM) as P'
              return linear P' → Congruence _ _ P' (Q ST MT fM) → linear (Q ST MT fM)
@@ -329,7 +364,7 @@ Proof.
        end) lP (PcQ ST MT fM)).
   all: intros slP sPcQ.
   induction sPcQ.
-  all: simpl; try split; try destruct H; try destruct slP; eauto; try ring .
+  all: simpl; try split; try destruct H; try destruct slP; eauto.
   + destruct H.
     eauto.
   + destruct H.
@@ -339,68 +374,62 @@ Proof.
     destruct H1.
     destruct H3.
     rewrite H1.
-    ring .
+    eauto.
   + rewrite (linearity_count _ H2).
     destruct H1.
     destruct H3.
     rewrite <- (congruence_count _ _ (H _ _)).
     rewrite H3.
-    split.
-    ring .
-    split.
-    exact (H0 _ _ H4).
-    assumption.
+    eauto.
   + admit.
   + repeat (rewrite <- (congruence_count _ _ (H _ _ _ _))).
     destruct H2.
     destruct H3.
     destruct H4.
-    simpl in H1, H2.
-    repeat split.
-    all: try assumption.
-    exact (H0 _ _ _ _ H5).
+    eauto.
   + destruct H2.
     rewrite <- (congruence_count _ _ (H _ _)).
     assumption.
-  + split.
-    rewrite <- (congruence_count _ _ (H _ _)).
-    assumption.
+  + rewrite <- (congruence_count _ _ (H _ _)).
     destruct H2.
-    exact (H0 _ _ H3).
+    eauto.
   + admit.
   + admit.
   + rewrite <- (congruence_count _ _ (H _ _)).
     assumption.
   + destruct H2.
-    split.
     rewrite <- (congruence_count _ _ (H _ _)).
-    assumption.
-    exact (H0 _ _ H3).
-  + destruct H2.
-    split.
-    rewrite <- (congruence_count _ _ (H _)).
-    assumption.
-    exact (H0 _ H3).
+    eauto.
   + dependent induction mt.
-    all: destruct slP; destruct H2; repeat split.
-    assumption.
-    rewrite <- (congruence_count _ _ (H _ _)).
-    assumption.
-    exact (H0 _ _ H3).
-    assumption.
-    rewrite <- (congruence_count _ _ (H _ _)).
-    assumption.
+    all: destruct H2; destruct H3; rewrite <- (congruence_count _ _ (H _)).
+    eauto.
+    destruct H4.
+    eauto.
+  + dependent induction mt.
+    all: destruct H2; repeat rewrite <- (congruence_count _ _ (H _ _)).
+    eauto.
     destruct H3.
-    rewrite <- (congruence_count _ _ (H _ _)).
-    assumption.
-    destruct H3.
-    exact (H0 _ _ H4).
+    auto.
   + admit.
 Admitted.
 
 
+Lemma reduction_count : ∀ P Q, Reduction _ _ P Q → count_marked P = count_marked Q.
+Proof.
+  intros P Q PrQ.
+  induction PrQ.
+  all: simpl; eauto.
+  - dependent induction m.
+    induction m.
+    auto.
+    induction s0.
+    admit.
+    admit.
+  - rewrite <- IHPrQ.
+    apply (congruence_count _ _ H).
+Admitted.
 
-Theorem TypeSafety : ∀ (P Q : PProcess), Linear P → P ⇒ Q → Linear Q.
+Theorem TypePreservation : ∀ (P Q : PProcess), Linear P → P ⇒ Q → Linear Q.
 Proof.
   intros P Q lP PrQ.
   unfold PProcess in P, Q.
@@ -408,7 +437,7 @@ Proof.
   unfold Linear in lP.
   set (ST := bool).
   set (MT := fun _ => unit).
-  set (fM := fun _ _ => V _ tt).
+  set (fM := fun _ _ => V tt).
   refine (
       (match (P ST MT fM) as P'
              return linear P' → Reduction _ _ P' (Q ST MT fM) → linear (Q ST MT fM)
@@ -417,7 +446,14 @@ Proof.
        end) lP (PrQ ST MT fM)).
   all: intros slP sPrQ.
   induction sPrQ.
-  all: simpl; try split; try destruct H; try destruct slP; eauto; try ring   .
+  all: try destruct slP; try destruct H0.
+  - simpl.
+    admit.
+  - destruct H2.
+    simpl.
+    repeat split.
+
+
 Admitted.
 
 (******************************************)
