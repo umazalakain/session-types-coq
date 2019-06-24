@@ -1,9 +1,9 @@
 Require Import Unicode.Utf8.
 Require Import Program.Equality.
 Require Import Arith.
-Require Import Vectors.Vector.
-Require Vectors.Fin.
-Import VectorNotations.
+Require Import Forall.
+Require Vectors.Vector.
+Import Vector.VectorNotations.
 
 Inductive MType : Type :=
 | Base : Set → MType
@@ -13,59 +13,39 @@ with SType : Type :=
 | ø : SType
 | Send : MType → SType → SType
 | Receive : MType → SType → SType
-| Branch: ∀ {n}, t SType n → SType
-| Select : ∀ {n}, t SType n → SType
+| Branch: ∀ {n}, Vector.t SType n → SType
+| Select : ∀ {n}, Vector.t SType n → SType
 .
 
 Notation "C[ s ]" := (Channel s).
 Notation "! m ; s" := (Send m s) (at level 90, right associativity).
 Notation "? m ; s" := (Receive m s) (at level 90, right associativity).
 
-Inductive All {A : Type} (P : A → Type) : ∀ {n}, t A n → Type :=
-| nilP : All P []
-| consP : ∀ {x n} {xs : t A n}, P x → All P xs → All P (x :: xs)
-.
-
-Definition nthAll {A : Type} {P : A → Type} {n : nat} {xs : t A n}
-           (ps : All P xs) (i : Fin.t n) : P (nth xs i).
-
-Admitted.
-
-Inductive ZipAll {A B : Type} (P : A → B → Type) : ∀ {n}, t A n → t B n → Type :=
-| nilZP : ZipAll P [] []
-| consZP : ∀ {x y n} {xs : t A n} {ys : t B n},
-    P x y → ZipAll P xs ys → ZipAll P (x :: xs) (y :: ys)
-.
-
-Definition nthZipAll {A B : Type} {P : A → B → Type} {n : nat} {xs : t A n} {ys : t B n}
-           (zs : @ZipAll _ _ P _ xs ys) (i : Fin.t n) : P (nth xs i) (nth ys i).
-
-Admitted.
-
 Inductive Duality : SType → SType → Prop :=
 | Ends : Duality ø ø
 | MRight : ∀ {m c₁ c₂}, Duality c₁ c₂ → Duality (Send m c₁) (Receive m c₂)
 | MLeft : ∀ {m c₁ c₂}, Duality c₁ c₂ → Duality (Receive m c₁) (Send m c₂)
-| SRight : ∀ {n} {xs ys : t SType n},
-    ZipAll Duality xs ys → Duality (Select xs) (Branch ys)
-| SLeft : ∀ {n} {xs ys : t SType n},
-    ZipAll Duality xs ys → Duality (Branch xs) (Select ys)
+| SRight : ∀ {n} {xs ys : Vector.t SType n},
+    Forall2 Duality xs ys → Duality (Select xs) (Branch ys)
+| SLeft : ∀ {n} {xs ys : Vector.t SType n},
+    Forall2 Duality xs ys → Duality (Branch xs) (Select ys)
 .
 
 Fixpoint inverse_duality (s r : SType) (d : Duality s r) : Duality r s :=
   (* Coq's termination checker complains if this is outside *)
-  let fix flipZipAll {n} {xs ys : t SType n}
-          (ps : ZipAll Duality xs ys) : ZipAll Duality ys xs :=
+  let fix flipForall2 {n} {xs ys : Vector.t SType n}
+          (ps : Forall2 Duality xs ys) : Forall2 Duality ys xs :=
       match ps with
-      | nilZP _ => nilZP _
-      | consZP _ p ps => consZP _ (inverse_duality _ _ p) (flipZipAll ps)
+      | Forall2_nil _ => Forall2_nil _
+      | Forall2_cons _ _ _ _ _ p ps =>
+        Forall2_cons _ _ _ _ _ (inverse_duality _ _ p) (flipForall2 ps)
       end
   in match d with
   | Ends => Ends
   | MRight d' => MLeft (inverse_duality _ _ d')
   | MLeft d' => MRight (inverse_duality _ _ d')
-  | SRight d' => SLeft (flipZipAll d')
-  | SLeft d' => SRight (flipZipAll d')
+  | SRight d' => SLeft (flipForall2 d')
+  | SLeft d' => SRight (flipForall2 d')
   end
 .
 
@@ -106,15 +86,15 @@ Section Processes.
     → Process
 
   | PBranch
-    : ∀ {n : nat} {ss : t SType n}
-    , All (fun s => Message C[s] → Process) ss
+    : ∀ {n : nat} {ss : Vector.t SType n}
+    , Forall (fun s => Message C[s] → Process) ss
     → Message C[Branch ss]
     → Process
 
   | PSelect
-    : ∀ {n : nat} {ss : t SType n}
+    : ∀ {n : nat} {ss : Vector.t SType n}
     (i : Fin.t n)
-    , (Message C[nth ss i] → Process)
+    , (Message C[ss[@i]] → Process)
     → Message C[Select ss]
     → Process
 
@@ -179,11 +159,11 @@ Section Processes.
       PNew s r sDr
            (fun a b => PComp (Q a) (P m b))
 
-  | RCase n mt {ss rs : t SType n} sDr {i : Fin.t n} Ps Qs : forall (m : Message mt),
+  | RCase n mt {ss rs : Vector.t SType n} sDr {i : Fin.t n} Ps Qs : forall (m : Message mt),
       PNew (Select ss) (Branch rs) (SRight sDr)
            (fun a b => PComp (PSelect i Ps a) (PBranch Qs b)) ⇒
-      PNew (nth ss i) (nth rs i) (nthZipAll sDr i)
-           (fun a b => PComp (Ps a) (nthAll Qs i b))
+      PNew ss[@i] rs[@i] (nthForall2 sDr i)
+           (fun a b => PComp (Ps a) (nthForall Qs i b))
 
   | RRes s r P Q :
       (∀ (a : Message C[s]) (b : Message C[r]), P a b ⇒ Q a b) →
