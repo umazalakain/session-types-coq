@@ -38,6 +38,8 @@
 % Add bibliography to TOC
 \usepackage[nottoc,numbib]{tocbibind}
 
+\newtheorem{theorem}{Theorem}
+
 % for alternative page numbering use the following package
 % and see documentation for commands
 %\usepackage{fancyheadings}
@@ -121,23 +123,30 @@ and handled variable references, typing contexts, and typing judgments manually
 metalanguage by using a parametric higher order abstract syntax to model
 processes. This results in the following key features:
 
-\begin{itemize}
-    \item \textbf{Variable references are handled by Coq}: no substitution
-        related theorems are required, references to both messages and channels
-        feel natural.
-    \item \textbf{Channel types are parametrised}, ensuring that channels can
-        only be created as defined by the calculus -- no cheating is allowed.
-    \item Congruence and reduction are defined inductively on processes;
-        reduction entails pattern matching against functions. \textbf{Tactics
-        are used to find congruent processes that reduce}.
-    \item With the exception of linearity, \textbf{processes are correct by
-        construction}: subject reduction of session types is driven by the
-        \textbf{continuation passing} of channels. Type preservation is
-        therefore defined as follows:
-        
-    \centering
+\begin{description}
+    \item [Variable references]
+        The introduction of both channels and received messages is modelled as
+        function abstraction in Coq and therefore handled transparently -- no
+        substitution related lemmas are required. Channel types are parametrised
+        to make them opaque -- no cheating is allowed.
+
+    \item [Congruence and reduction]
+        Congruence and reduction are inductively defined on processes --
+        reduction by message passing requires pattern matching on function
+        definitions. Tactics are used to find congruent processes that reduce.
+
+    \item [Type preservation]
+        Assuming linearity, processes are \textbf{correct by construction}:
+        the processes that can be constructed depend on the session types in the
+        environment; an action strips off the outer layer of a channel's session
+        type -- modelling \textbf{continuation passing}.
+
+        Ensuring that linearity is preserved through reduction is therefore
+        essential:
+        \begin{theorem}
         If $P$ is linear and $P$ reduces to $Q$, then $Q$ is linear.
-\end{itemize}
+        \end{theorem}
+\end{description}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
