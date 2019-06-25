@@ -3,6 +3,7 @@ Require Import Program.Equality.
 Require Import Arith.
 Require Import Forall.
 Require Vectors.Vector.
+Require Import Arith.Plus.
 Import Vector.VectorNotations.
 
 Inductive MType : Type :=
@@ -230,6 +231,9 @@ Definition marked : ∀ s, Message bool (fun _ => unit) C[s] := fun s => C true.
 Definition unmarked : ∀ s, Message bool (fun _ => unit) C[s] := fun s => C false.
 Arguments marked [s].
 Arguments unmarked [s].
+Hint Unfold is_marked.
+Hint Unfold marked.
+Hint Unfold unmarked.
 
 (* Always recurse by passing unmarked arguments.
    If the constructor accepts a channel as an argument, it has been used.
@@ -239,6 +243,13 @@ Arguments unmarked [s].
 
 Fixpoint count_marked (p : Process bool (fun _ => unit)) : nat :=
   let MT := fun _ => unit in
+  let fix count_branches {n} {ss : Vector.t SType n}
+          (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : nat :=
+       match ps with
+       | Forall_nil _ => 0
+       | Forall_cons _ _ _ p ps' => count_marked (p unmarked) + count_branches ps'
+       end
+  in
   match p with
   | PNew _ _ _ p => count_marked (p unmarked unmarked)
 
@@ -259,14 +270,7 @@ Fixpoint count_marked (p : Process bool (fun _ => unit)) : nat :=
      end) m
 
   | PBranch p c =>
-    count_if_marked c +
-    ((fix count_branches {n} {ss : Vector.t SType n}
-          (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : nat :=
-       match ps with
-       | Forall_nil _ => 0
-       | Forall_cons _ _ _ p ps' => count_marked (p unmarked) + count_branches ps'
-       end
-    ) _ _ p)
+    count_if_marked c + count_branches p
 
   | PSelect i p c =>
     count_if_marked c + count_marked (p unmarked)
@@ -281,6 +285,16 @@ Notation "'single_marked' p" := (count_marked p = 1)(at level 50).
 
 Fixpoint linear (p : Process bool (fun _ => unit)) : Prop :=
   let MT := fun _ => unit in
+  let fix linear_branches {n} {ss : Vector.t SType n}
+          (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : Prop :=
+       match ps with
+       | Forall_nil _ => True
+       | Forall_cons _ _ _ p ps' =>
+         single_marked (p marked) /\
+         linear (p unmarked) /\
+         linear_branches ps'
+       end
+  in
   match p with
   | PNew _ _ _ p =>
     single_marked (p marked unmarked) /\
@@ -311,17 +325,7 @@ Fixpoint linear (p : Process bool (fun _ => unit)) : Prop :=
      end) m
 
   | PBranch p c =>
-    is_marked c = false /\
-    ((fix linear_branches {n} {ss : Vector.t SType n}
-          (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : Prop :=
-       match ps with
-       | Forall_nil _ => True
-       | Forall_cons _ _ _ p ps' =>
-         single_marked (p marked) /\
-         linear (p unmarked) /\
-         linear_branches ps'
-       end
-    ) _ _ p)
+    is_marked c = false /\ linear_branches p
 
   | PSelect i p c => is_marked c = false /\ single_marked (p marked) /\ linear (p unmarked)
 
@@ -382,13 +386,6 @@ Ltac destruct_linear :=
 (*          TYPE PRESERVATION             *)
 (******************************************)
 
-Lemma mark_count : ∀ s (P : Message _ _ C[s] → Process _ _) (m : Message bool _ C[s]),
-    count_marked (P m) = (count_if_marked m) + count_marked (P unmarked).
-Proof.
-Admitted.
-
-Lemma strip_suc : ∀ n, 1 + n = 1 -> n = 0. eauto. Qed.
-
 Lemma linearity_count : ∀ P, linear P → count_marked P = 0.
 Proof.
   intros P lP.
@@ -408,13 +405,7 @@ Proof.
     rewrite H.
     reflexivity.
     destruct_linear.
-    rewrite (mark_count _ p marked) in H0.
-    rewrite H.
-    rewrite (strip_suc _ H0).
-    pose (IHf unmarked eq_refl H2).
-    simpl in e.
-    rewrite e.
-    reflexivity.
+    admit.
   + destruct_linear.
     rewrite H0.
     rewrite (H _ H2).
@@ -427,7 +418,7 @@ Proof.
     induction s.
     discriminate.
     trivial.
-Qed.
+Admitted.
 
 Hint Resolve linearity_count.
 
@@ -469,35 +460,82 @@ Proof.
 Admitted.
 
 
-Lemma reduction_count : ∀ P Q, Reduction _ _ P Q → count_marked P = count_marked Q.
+Lemma reduction_count P Q : Reduction _ _ P Q → linear P → count_marked P = count_marked Q.
 Proof.
-  intros P Q PrQ.
+  intros PrQ lP.
   induction PrQ.
   all: simpl; eauto.
   - dependent induction m.
     destruct m.
     eauto.
-    rewrite (mark_count _ (fun c => P c unmarked) (C s0)).
-    ring.
-  - induction Qs.
+    destruct_linear.
+    destruct_linear.
+    induction s0.
+    discriminate H8.
+    simpl in H1.
+    eauto.
+  - dependent induction Qs.
     dependent induction i.
+    destruct_linear.
+    destruct H1.
+    destruct_linear.
     admit.
+  - destruct_linear.
+    eauto.
+  - destruct_linear.
+    eauto.
   - rewrite <- IHPrQ.
     apply (congruence_count _ _ H).
 Admitted.
 
 Hint Resolve reduction_count.
 
+Lemma false_unmarked s : @C bool _ s false = unmarked. eauto. Qed.
+
+Lemma single_marked_comp P Q : single_marked (P <|> Q) → single_marked P \/ single_marked Q.
+Proof.
+  intro sPQ.
+  destruct (plus_is_one _ _ sPQ).
+  all: destruct a; eauto.
+Qed.
+
 Theorem linearity_preservation : ∀ P Q, Reduction _ _ P Q → linear P → linear Q.
   intros P Q PrQ lP.
   induction PrQ.
   all: simpl; destruct_linear; eauto.
   - dependent induction m.
-    rewrite <- (linearity_count _ H1).
-    destruct (mark_count _ Q marked).
-    admit.
-    admit.
-  - admit.
+    + destruct_linear.
+      destruct m.
+      rewrite H3.
+      rewrite H4.
+      rewrite (linearity_count _ H5).
+      rewrite (linearity_count _ H6).
+      eauto.
+    + destruct_linear.
+      induction s0.
+      discriminate H8.
+      rewrite false_unmarked.
+      rewrite H4.
+      rewrite H5.
+      rewrite (linearity_count _ H6).
+      rewrite (linearity_count _ H7).
+      eauto.
+  - destruct_linear.
+    dependent induction i.
+    dependent induction Qs.
+    + rewrite F1Forall.
+      destruct_linear.
+      rewrite H4.
+      rewrite (linearity_count _ H5).
+      simpl.
+      rewrite (linearity_count _ H6).
+      rewrite H3.
+      eauto.
+    + dependent induction rs.
+      rewrite FSForall.
+      rewrite H4.
+      rewrite (linearity_count _ H5).
+      admit.
   - repeat rewrite <- (reduction_count _ _ (H _ _)).
     eauto.
   - exact (IHPrQ (linearity_congruence _ _ H lP)).
