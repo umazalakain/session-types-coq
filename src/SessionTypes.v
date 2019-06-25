@@ -20,6 +20,8 @@ with SType : Type :=
 Notation "C[ s ]" := (Channel s).
 Notation "! m ; s" := (Send m s) (at level 90, right associativity).
 Notation "? m ; s" := (Receive m s) (at level 90, right associativity).
+Notation "▹ ss" := (Branch ss) (at level 90, right associativity).
+Notation "◃ ss" := (Select ss) (at level 90, right associativity).
 
 Inductive Duality : SType → SType → Prop :=
 | Ends : Duality ø ø
@@ -32,7 +34,7 @@ Inductive Duality : SType → SType → Prop :=
 .
 
 Fixpoint inverse_duality (s r : SType) (d : Duality s r) : Duality r s :=
-  (* Coq's termination checker complains if this is outside *)
+  (* Coq's termination checker complains if this is generalised *)
   let fix flipForall2 {n} {xs ys : Vector.t SType n}
           (ps : Forall2 Duality xs ys) : Forall2 Duality ys xs :=
       match ps with
@@ -197,6 +199,10 @@ Notation "!( m ); p" := (POutput _ _ m p)(at level 80).
 Notation "c !( m ); p" := (POutput _ _ m p c)(at level 79).
 Notation "?( m ); p" := (PInput _ _ (fun m => p))(at level 80).
 Notation "c ?( m ); p" := (PInput _ _ (fun m => p) c)(at level 79).
+Notation "◃( i ); p" := (PSelect _ _ i p)(at level 80).
+Notation "c ◃( i ); p" := (PSelect _ _ i p c)(at level 79).
+Notation "▹( ps )" := (PBranch _ _ ps)(at level 80).
+Notation "c ▹ ps" := (PBranch _ _ ps c)(at level 79).
 Definition ε {ST : Type} {MT: Type → Type} : Message ST MT (Channel ø) → Process ST MT:= PEnd ST MT.
 
 Arguments V [ST MT M].
@@ -204,6 +210,8 @@ Arguments C [ST MT S].
 Arguments PNew [ST MT].
 Arguments PInput [ST MT m s].
 Arguments POutput [ST MT m s].
+Arguments PSelect [ST MT n ss].
+Arguments PBranch [ST MT n ss].
 Arguments PComp [ST MT].
 Arguments PEnd [ST MT].
 
@@ -250,6 +258,19 @@ Fixpoint count_marked (p : Process bool (fun _ => unit)) : nat :=
      | Channel _ => fun m' => count_if_marked m'
      end) m
 
+  | PBranch p c =>
+    count_if_marked c +
+    ((fix count_branches {n} {ss : Vector.t SType n}
+          (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : nat :=
+       match ps with
+       | Forall_nil _ => 0
+       | Forall_cons _ _ _ p ps' => count_marked (p unmarked) + count_branches ps'
+       end
+    ) _ _ p)
+
+  | PSelect i p c =>
+    count_if_marked c + count_marked (p unmarked)
+
   | PComp l r  => count_marked l + count_marked r
 
   | PEnd c => count_if_marked c
@@ -288,6 +309,21 @@ Fixpoint linear (p : Process bool (fun _ => unit)) : Prop :=
      | Base _ => fun m' => True
      | Channel _ => fun m' => is_marked m' = false
      end) m
+
+  | PBranch p c =>
+    is_marked c = false /\
+    ((fix linear_branches {n} {ss : Vector.t SType n}
+          (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : Prop :=
+       match ps with
+       | Forall_nil _ => True
+       | Forall_cons _ _ _ p ps' =>
+         single_marked (p marked) /\
+         linear (p unmarked) /\
+         linear_branches ps'
+       end
+    ) _ _ p)
+
+  | PSelect i p c => is_marked c = false /\ single_marked (p marked) /\ linear (p unmarked)
 
   | PComp l r => linear l /\ linear r
 
@@ -346,6 +382,13 @@ Ltac destruct_linear :=
 (*          TYPE PRESERVATION             *)
 (******************************************)
 
+Lemma mark_count : ∀ s (P : Message _ _ C[s] → Process _ _) (m : Message bool _ C[s]),
+    count_marked (P m) = (count_if_marked m) + count_marked (P unmarked).
+Proof.
+Admitted.
+
+Lemma strip_suc : ∀ n, 1 + n = 1 -> n = 0. eauto. Qed.
+
 Lemma linearity_count : ∀ P, linear P → count_marked P = 0.
 Proof.
   intros P lP.
@@ -360,6 +403,22 @@ Proof.
     dependent induction m0.
     all: destruct_linear; rewrite H0; rewrite (H _).
     all: try rewrite H3; eauto.
+  + destruct_linear.
+    induction f.
+    rewrite H.
+    reflexivity.
+    destruct_linear.
+    rewrite (mark_count _ p marked) in H0.
+    rewrite H.
+    rewrite (strip_suc _ H0).
+    pose (IHf unmarked eq_refl H2).
+    simpl in e.
+    rewrite e.
+    reflexivity.
+  + destruct_linear.
+    rewrite H0.
+    rewrite (H _ H2).
+    reflexivity.
   + destruct_linear.
     rewrite (IHP1 H).
     rewrite (IHP2 H0).
@@ -410,11 +469,6 @@ Proof.
 Admitted.
 
 
-Lemma mark_count : ∀ s (P : Message _ _ C[s] → Process _ _) (m : Message bool _ C[s]),
-    count_marked (P m) = (count_if_marked m) + count_marked (P unmarked).
-Proof.
-Admitted.
-
 Lemma reduction_count : ∀ P Q, Reduction _ _ P Q → count_marked P = count_marked Q.
 Proof.
   intros P Q PrQ.
@@ -425,9 +479,12 @@ Proof.
     eauto.
     rewrite (mark_count _ (fun c => P c unmarked) (C s0)).
     ring.
+  - induction Qs.
+    dependent induction i.
+    admit.
   - rewrite <- IHPrQ.
     apply (congruence_count _ _ H).
-Qed.
+Admitted.
 
 Hint Resolve reduction_count.
 
@@ -440,6 +497,7 @@ Theorem linearity_preservation : ∀ P Q, Reduction _ _ P Q → linear P → lin
     destruct (mark_count _ Q marked).
     admit.
     admit.
+  - admit.
   - repeat rewrite <- (reduction_count _ _ (H _ _)).
     eauto.
   - exact (IHPrQ (linearity_congruence _ _ H lP)).
@@ -463,6 +521,7 @@ Proof.
   all: intros slP sPrQ.
   exact (linearity_preservation (P _ _ _) (Q _ _ _) sPrQ slP).
 Qed.
+
 
 (******************************************)
 (*               EXAMPLES                 *)
