@@ -33,19 +33,19 @@ Inductive Duality : SType → SType → Prop :=
     Forall2 Duality xs ys → Duality (Branch xs) (Select ys)
 .
 
-Fixpoint inverse_duality (s r : SType) (d : Duality s r) : Duality r s :=
+Fixpoint inverse_duality {s r : SType} (d : Duality s r) : Duality r s :=
   (* Coq's termination checker complains if this is generalised *)
   let fix flipForall2 {n} {xs ys : Vector.t SType n}
           (ps : Forall2 Duality xs ys) : Forall2 Duality ys xs :=
       match ps with
       | Forall2_nil _ => Forall2_nil _
       | Forall2_cons _ _ _ _ _ p ps =>
-        Forall2_cons _ _ _ _ _ (inverse_duality _ _ p) (flipForall2 ps)
+        Forall2_cons _ _ _ _ _ (inverse_duality p) (flipForall2 ps)
       end
   in match d with
   | Ends => Ends
-  | MRight d' => MLeft (inverse_duality _ _ d')
-  | MLeft d' => MRight (inverse_duality _ _ d')
+  | MRight d' => MLeft (inverse_duality d')
+  | MLeft d' => MRight (inverse_duality d')
   | SRight d' => SLeft (flipForall2 d')
   | SLeft d' => SRight (flipForall2 d')
   end
@@ -127,7 +127,7 @@ Section Processes.
 
   | CNewTypesCommutative s r sDr P Q :
       (∀ (a : Message C[s]) (b : Message C[r]), P a b ≡ Q a b) →
-      PNew s r sDr (fun a b => P a b) ≡ PNew r s (inverse_duality _ _ sDr) (fun b a => Q a b)
+      PNew s r sDr (fun a b => P a b) ≡ PNew r s (inverse_duality sDr) (fun b a => Q a b)
 
   | CNewCongruent s r sDr P Q :
       (∀ (a : Message C[s]) (b : Message C[r]), P a b ≡  Q a b) →
@@ -571,8 +571,8 @@ Example big_step_reduction : example1 ⇒⇒ example5. big_step_reduction. Qed.
 
 Example channel_over_channel : PProcess :=
   [υ]>
-    (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (Leftwards Ends))
-    (new i' <- (? Base bool ; ø), o' <- _, (Leftwards Ends))
+    (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (MLeft Ends))
+    (new i' <- (? Base bool ; ø), o' <- _, (MLeft Ends))
 
     (i?(c); fun a => ε a <|> c!(υ _ true); ε)
     <|>
@@ -581,8 +581,8 @@ Example channel_over_channel : PProcess :=
 
 Example channel_over_channel1 : PProcess :=
   [υ]>
-    (new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (Leftwards Ends))
-    (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (Leftwards Ends))
+    (new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (MLeft Ends))
+    (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (MLeft Ends))
 
     (i?(c); fun a => c!(υ _ true); ε <|> ε a)
     <|>
@@ -595,7 +595,7 @@ Example nonlinear_example : PProcess :=
   [υ]> (new
     i <- (? Base bool ; ø),
     o <- (! Base bool; ø),
-    (Leftwards Ends))
+    (MLeft Ends))
 
     (* Cheat the system by using the channel o twice *)
     i?(_); ε <|> o!(υ _ true); (fun _ => o!(υ _ true); ε)

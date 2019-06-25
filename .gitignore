@@ -6,5 +6,5 @@ adam.chlipala.net
 *.glob
 *.vo
 .coqdeps.d
-.#*.v#
-#*.v#
+.\#*.v\#
+\#*.v\#
