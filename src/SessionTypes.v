@@ -142,7 +142,7 @@ Section Processes.
       (∀ (a : Message mt) (b : Message C[st]), P a b ≡ Q a b) →
       PInput P c ≡ PInput Q c
 
-  | CReflective P :
+  | CReflexive P :
       P ≡ P
 
   | CSymmetric P Q :
@@ -286,6 +286,7 @@ Fixpoint count_marked (p : Process bool TMT) : nat :=
   end
 .
 
+Notation "'none_marked' p" := (count_marked p = 0)(at level 50).
 Notation "'single_marked' p" := (count_marked p = 1)(at level 50).
 
 Fixpoint linear (p : Process bool TMT) : Prop :=
@@ -299,42 +300,31 @@ Fixpoint linear (p : Process bool TMT) : Prop :=
          linear_branches ps'
        end
   in
-  match p with
-  | PNew _ _ _ p =>
-    single_marked (p marked unmarked) /\
-    single_marked (p unmarked marked) /\
-    linear (p unmarked unmarked)
+  none_marked p /\ (
+    match p with
+    | PNew _ _ _ p =>
+      single_marked (p marked unmarked) /\
+      single_marked (p unmarked marked) /\
+      linear (p unmarked unmarked)
 
-  | PInput p c =>
-    is_marked c = false /\ branch_input p
-     (fun _ p' => single_marked (p' (V tt) marked) /\
-               linear (p' (V tt) unmarked))
-     (fun _ p' => single_marked (p' marked unmarked) /\
-               single_marked (p' unmarked marked) /\
-               linear (p' unmarked unmarked))
+    | PInput p _ => branch_input p
+       (fun _ p' => single_marked (p' (V tt) marked) /\
+                 linear (p' (V tt) unmarked))
+       (fun _ p' => single_marked (p' marked unmarked) /\
+                 single_marked (p' unmarked marked) /\
+                 linear (p' unmarked unmarked))
 
-  | POutput m p c =>
-    is_marked c = false /\
-    is_marked m = false /\
-    single_marked (p marked) /\
-    linear (p unmarked)
+    | POutput _ p _ => single_marked (p marked) /\ linear (p unmarked)
 
-  | PBranch p c =>
-    is_marked c = false /\
-    linear_branches p
+    | PBranch p _ => linear_branches p
 
-  | PSelect i p c =>
-    is_marked c = false /\
-    single_marked (p marked) /\
-    linear (p unmarked)
+    | PSelect _ p _ => single_marked (p marked) /\ linear (p unmarked)
 
-  | PComp l r =>
-    linear l /\
-    linear r
+    | PComp l r => linear l /\ linear r
 
-  | PEnd c =>
-    is_marked c = false
-  end
+    | PEnd _ => True
+    end
+  )
 .
 
 (******************************)
@@ -389,47 +379,17 @@ Ltac destruct_linear :=
 (*          TYPE PRESERVATION             *)
 (******************************************)
 
-Lemma linearity_count : ∀ P, linear P → count_marked P = 0.
+Lemma linearity_count {P} : linear P → count_marked P = 0.
 Proof.
-  intros P lP.
+  intro lP.
   induction P.
-  all: simpl; eauto.
-  + destruct_linear.
-    eauto.
-  + dependent induction m.
-    dependent induction m0.
-    all: destruct_linear; rewrite H0; eauto.
-  + destruct_linear.
-    rewrite (H _).
-    rewrite H0.
-    rewrite H1.
-    eauto.
-    exact H3.
-  + destruct_linear.
-    induction f.
-    rewrite H.
-    reflexivity.
-    destruct_linear.
-    admit.
-  + destruct_linear.
-    rewrite H0.
-    rewrite (H _ H2).
-    reflexivity.
-  + destruct_linear.
-    rewrite (IHP1 H).
-    rewrite (IHP2 H0).
-    reflexivity.
-  + dependent induction m.
-    induction s.
-    discriminate.
-    trivial.
-Admitted.
-
+  all: simpl; destruct_linear; eauto.
+Qed.
 Hint Resolve linearity_count.
 
-Lemma congruence_count : ∀ P Q, Congruence _ _ P Q → count_marked P = count_marked Q.
+Lemma congruence_count {P Q} : Congruence _ _ P Q → count_marked P = count_marked Q.
 Proof.
-  intros P Q PcQ.
+  intros PcQ.
   induction PcQ.
   all: simpl; eauto; try ring.
   - induction mt; eauto.
@@ -438,43 +398,70 @@ Qed.
 
 Hint Resolve congruence_count.
 
+Lemma ismarked_unmarked s : (@C _ TMT s false) = @unmarked s. reflexivity. Qed.
+
 Theorem linearity_congruence : ∀ P Q, Congruence _ _ P Q → linear P → linear Q.
 Proof.
   intros P Q PcQ lP.
   induction PcQ.
-  all: simpl; destruct_linear; eauto.
-  + repeat rewrite <- (congruence_count _ _ (H _ _)).
-    rewrite (linearity_count _ H2).
-    rewrite H1.
-    rewrite H3.
+  all: simpl; destruct_linear.
+  + rewrite (linearity_count H0).
+    rewrite (linearity_count H1).
+    auto.
+  + rewrite (linearity_count H1).
+    rewrite (linearity_count H2).
+    rewrite (linearity_count H3).
     eauto.
-  + repeat rewrite <- (congruence_count _ _ (H _ _ _ _)).
+  + rewrite (linearity_count (IHPcQ1 H0)).
+    rewrite (linearity_count (IHPcQ2 H1)).
+    eauto.
+  + rewrite (linearity_count (H0 _ _ H6)).
+    rewrite (linearity_count H3).
+    repeat rewrite (congruence_count (CSymmetric _ _ _ _ (H _ _))).
+    rewrite H4.
+    rewrite H5.
+    repeat split; eauto.
+  + rewrite <- (congruence_count (H _ _ _ _)).
+    rewrite <- (congruence_count (H (C true) _ _ _)).
+    rewrite <- (congruence_count (H _ (C true) _ _)).
+    rewrite <- (congruence_count (H _ _ (C true) _)).
+    rewrite <- (congruence_count (H _ _ _ (C true))).
+    repeat split; eauto.
+  + rewrite <- (congruence_count (H _ _)).
+    rewrite <- (congruence_count (H (C true) _)).
+    rewrite <- (congruence_count (H _ (C true))).
+    repeat split; eauto.
+  + rewrite <- (congruence_count (H _ _)).
+    rewrite <- (congruence_count (H (C true) _)).
+    rewrite <- (congruence_count (H _ (C true))).
+    repeat split; eauto.
+  + simpl in *.
+    destruct (plus_is_O _ _ H1).
+    destruct (plus_is_O _ _ H5).
+    rewrite <- (congruence_count (H _)).
+    rewrite <- (congruence_count (H (C true))).
+    repeat split; eauto.
+  + dependent induction mt.
     destruct_linear.
-    all: try split; eauto.
-  + repeat rewrite <- (congruence_count _ _ (H _ _)).
-    all: eauto.
-  + repeat rewrite <- (congruence_count _ _ (H _ _)).
-    all: eauto.
-  + dependent induction mt.
-    all: rewrite <- (congruence_count _ _ (H _)).
-    all: eauto.
-  + dependent induction mt.
-    all: repeat rewrite <- (congruence_count _ _ (H _ _)).
-    all: destruct_linear; eauto.
+    rewrite <- (congruence_count (H _ _)).
+    rewrite <- (congruence_count (H _ (C true))).
+    eauto.
+    destruct_linear.
+    rewrite <- (congruence_count (H _ _)).
+    rewrite <- (congruence_count (H _ (C true))).
+    rewrite <- (congruence_count (H (C true) _)).
+    repeat split; eauto.
+  + assumption.
   + admit.
+  + eauto.
 Admitted.
 
-Lemma ismarked_unmarked s b : @is_marked TMT _ (@C _ TMT s b) = false → (@C _ TMT s b) = @unmarked s.
+Lemma reduction_count P Q : Reduction _ _ P Q → linear P → none_marked Q.
 Proof.
-  intros mb.
-  induction b.
-  discriminate.
-  reflexivity.
-Qed.
-
-Lemma reduction_count P Q : Reduction _ _ P Q → linear P → count_marked P = count_marked Q.
-Proof.
+  admit.
+  (*
   intros PrQ lP.
+  rewrite (linearity_count lP).
   induction PrQ.
   all: simpl; eauto.
   - dependent induction m.
@@ -497,13 +484,14 @@ Proof.
     eauto.
   - rewrite <- IHPrQ.
     apply (congruence_count _ _ H).
+    *)
 Admitted.
 
 Hint Resolve reduction_count.
 
 Lemma false_unmarked s : @C bool _ s false = unmarked. eauto. Qed.
 
-Lemma single_marked_comp P Q : single_marked (P <|> Q) → single_marked P \/ single_marked Q.
+Lemma single_marked_comp {P Q} : single_marked (P <|> Q) → single_marked P \/ single_marked Q.
 Proof.
   intro sPQ.
   destruct (plus_is_one _ _ sPQ).
@@ -512,8 +500,11 @@ Qed.
 
 Theorem linearity_preservation : ∀ P Q, Reduction _ _ P Q → linear P → linear Q.
   intros P Q PrQ lP.
-  induction PrQ.
-  all: simpl; destruct_linear; eauto.
+  dependent induction PrQ.
+  all: simpl.
+  - destruct_linear.
+
+    (*
   - dependent induction m.
     + destruct_linear.
       destruct m.
@@ -550,6 +541,7 @@ Theorem linearity_preservation : ∀ P Q, Reduction _ _ P Q → linear P → lin
     admit.
     admit.
   - exact (IHPrQ (linearity_congruence _ _ H lP)).
+*)
 Admitted.
 
 Theorem TypePreservation : ∀ (P Q : PProcess), P ⇒ Q → Linear P → Linear Q.
@@ -567,7 +559,6 @@ Proof.
   all: intros slP sPrQ.
   exact (linearity_preservation (P _ _ _) (Q _ _ _) sPrQ slP).
 Qed.
-
 
 (******************************************)
 (*               EXAMPLES                 *)
