@@ -220,10 +220,10 @@ Arguments PEnd [ST MT].
 (*       LINEARITY        *)
 (**************************)
 
-Definition is_marked {MT : Type → Type} {s : SType} {A : Type}
-           (m : Message A MT C[s]) : A :=
+Definition is_marked {MT : Type → Type} {mt : MType} (m : Message bool MT mt) : bool :=
   match m with
-  | C n => n
+  | V _ => false
+  | C m => m
   end
 .
 Notation "'count_if_marked' c" := (if is_marked c then 1 else 0)(at level 50).
@@ -262,12 +262,8 @@ Fixpoint count_marked (p : Process bool (fun _ => unit)) : nat :=
      | Channel _ => fun p' => count_marked (p' unmarked unmarked)
      end) p
 
-  | @POutput _ _ mt s m p c =>
-    count_if_marked c + count_marked (p unmarked) +
-    (match mt as mt' return (Message bool MT mt') → nat with
-     | Base _ => fun m' => 0
-     | Channel _ => fun m' => count_if_marked m'
-     end) m
+  | POutput m p c =>
+    count_if_marked c + count_if_marked m + count_marked (p unmarked)
 
   | PBranch p c =>
     count_if_marked c + count_branches p
@@ -315,23 +311,27 @@ Fixpoint linear (p : Process bool (fun _ => unit)) : Prop :=
                      linear (p' unmarked unmarked)
      end) p
 
-  | @POutput _ _ mt s m p c =>
+  | POutput m p c =>
     is_marked c = false /\
+    is_marked m = false /\
     single_marked (p marked) /\
-    linear (p unmarked) /\
-    (match mt as mt' return (Message bool MT mt') → Prop with
-     | Base _ => fun m' => True
-     | Channel _ => fun m' => is_marked m' = false
-     end) m
+    linear (p unmarked)
 
   | PBranch p c =>
-    is_marked c = false /\ linear_branches p
+    is_marked c = false /\
+    linear_branches p
 
-  | PSelect i p c => is_marked c = false /\ single_marked (p marked) /\ linear (p unmarked)
+  | PSelect i p c =>
+    is_marked c = false /\
+    single_marked (p marked) /\
+    linear (p unmarked)
 
-  | PComp l r => linear l /\ linear r
+  | PComp l r =>
+    linear l /\
+    linear r
 
-  | PEnd c => is_marked c = false
+  | PEnd c =>
+    is_marked c = false
   end
 .
 
@@ -396,10 +396,12 @@ Proof.
   + dependent induction m.
     dependent induction m0.
     all: destruct_linear; rewrite H0; eauto.
-  + dependent induction m.
-    dependent induction m0.
-    all: destruct_linear; rewrite H0; rewrite (H _).
-    all: try rewrite H3; eauto.
+  + destruct_linear.
+    rewrite (H _).
+    rewrite H0.
+    rewrite H1.
+    eauto.
+    exact H3.
   + destruct_linear.
     induction f.
     rewrite H.
@@ -459,6 +461,13 @@ Proof.
   + admit.
 Admitted.
 
+Lemma ismarked_unmarked s b : @is_marked (fun _ => unit) _ (@C _ (fun _ => unit) s b) = false → (@C _ (fun _ => unit) s b) = @unmarked s.
+Proof.
+  intros mb.
+  induction b.
+  discriminate.
+  reflexivity.
+Qed.
 
 Lemma reduction_count P Q : Reduction _ _ P Q → linear P → count_marked P = count_marked Q.
 Proof.
@@ -470,10 +479,11 @@ Proof.
     eauto.
     destruct_linear.
     destruct_linear.
-    induction s0.
-    discriminate H8.
-    simpl in H1.
+    rewrite H4.
+    repeat rewrite (linearity_count _).
     eauto.
+    rewrite (ismarked_unmarked _).
+    all: auto.
   - dependent induction Qs.
     dependent induction i.
     destruct_linear.
@@ -507,19 +517,17 @@ Theorem linearity_preservation : ∀ P Q, Reduction _ _ P Q → linear P → lin
     + destruct_linear.
       destruct m.
       rewrite H3.
-      rewrite H4.
       rewrite (linearity_count _ H5).
-      rewrite (linearity_count _ H6).
+      rewrite (linearity_count _ H7).
+      rewrite H6.
       eauto.
     + destruct_linear.
-      induction s0.
-      discriminate H8.
-      rewrite false_unmarked.
-      rewrite H4.
+      rewrite (ismarked_unmarked _).
       rewrite H5.
+      rewrite H7.
       rewrite (linearity_count _ H6).
-      rewrite (linearity_count _ H7).
-      eauto.
+      rewrite (linearity_count _ H8).
+      all: eauto.
   - destruct_linear.
     dependent induction i.
     dependent induction Qs.
