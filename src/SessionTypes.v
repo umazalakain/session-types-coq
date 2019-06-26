@@ -244,6 +244,17 @@ Hint Unfold unmarked.
    Channels received as input are considered fresh.
 *)
 
+Definition branch_input {ST MT A B mt}
+           (P : Message ST MT mt → A)
+           (MP : ∀ {bmt}, (Message ST MT (Base bmt) → A) → B)
+           (CP : ∀ {smt}, (Message ST MT (Channel smt) → A) → B) : B :=
+  (match mt as mt' return (Message ST MT mt' → A) → B with
+   | Base _ => fun P' => MP P'
+   | Channel _ => fun P' => CP P'
+   end) P
+.
+Hint Unfold branch_input.
+
 Fixpoint count_marked (p : Process bool TMT) : nat :=
   let fix count_branches {n} {ss : Vector.t SType n}
           (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : nat :=
@@ -255,14 +266,10 @@ Fixpoint count_marked (p : Process bool TMT) : nat :=
   match p with
   | PNew _ _ _ p => count_marked (p unmarked unmarked)
 
-  | @PInput _ _ mt s p c =>
-    count_if_marked c +
-    (match mt as mt' return
-           (Message bool TMT mt' → Message bool TMT (Channel s) → Process bool TMT) → nat
-     with
-     | Base _ => fun p' => count_marked (p' (V tt) unmarked)
-     | Channel _ => fun p' => count_marked (p' unmarked unmarked)
-     end) p
+  | PInput p c =>
+    count_if_marked c + branch_input p
+      (fun _ p' => count_marked (p' (V tt) unmarked))
+      (fun _ p' => count_marked (p' unmarked unmarked))
 
   | POutput m p c =>
     count_if_marked c + count_if_marked m + count_marked (p unmarked)
@@ -298,19 +305,13 @@ Fixpoint linear (p : Process bool TMT) : Prop :=
     single_marked (p unmarked marked) /\
     linear (p unmarked unmarked)
 
-  | @PInput _ _ mt s p c =>
-    is_marked c = false /\
-    (match mt as mt'
-           return (Message bool TMT mt' → Message bool TMT (Channel s) → Process bool TMT) → Prop
-     with
-     | Base _ => fun p' =>
-                  single_marked (p' (V tt) marked) /\
-                  linear (p' (V tt) unmarked)
-     | Channel _ => fun p' =>
-                     single_marked (p' marked unmarked) /\
-                     single_marked (p' unmarked marked) /\
-                     linear (p' unmarked unmarked)
-     end) p
+  | PInput p c =>
+    is_marked c = false /\ branch_input p
+     (fun _ p' => single_marked (p' (V tt) marked) /\
+               linear (p' (V tt) unmarked))
+     (fun _ p' => single_marked (p' marked unmarked) /\
+               single_marked (p' unmarked marked) /\
+               linear (p' unmarked unmarked))
 
   | POutput m p c =>
     is_marked c = false /\
@@ -372,14 +373,15 @@ Ltac big_step_reduction :=
 .
 
 Ltac destruct_linear :=
-  repeat
-  match goal with
+  repeat (
+  try match goal with
   | [ H : linear _ |- _ ] => destruct H
   end;
-  repeat
-  match goal with
+  try match goal with
   | [ H : and _ _ |- _ ] => destruct H
-  end
+  end;
+  autounfold with * in *
+  )
 .
 
 
@@ -476,14 +478,12 @@ Proof.
   induction PrQ.
   all: simpl; eauto.
   - dependent induction m.
+    all: destruct_linear.
     destruct m.
     eauto.
-    destruct_linear.
-    destruct_linear.
     rewrite H4.
     repeat rewrite (linearity_count _).
     eauto.
-    rewrite (ismarked_unmarked _).
     all: auto.
   - dependent induction Qs.
     dependent induction i.
@@ -518,21 +518,21 @@ Theorem linearity_preservation : ∀ P Q, Reduction _ _ P Q → linear P → lin
     + destruct_linear.
       destruct m.
       rewrite H3.
-      rewrite (linearity_count _ H5).
+      rewrite H5.
+      rewrite (linearity_count _ H6).
       rewrite (linearity_count _ H7).
-      rewrite H6.
-      eauto.
+      auto.
     + destruct_linear.
-      rewrite (ismarked_unmarked _).
+      rewrite H4.
       rewrite H5.
       rewrite H7.
       rewrite (linearity_count _ H6).
       rewrite (linearity_count _ H8).
       all: eauto.
-  - destruct_linear.
-    dependent induction i.
+  - dependent induction i.
     dependent induction Qs.
-    + rewrite F1Forall.
+    + destruct_linear.
+      rewrite F1Forall.
       destruct_linear.
       rewrite H4.
       rewrite (linearity_count _ H5).
