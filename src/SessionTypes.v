@@ -220,6 +220,9 @@ Arguments PEnd [ST MT].
 (*       LINEARITY        *)
 (**************************)
 
+Definition TMT : Type → Type := fun _ => unit.
+Definition fMT : ∀ (S: Set), S → Message bool TMT (Base S) := fun _ _ => V tt.
+
 Definition is_marked {MT : Type → Type} {mt : MType} (m : Message bool MT mt) : bool :=
   match m with
   | V _ => false
@@ -227,8 +230,8 @@ Definition is_marked {MT : Type → Type} {mt : MType} (m : Message bool MT mt) 
   end
 .
 Notation "'count_if_marked' c" := (if is_marked c then 1 else 0)(at level 50).
-Definition marked : ∀ s, Message bool (fun _ => unit) C[s] := fun s => C true.
-Definition unmarked : ∀ s, Message bool (fun _ => unit) C[s] := fun s => C false.
+Definition marked : ∀ s, Message bool TMT C[s] := fun s => C true.
+Definition unmarked : ∀ s, Message bool TMT C[s] := fun s => C false.
 Arguments marked [s].
 Arguments unmarked [s].
 Hint Unfold is_marked.
@@ -241,8 +244,7 @@ Hint Unfold unmarked.
    Channels received as input are considered fresh.
 *)
 
-Fixpoint count_marked (p : Process bool (fun _ => unit)) : nat :=
-  let MT := fun _ => unit in
+Fixpoint count_marked (p : Process bool TMT) : nat :=
   let fix count_branches {n} {ss : Vector.t SType n}
           (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : nat :=
        match ps with
@@ -255,8 +257,8 @@ Fixpoint count_marked (p : Process bool (fun _ => unit)) : nat :=
 
   | @PInput _ _ mt s p c =>
     count_if_marked c +
-    (match mt as mt'
-           return (Message bool MT mt' → Message bool MT (Channel s) → Process bool MT) → nat
+    (match mt as mt' return
+           (Message bool TMT mt' → Message bool TMT (Channel s) → Process bool TMT) → nat
      with
      | Base _ => fun p' => count_marked (p' (V tt) unmarked)
      | Channel _ => fun p' => count_marked (p' unmarked unmarked)
@@ -279,8 +281,7 @@ Fixpoint count_marked (p : Process bool (fun _ => unit)) : nat :=
 
 Notation "'single_marked' p" := (count_marked p = 1)(at level 50).
 
-Fixpoint linear (p : Process bool (fun _ => unit)) : Prop :=
-  let MT := fun _ => unit in
+Fixpoint linear (p : Process bool TMT) : Prop :=
   let fix linear_branches {n} {ss : Vector.t SType n}
           (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : Prop :=
        match ps with
@@ -300,7 +301,7 @@ Fixpoint linear (p : Process bool (fun _ => unit)) : Prop :=
   | @PInput _ _ mt s p c =>
     is_marked c = false /\
     (match mt as mt'
-           return (Message bool MT mt' → Message bool MT (Channel s) → Process bool MT) → Prop
+           return (Message bool TMT mt' → Message bool TMT (Channel s) → Process bool TMT) → Prop
      with
      | Base _ => fun p' =>
                   single_marked (p' (V tt) marked) /\
@@ -340,8 +341,8 @@ Fixpoint linear (p : Process bool (fun _ => unit)) : Prop :=
 (******************************)
 
 (* Abstract over parametric types and their constructors *)
-Definition PProcess := ∀ ST MT (mf : ∀ {S: Set}, S → Message ST MT (Base S)) , Process ST MT.
-Definition Linear (p : PProcess) : Prop := linear (p bool (fun _ => unit) (fun _ _ => (V tt))).
+Definition PProcess := ∀ ST MT (mf : ∀ (S: Set), S → Message ST MT (Base S)) , Process ST MT.
+Definition Linear (p : PProcess) : Prop := linear (p bool TMT fMT).
 Notation "[ f ]> P" := (fun _ _ f => P)(at level 80).
 Notation "P ≡ Q" := (∀ ST MT mf, Congruence _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 Notation "P ⇒ Q" := (∀ ST MT mf, Reduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
@@ -461,7 +462,7 @@ Proof.
   + admit.
 Admitted.
 
-Lemma ismarked_unmarked s b : @is_marked (fun _ => unit) _ (@C _ (fun _ => unit) s b) = false → (@C _ (fun _ => unit) s b) = @unmarked s.
+Lemma ismarked_unmarked s b : @is_marked TMT _ (@C _ TMT s b) = false → (@C _ TMT s b) = @unmarked s.
 Proof.
   intros mb.
   induction b.
@@ -546,6 +547,8 @@ Theorem linearity_preservation : ∀ P Q, Reduction _ _ P Q → linear P → lin
       admit.
   - repeat rewrite <- (reduction_count _ _ (H _ _)).
     eauto.
+    admit.
+    admit.
   - exact (IHPrQ (linearity_congruence _ _ H lP)).
 Admitted.
 
@@ -555,15 +558,12 @@ Proof.
   unfold PProcess in P, Q.
   unfold Linear.
   unfold Linear in lP.
-  set (ST := bool).
-  set (MT := fun _ => unit).
-  set (fM := fun _ _ => V tt).
   refine (
-      (match (P ST MT fM) as P'
-             return linear P' → Reduction _ _ P' (Q ST MT fM) → linear (Q ST MT fM)
+      (match (P bool TMT fMT) as P'
+             return linear P' → Reduction _ _ P' (Q bool TMT fMT) → linear (Q bool TMT fMT)
        with
        | _ => _
-       end) lP (PrQ ST MT fM)).
+       end) lP (PrQ bool TMT fMT)).
   all: intros slP sPrQ.
   exact (linearity_preservation (P _ _ _) (Q _ _ _) sPrQ slP).
 Qed.
