@@ -379,6 +379,9 @@ Ltac destruct_linear :=
 (*          TYPE PRESERVATION             *)
 (******************************************)
 
+Lemma false_unmarked s : @C bool _ s false = unmarked. eauto. Qed.
+Hint Rewrite false_unmarked.
+
 Lemma linearity_count {P} : linear P → count_marked P = 0.
 Proof.
   intro lP.
@@ -395,10 +398,7 @@ Proof.
   - induction mt; eauto.
   - rewrite IHPcQ1. rewrite IHPcQ2. reflexivity.
 Qed.
-
 Hint Resolve congruence_count.
-
-Lemma ismarked_unmarked s : (@C _ TMT s false) = @unmarked s. reflexivity. Qed.
 
 Theorem linearity_congruence : ∀ P Q, Congruence _ _ P Q → linear P → linear Q.
 Proof.
@@ -456,92 +456,49 @@ Proof.
   + eauto.
 Admitted.
 
-Lemma reduction_count P Q : Reduction _ _ P Q → linear P → none_marked Q.
+Lemma linearity_under_bindings {s r}
+      {P Q : Message _ _ C[s] → Message _ _ C[r] → Process _ _} {sDr : Duality s r} :
+  (∀ (a : Message _ _ C[s]) (b : Message _ _ C[r]), linear (P a b) → linear (Q a b)) →
+  linear ((new a <- s, b <- r, sDr) P a b) →
+  linear ((new a <- s, b <- r, sDr) Q a b).
 Proof.
-  admit.
-  (*
-  intros PrQ lP.
-  rewrite (linearity_count lP).
-  induction PrQ.
-  all: simpl; eauto.
-  - dependent induction m.
-    all: destruct_linear.
-    destruct m.
-    eauto.
-    rewrite H4.
-    repeat rewrite (linearity_count _).
-    eauto.
-    all: auto.
-  - dependent induction Qs.
-    dependent induction i.
-    destruct_linear.
-    destruct H1.
-    destruct_linear.
-    admit.
-  - destruct_linear.
-    eauto.
-  - destruct_linear.
-    eauto.
-  - rewrite <- IHPrQ.
-    apply (congruence_count _ _ H).
-    *)
+  intros lPQ lP.
+  dependent induction P.
+  + exact (H (C false) (C false) Q sDr lPQ lP).
+  + dependent induction m; simpl in *.
+    exact (H (V tt) (C false) Q sDr lPQ lP).
+    exact (H (C false) (C false) Q sDr lPQ lP).
+  + exact (H (C false) Q sDr lPQ lP).
+  + admit.
 Admitted.
-
-Hint Resolve reduction_count.
-
-Lemma false_unmarked s : @C bool _ s false = unmarked. eauto. Qed.
-
-Lemma single_marked_comp {P Q} : single_marked (P <|> Q) → single_marked P \/ single_marked Q.
-Proof.
-  intro sPQ.
-  destruct (plus_is_one _ _ sPQ).
-  all: destruct a; eauto.
-Qed.
 
 Theorem linearity_preservation : ∀ P Q, Reduction _ _ P Q → linear P → linear Q.
   intros P Q PrQ lP.
   dependent induction PrQ.
-  all: simpl.
-  - destruct_linear.
-
-    (*
-  - dependent induction m.
+  - simpl.
+    dependent induction m.
     + destruct_linear.
+      simpl in *.
+      repeat rewrite false_unmarked in *.
       destruct m.
-      rewrite H3.
-      rewrite H5.
-      rewrite (linearity_count _ H6).
-      rewrite (linearity_count _ H7).
-      auto.
+      rewrite H, H3, H4, H5, H6.
+      repeat split; eauto.
     + destruct_linear.
-      rewrite H4.
-      rewrite H5.
-      rewrite H7.
-      rewrite (linearity_count _ H6).
-      rewrite (linearity_count _ H8).
-      all: eauto.
-  - dependent induction i.
-    dependent induction Qs.
-    + destruct_linear.
-      rewrite F1Forall.
-      destruct_linear.
-      rewrite H4.
-      rewrite (linearity_count _ H5).
-      simpl.
-      rewrite (linearity_count _ H6).
-      rewrite H3.
-      eauto.
-    + dependent induction rs.
-      rewrite FSForall.
-      rewrite H4.
-      rewrite (linearity_count _ H5).
-      admit.
-  - repeat rewrite <- (reduction_count _ _ (H _ _)).
-    eauto.
-    admit.
-    admit.
+      induction s0.
+      discriminate H3.
+      repeat rewrite false_unmarked in *.
+      simpl in *.
+      rewrite H3, H4, H6, H7.
+      repeat split; eauto.
+  - admit.
+  - exact (linearity_under_bindings H0 lP).
+  - destruct_linear.
+    simpl in *.
+    destruct (plus_is_O _ _ H).
+    rewrite H3.
+    rewrite (linearity_count (IHPrQ H0)).
+    repeat split; eauto.
   - exact (IHPrQ (linearity_congruence _ _ H lP)).
-*)
 Admitted.
 
 Theorem TypePreservation : ∀ (P Q : PProcess), P ⇒ Q → Linear P → Linear Q.
