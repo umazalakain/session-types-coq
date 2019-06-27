@@ -8,3 +8,5 @@ adam.chlipala.net
 .coqdeps.d
 .\#*.v\#
 \#*.v\#
+makefile
+makefile.conf

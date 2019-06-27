@@ -473,15 +473,13 @@ Theorem linearity_preservation : ∀ P Q, Reduction _ _ P Q → linear P → lin
       rewrite H3, H4, H6, H7.
       repeat split; eauto.
   - dependent induction i; dependent destruction Qs.
-    + rewrite F1Forall.
-      simpl in *.
+    + simpl in *.
       decompose [and] lP.
       rewrite H3, H4, H5.
       rewrite (linearity_count H8).
       repeat split; eauto.
     + dependent destruction ss.
       simpl in Ps.
-      rewrite FSForall.
       simpl in lP.
       decompose [and] lP.
       refine (IHi _ _ _ Ps Qs _ _).
