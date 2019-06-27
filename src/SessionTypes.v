@@ -145,9 +145,6 @@ Section Processes.
   | CReflexive P :
       P ≡ P
 
-  | CSymmetric P Q :
-      P ≡ Q → Q ≡ P
-
   | CTransitive P Q R :
       P ≡ Q → Q ≡ R → P ≡ R
 
@@ -417,7 +414,7 @@ Proof.
     eauto.
   + rewrite (linearity_count (H0 _ _ H6)).
     rewrite (linearity_count H3).
-    repeat rewrite (congruence_count (CSymmetric _ _ _ _ (H _ _))).
+    repeat rewrite <- (congruence_count (H _ _)).
     rewrite H4.
     rewrite H5.
     repeat split; eauto.
@@ -452,25 +449,8 @@ Proof.
     rewrite <- (congruence_count (H (C true) _)).
     repeat split; eauto.
   + assumption.
-  + admit.
   + eauto.
-Admitted.
-
-Lemma linearity_under_bindings {s r}
-      {P Q : Message _ _ C[s] → Message _ _ C[r] → Process _ _} {sDr : Duality s r} :
-  (∀ (a : Message _ _ C[s]) (b : Message _ _ C[r]), linear (P a b) → linear (Q a b)) →
-  linear ((new a <- s, b <- r, sDr) P a b) →
-  linear ((new a <- s, b <- r, sDr) Q a b).
-Proof.
-  intros lPQ lP.
-  dependent induction P.
-  + exact (H (C false) (C false) Q sDr lPQ lP).
-  + dependent induction m; simpl in *.
-    exact (H (V tt) (C false) Q sDr lPQ lP).
-    exact (H (C false) (C false) Q sDr lPQ lP).
-  + exact (H (C false) Q sDr lPQ lP).
-  + admit.
-Admitted.
+Qed.
 
 Theorem linearity_preservation : ∀ P Q, Reduction _ _ P Q → linear P → linear Q.
   intros P Q PrQ lP.
