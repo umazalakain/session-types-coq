@@ -7,7 +7,7 @@ From Equations Require Import Equations.
 
 Inductive Forall {A} (P: A -> Type): forall {n} (v: Vector.t A n), Type :=
  |Forall_nil: Forall P []
- |Forall_cons {n} x (v: Vector.t A n): P x -> Forall P v -> Forall P (x::v).
+ |Forall_cons {n x} {v: Vector.t A n}: P x -> Forall P v -> Forall P (x::v).
 Hint Constructors Forall.
 
 Inductive Forall2 {A B} (P:A->B->Type): forall {n}, Vector.t A n -> Vector.t B n -> Type :=
@@ -17,8 +17,8 @@ Inductive Forall2 {A B} (P:A->B->Type): forall {n}, Vector.t A n -> Vector.t B n
 
 Equations nthForall {A P n} {xs : Vector.t A n}
           (ps : Forall P xs) (i : Fin.t n) : P xs[@i] :=
-nthForall (Forall_cons _ _ _ p ps) Fin.F1 => p;
-nthForall (Forall_cons _ _ _ p ps) (Fin.FS i) => nthForall ps i.
+nthForall (Forall_cons _ p ps) Fin.F1 => p;
+nthForall (Forall_cons _ p ps) (Fin.FS i) => nthForall ps i.
 
 Equations nthForall2 {A B P n} {xs : Vector.t A n} {ys : Vector.t B n}
            (ps : Forall2 P xs ys) (i : Fin.t n): P xs[@i] ys[@i] :=

@@ -199,8 +199,10 @@ Notation "?( m ); p" := (PInput _ _ (fun m => p))(at level 80).
 Notation "c ?( m ); p" := (PInput _ _ (fun m => p) c)(at level 79).
 Notation "◃( i ); p" := (PSelect _ _ i p)(at level 80).
 Notation "c ◃( i ); p" := (PSelect _ _ i p c)(at level 79).
-Notation "▹( ps )" := (PBranch _ _ ps)(at level 80).
-Notation "c ▹ ps" := (PBranch _ _ ps c)(at level 79).
+Notation "▹[ x ; .. ; y ]" :=
+  (PBranch _ _ (Forall_cons x .. (Forall_cons y Forall_nil) ..))(at level 80).
+Notation "c ▹[ x ; .. ; y ]" :=
+  (PBranch _ _ (Forall_cons x .. (Forall_cons y Forall_nil) ..) c)(at level 79).
 Definition ε {ST : Type} {MT: Type → Type} : Message ST MT (Channel ø) → Process ST MT:= PEnd ST MT.
 
 Arguments V [ST MT M].
@@ -399,7 +401,7 @@ Proof.
 Qed.
 Hint Resolve congruence_count.
 
-Theorem linearity_congruence : ∀ P Q, Congruence _ _ P Q → linear P → linear Q.
+Theorem congruence_linearity : ∀ P Q, Congruence _ _ P Q → linear P → linear Q.
 Proof.
   intros P Q PcQ lP.
   induction PcQ.
@@ -454,8 +456,13 @@ Proof.
   + eauto.
 Qed.
 
-Theorem linearity_preservation : ∀ P Q, Reduction _ _ P Q → linear P → linear Q.
-  intros P Q PrQ lP.
+Theorem reduction_count {P Q} : Reduction _ _ P Q → count_marked P = count_marked Q.
+  intro PrQ.
+  dependent induction PrQ.
+Admitted.
+
+Theorem reduction_linearity {P Q} : Reduction _ _ P Q → linear P → linear Q.
+  intros PrQ lP.
   dependent induction PrQ.
   - simpl.
     dependent induction m.
@@ -488,15 +495,18 @@ Theorem linearity_preservation : ∀ P Q, Reduction _ _ P Q → linear P → lin
       exact (C false).
       rewrite (linearity_count H8) in *.
       repeat split; eauto.
-  - simpl in *.
-    admit.
+  - destruct_linear.
+    simpl.
+    rewrite <- (reduction_count (H marked unmarked)).
+    rewrite <- (reduction_count (H unmarked marked)).
+    repeat split; eauto.
   - destruct_linear.
     simpl in *.
     destruct (plus_is_O _ _ H).
     rewrite H3.
     rewrite (linearity_count (IHPrQ H0)).
     repeat split; eauto.
-  - exact (IHPrQ (linearity_congruence _ _ H lP)).
+  - exact (IHPrQ (congruence_linearity _ _ H lP)).
 Admitted.
 
 Theorem TypePreservation : ∀ (P Q : PProcess), P ⇒ Q → Linear P → Linear Q.
@@ -512,7 +522,7 @@ Proof.
        | _ => _
        end) lP (PrQ bool TMT fMT)).
   all: intros slP sPrQ.
-  exact (linearity_preservation (P _ _ _) (Q _ _ _) sPrQ slP).
+  exact (reduction_linearity sPrQ slP).
 Qed.
 
 (******************************************)
@@ -596,3 +606,8 @@ Example nonlinear_example1 : ~ (Linear nonlinear_example).
 Proof.
   compute; intros; decompose [and] H; discriminate.
 Qed.
+
+Example branch_and_select : PProcess.
+refine
+  ([υ]> (new i <- ▹ (! Base bool; ø) :: (? Base bool; ø) :: [], o <- ◃ (? Base bool; ø) :: (! Base bool; ø) :: [], _)
+          i▹[ (!(υ _ true); ε) ; (!(υ _ true); ε)] <|> o◃(Fin.F1); o?(m); ε).
