@@ -108,44 +108,44 @@ Section Processes.
 
   Reserved Notation "P ≡ Q" (no associativity, at level 80).
   Inductive Congruence : Process → Process → Prop :=
-  | CCompCommutative P Q :
+  | CCompCommutative {P Q} :
       PComp P Q ≡ PComp Q P
 
-  | CCompAssociative P Q R :
+  | CCompAssociative {P Q R} :
       PComp (PComp P Q) R ≡ PComp P (PComp Q R)
 
-  | CCompCongruent P Q R S :
+  | CCompCongruent {P Q R S} :
       P ≡ Q → R ≡ S → PComp P R ≡ PComp Q S
 
-  | CScopeExpansion s r sDr P Q R :
+  | CScopeExpansion {s r sDr P Q R} :
       (∀ (a : Message C[s]) (b : Message C[r]), P a b ≡ Q a b) →
       PComp (PNew s r sDr P) R ≡ PNew s r sDr (fun a b => PComp (Q a b) R)
 
-  | CScopeCommutative s r sDr s' r' sDr' P Q :
+  | CScopeCommutative {s r sDr s' r' sDr' P Q} :
       (∀ (a : Message C[s]) (b : Message C[r]) (c : Message C[s']) (d : Message C[r']), P a b c d ≡ Q a b c d) →
       PNew s r sDr (fun a b => PNew s' r' sDr' (fun c d => P a b c d)) ≡
       PNew s' r' sDr' (fun c d => PNew s r sDr (fun a b => Q a b c d))
 
-  | CNewTypesCommutative s r sDr P Q :
+  | CNewTypesCommutative {s r sDr P Q} :
       (∀ (a : Message C[s]) (b : Message C[r]), P a b ≡ Q a b) →
       PNew s r sDr (fun a b => P a b) ≡ PNew r s (inverse_duality sDr) (fun b a => Q a b)
 
-  | CNewCongruent s r sDr P Q :
+  | CNewCongruent {s r sDr P Q} :
       (∀ (a : Message C[s]) (b : Message C[r]), P a b ≡  Q a b) →
       PNew s r sDr P ≡ PNew s r sDr Q
 
-  | COutputCongruent mt (m : Message mt) st (c : Message C[! mt; st]) P Q :
+  | COutputCongruent {mt st} {m : Message mt} {c : Message C[! mt; st]} {P Q} :
       (∀ (a : Message C[st]), P a ≡ Q a) →
       POutput m P c ≡ POutput m Q c
 
-  | CInputCongruent mt st (c : Message C[? mt; st]) P Q :
+  | CInputCongruent {mt st} {c : Message C[? mt; st]} {P Q} :
       (∀ (a : Message mt) (b : Message C[st]), P a b ≡ Q a b) →
       PInput P c ≡ PInput Q c
 
   | CReflexive P :
       P ≡ P
 
-  | CTransitive P Q R :
+  | CTransitive {P} Q {R} :
       P ≡ Q → Q ≡ R → P ≡ R
 
   where "P ≡ Q" := (Congruence P Q)
@@ -153,26 +153,26 @@ Section Processes.
 
   Reserved Notation "P ⇒ Q" (at level 60).
   Inductive Reduction : Process -> Process -> Prop :=
-  | RComm mt s r sDr P Q : forall (m : Message mt),
+  | RComm {mt s r sDr P Q} {m : Message mt} :
       PNew (! mt; s) (? mt; r) (MRight sDr)
            (fun a b => PComp (POutput m Q a) (PInput P b)) ⇒
       PNew s r sDr
            (fun a b => PComp (Q a) (P m b))
 
-  | RCase n mt {ss rs : Vector.t SType n} sDr {i : Fin.t n} Ps Qs : forall (m : Message mt),
+  | RCase {n mt} {i : Fin.t n} {ss rs : Vector.t SType n} {sDr} {Ps Qs} {m : Message mt} :
       PNew (Select ss) (Branch rs) (SRight sDr)
            (fun a b => PComp (PSelect i Ps a) (PBranch Qs b)) ⇒
       PNew ss[@i] rs[@i] (nthForall2 sDr i)
            (fun a b => PComp (Ps a) (nthForall Qs i b))
 
-  | RRes s r P Q :
+  | RRes {s r P Q} :
       (∀ (a : Message C[s]) (b : Message C[r]), P a b ⇒ Q a b) →
       (∀ (sDr : Duality s r), PNew s r sDr P ⇒ PNew s r sDr Q)
 
-  | RPar P Q R :
+  | RPar {P Q R} :
       P ⇒ Q → PComp P R ⇒ PComp Q R
 
-  | RStruct P Q R :
+  | RStruct {P Q R} :
       P ≡ Q → Q ⇒ R → P ⇒ R
 
   where "P ⇒ Q" := (Reduction P Q)
