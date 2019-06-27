@@ -529,7 +529,7 @@ Print example1.
 
 Example example2 : PProcess.
   refine
-  ([υ]> (new o <- (! Base bool ; ? Base bool ; ø), i <- (? Base bool ; ! Base bool ; ø), _)
+  ([υ]> (new o <- ! Base bool ; ? Base bool ; ø, i <- ? Base bool ; ! Base bool ; ø, _)
     (o!(υ _ true); ?(m); ε) <|> i?(m); !(m); ε).
   constructors.
 Defined.
@@ -538,7 +538,7 @@ Example congruent_example1 : example1 ≡ example2. constructors. Qed.
 
 Example example3 : PProcess.
   refine
-  ([υ]> (new o <- (? Base bool ; ø), i <- (! Base bool ; ø), _)
+  ([υ]> (new o <- ? Base bool ; ø, i <- ! Base bool ; ø, _)
     (o?(m); ε) <|> i!(υ _ true); ε).
   constructors.
 Defined.
@@ -547,7 +547,7 @@ Example reduction_example1 : example2 ⇒ example3. constructors. Qed.
 
 Example example4 : PProcess.
   refine
-  ([υ]> (new i <- (! Base bool ; ø), o <- (? Base bool ; ø), _)
+  ([υ]> (new i <- ! Base bool ; ø, o <- ? Base bool ; ø, _)
     (i!(υ _ true); ε <|> o?(m); ε)).
   constructors.
 Defined.
@@ -563,8 +563,8 @@ Example big_step_reduction : example1 ⇒⇒ example5. big_step_reduction. Qed.
 
 Example channel_over_channel : PProcess :=
   [υ]>
-    (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (MLeft Ends))
-    (new i' <- (? Base bool ; ø), o' <- _, (MLeft Ends))
+    (new i <- ? C[ ! Base bool ; ø ] ; ø, o <- ! C[ ! Base bool ; ø ] ; ø, MLeft Ends)
+    (new i' <- ? Base bool ; ø, o' <- _, MLeft Ends)
 
     (i?(c); fun a => ε a <|> c!(υ _ true); ε)
     <|>
@@ -573,8 +573,8 @@ Example channel_over_channel : PProcess :=
 
 Example channel_over_channel1 : PProcess :=
   [υ]>
-    (new i' <- (? Base bool ; ø), o' <- (! Base bool ; ø), (MLeft Ends))
-    (new i <- (? C[ ! Base bool ; ø ] ; ø), o <- (! C[ ! Base bool ; ø ] ; ø), (MLeft Ends))
+    (new i' <- ? Base bool ; ø, o' <- ! Base bool ; ø, MLeft Ends)
+    (new i <- ? C[ ! Base bool ; ø ] ; ø, o <- ! C[ ! Base bool ; ø ] ; ø, MLeft Ends)
 
     (i?(c); fun a => c!(υ _ true); ε <|> ε a)
     <|>
@@ -584,10 +584,7 @@ Example channel_over_channel1 : PProcess :=
 Example congruent_example3: channel_over_channel ≡ channel_over_channel1. constructors. Qed.
 
 Example nonlinear_example : PProcess :=
-  [υ]> (new
-    i <- (? Base bool ; ø),
-    o <- (! Base bool; ø),
-    (MLeft Ends))
+  [υ]> (new i <- ? Base bool ; ø, o <- ! Base bool; ø, MLeft Ends)
 
     (* Cheat the system by using the channel o twice *)
     i?(_); ε <|> o!(υ _ true); (fun _ => o!(υ _ true); ε)
