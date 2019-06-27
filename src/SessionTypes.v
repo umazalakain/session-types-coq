@@ -253,6 +253,7 @@ Definition branch_input {ST MT A B mt}
 Hint Unfold branch_input.
 
 Fixpoint count_marked (p : Process bool TMT) : nat :=
+  (* Coq's termination checker complains if this is generalised *)
   let fix count_branches {n} {ss : Vector.t SType n}
           (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : nat :=
        match ps with
@@ -287,6 +288,7 @@ Notation "'none_marked' p" := (count_marked p = 0)(at level 50).
 Notation "'single_marked' p" := (count_marked p = 1)(at level 50).
 
 Fixpoint linear (p : Process bool TMT) : Prop :=
+  (* Coq's termination checker complains if this is generalised *)
   let fix linear_branches {n} {ss : Vector.t SType n}
           (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : Prop :=
        match ps with
@@ -445,8 +447,8 @@ Proof.
     eauto.
     destruct_linear.
     rewrite <- (congruence_count (H _ _)).
-    rewrite <- (congruence_count (H _ (C true))).
     rewrite <- (congruence_count (H (C true) _)).
+    rewrite <- (congruence_count (H _ (C true))).
     repeat split; eauto.
   + assumption.
   + eauto.
@@ -470,16 +472,26 @@ Theorem linearity_preservation : ∀ P Q, Reduction _ _ P Q → linear P → lin
       simpl in *.
       rewrite H3, H4, H6, H7.
       repeat split; eauto.
-  - dependent induction i.
-    + dependent destruction Qs.
-      rewrite (F1Forall).
+  - dependent induction i; dependent destruction Qs.
+    + rewrite F1Forall.
       simpl in *.
       decompose [and] lP.
       rewrite H3, H4, H5.
       rewrite (linearity_count H8).
       repeat split; eauto.
-    + admit.
+    + dependent destruction ss.
+      simpl in Ps.
+      rewrite FSForall.
+      simpl in lP.
+      decompose [and] lP.
+      refine (IHi _ _ _ Ps Qs _ _).
+      dependent destruction mt.
+      exact (V tt).
+      exact (C false).
+      rewrite (linearity_count H8) in *.
+      repeat split; eauto.
   - simpl in *.
+    admit.
   - destruct_linear.
     simpl in *.
     destruct (plus_is_O _ _ H).

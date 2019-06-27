@@ -15,44 +15,37 @@ Inductive Forall2 {A B} (P:A->B->Type): forall {n}, Vector.t A n -> Vector.t B n
     Forall2 P (x1::v1) (x2::v2).
 Hint Constructors Forall2.
 
-Definition nthForall : forall {A P n} {xs : Vector.t A n}
-                         (ps : Forall P xs) (i : Fin.t n), P xs[@i].
+Definition nthForall {A P n} {xs : Vector.t A n} :
+  ∀ (ps : Forall P xs) (i : Fin.t n), P xs[@i].
 Proof.
-  intros A P n xs ps i.
+  intros ps i.
   dependent induction ps; dependent induction i; eauto.
 Defined.
 Hint Unfold nthForall.
 Hint Transparent nthForall.
 
-Definition nthForall2 : forall {A B P n} {xs : Vector.t A n} {ys : Vector.t B n}
-                          (ps : Forall2 P xs ys) (i : Fin.t n), P xs[@i] ys[@i].
+Definition nthForall2 {A B P n} {xs : Vector.t A n} {ys : Vector.t B n} :
+  ∀ (ps : Forall2 P xs ys) (i : Fin.t n), P xs[@i] ys[@i].
 Proof.
-  intros A B P n xs ys ps i.
+  intros ps i.
   dependent induction ps; dependent induction i; eauto.
 Defined.
 Hint Unfold nthForall2.
 Hint Transparent nthForall2.
 
-Definition F1Forall : forall {A P n x} {xs : Vector.t A n} {p : P x} {ps : Forall P xs},
-                        nthForall (Forall_cons _ _ _ p ps) Fin.F1 = p.
+Definition F1Forall {A P n x} {xs : Vector.t A n} {p : P x} {ps : Forall P xs} :
+  nthForall (Forall_cons _ _ _ p ps) Fin.F1 = p.
 Proof.
-  intros A P n x xs p ps.
+Admitted.
+
+Definition FSForall {A P n i x} {xs : Vector.t A n} {p : P x} {ps : Forall P xs} :
+  nthForall (Forall_cons _ _ _ p ps) (Fin.FS i) = nthForall ps i.
+Proof.
   compute.
 Admitted.
 
-Definition tlForall : ∀ {A P n x} {xs : Vector.t A n},
-    Forall P (x :: xs) → Forall P xs.
+Definition FSVector {A n i} x (xs : Vector.t A n) :
+  (x :: xs)[@Fin.FS i] = xs[@i].
 Proof.
-  intros A P n x xs ps.
-  dependent induction ps.
-  exact ps.
-Defined.
-Hint Unfold tlForall.
-Hint Transparent tlForall.
-
-Definition FSForall : ∀ {A P n i x} {xs : Vector.t A n} {ps : Forall P (x :: xs)},
-    nthForall ps (Fin.FS i) = nthForall (tlForall ps) i.
-Proof.
-  intros A P n i x xs ps.
-  dependent induction ps.
-Admitted.
+  eauto.
+Qed.
