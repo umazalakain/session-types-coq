@@ -194,12 +194,12 @@ End Processes.
 
 Notation "'(new' s <- S , r <- R , SdR ) p" := (PNew _ _ S R SdR (fun s r => p))(at level 90).
 Notation "P <|> Q" := (PComp _ _ P Q)(at level 80).
-Notation "!( m ); p" := (POutput _ _ m p)(at level 80).
-Notation "c !( m ); p" := (POutput _ _ m p c)(at level 79).
-Notation "?( m ); p" := (PInput _ _ (fun m => p))(at level 80).
-Notation "c ?( m ); p" := (PInput _ _ (fun m => p) c)(at level 79).
-Notation "◃( i ); p" := (PSelect _ _ i p)(at level 80).
-Notation "c ◃( i ); p" := (PSelect _ _ i p c)(at level 79).
+Notation "![ m ]; p" := (POutput _ _ m p)(at level 80).
+Notation "c ![ m ]; p" := (POutput _ _ m p c)(at level 79).
+Notation "?[ m ]; p" := (PInput _ _ (fun m => p))(at level 80).
+Notation "c ?[ m ]; p" := (PInput _ _ (fun m => p) c)(at level 79).
+Notation "◃( i ]; p" := (PSelect _ _ i p)(at level 80).
+Notation "c ◃( i ]; p" := (PSelect _ _ i p c)(at level 79).
 Notation "▹[ x ; .. ; y ]" :=
   (PBranch _ _ (Forall_cons x .. (Forall_cons y Forall_nil) ..))(at level 80).
 Notation "c ▹[ x ; .. ; y ]" :=
@@ -344,8 +344,8 @@ Ltac reduction_step :=
   repeat match goal with
   | [ |- Reduction _ _ (PNew (? _; _) (! _; _) ?D ?P) _ ] =>
     apply RStruct with (PNew _ _ (inverse_duality D) (fun a b => P b a))
-  | [ |- Reduction _ _ (PNew _ _ ?D (fun a b => b?(m); ?PB <|> a!(?M); ?PA)) _ ] =>
-    apply RStruct with (PNew _ _ D (fun a b => a!(M); PA <|> b?(m); PB))
+  | [ |- Reduction _ _ (PNew _ _ ?D (fun a b => b?[m]; ?PB <|> a![?M]; ?PA)) _ ] =>
+    apply RStruct with (PNew _ _ D (fun a b => a![M]; PA <|> b?[m]; PB))
   end;
   constructors
 .
@@ -523,7 +523,7 @@ Qed.
 Example example1 : PProcess.
   refine
   ([υ]> (new i <- _, o <- _, _)
-    (i?(m); !(m); ε) <|> (o!(υ _ true); ?(m); ε)).
+    (i?[m]; ![m]; ε) <|> (o![υ _ true]; ?[m]; ε)).
   constructors.
 Defined.
 Print example1.
@@ -531,7 +531,7 @@ Print example1.
 Example example2 : PProcess.
   refine
   ([υ]> (new o <- ! Base bool ; ? Base bool ; ø, i <- ? Base bool ; ! Base bool ; ø, _)
-    (o!(υ _ true); ?(m); ε) <|> i?(m); !(m); ε).
+    (o![υ _ true]; ?[m]; ε) <|> i?[m]; ![m]; ε).
   constructors.
 Defined.
 
@@ -540,7 +540,7 @@ Example congruent_example1 : example1 ≡ example2. constructors. Qed.
 Example example3 : PProcess.
   refine
   ([υ]> (new o <- ? Base bool ; ø, i <- ! Base bool ; ø, _)
-    (o?(m); ε) <|> i!(υ _ true); ε).
+    (o?[m]; ε) <|> i![υ _ true]; ε).
   constructors.
 Defined.
 
@@ -549,7 +549,7 @@ Example reduction_example1 : example2 ⇒ example3. constructors. Qed.
 Example example4 : PProcess.
   refine
   ([υ]> (new i <- ! Base bool ; ø, o <- ? Base bool ; ø, _)
-    (i!(υ _ true); ε <|> o?(m); ε)).
+    (i![υ _ true]; ε <|> o?[m]; ε)).
   constructors.
 Defined.
 
@@ -567,9 +567,9 @@ Example channel_over_channel : PProcess :=
     (new i <- ? C[ ! Base bool ; ø ] ; ø, o <- ! C[ ! Base bool ; ø ] ; ø, MLeft Ends)
     (new i' <- ? Base bool ; ø, o' <- _, MLeft Ends)
 
-    (i?(c); fun a => ε a <|> c!(υ _ true); ε)
+    (i?[c]; fun a => ε a <|> c![υ _ true]; ε)
     <|>
-    (o!(o'); fun a => ε a <|> i'?(_); ε)
+    (o![o']; fun a => ε a <|> i'?[_]; ε)
 .
 
 Example channel_over_channel1 : PProcess :=
@@ -577,9 +577,9 @@ Example channel_over_channel1 : PProcess :=
     (new i' <- ? Base bool ; ø, o' <- ! Base bool ; ø, MLeft Ends)
     (new i <- ? C[ ! Base bool ; ø ] ; ø, o <- ! C[ ! Base bool ; ø ] ; ø, MLeft Ends)
 
-    (i?(c); fun a => c!(υ _ true); ε <|> ε a)
+    (i?[c]; fun a => c![υ _ true]; ε <|> ε a)
     <|>
-    (o!(o'); fun a => i'?(_); ε <|> ε a)
+    (o![o']; fun a => i'?[_]; ε <|> ε a)
 .
 
 Example congruent_example3: channel_over_channel ≡ channel_over_channel1. constructors. Qed.
@@ -601,4 +601,4 @@ Qed.
 Example branch_and_select : PProcess.
 refine
   ([υ]> (new i <- ▹ (! Base bool; ø) :: (? Base bool; ø) :: [], o <- ◃ (? Base bool; ø) :: (! Base bool; ø) :: [], _)
-          i▹[ (!(υ _ true); ε) ; (!(υ _ true); ε)] <|> o◃(Fin.F1); o?(m); ε).
+          i▹[ (![υ _ true]; ε) ; (![υ _ true]; ε)] <|> o◃(Fin.F1]; o?[m]; ε).
