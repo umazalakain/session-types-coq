@@ -5,6 +5,7 @@ Require Import Forall.
 Require Vectors.Vector.
 Require Import Arith.Plus.
 Import Vector.VectorNotations.
+From Equations Require Import Equations.
 
 Inductive MType : Type :=
 | Base : Set → MType
@@ -254,40 +255,42 @@ Definition branch_input {ST MT A B mt}
 .
 Hint Unfold branch_input.
 
-Fixpoint count_marked (p : Process bool TMT) : nat :=
-  (* Coq's termination checker complains if this is generalised *)
-  let fix count_branches {n} {ss : Vector.t SType n}
-          (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : nat :=
+Derive NoConfusion for MType.
+Derive Signature for Message.
+
+(* t means "Has it been already found?" *)
+Equations find (t : bool) (p : Process bool TMT) : Prop :=
+find t     (PNew _ _ _ P)                  => find t (P (C false) (C false)) ;
+find true  (PInput P (C true))             => False ;
+find _     (@PInput (Base _) _ P (C t))    => find t (P (V tt) (C false)) ;
+find _     (@PInput (Channel _) _ P (C t)) => find t (P (C false) (C false)) ;
+find true  (POutput m P (C true))          => False ;
+find _     (POutput (V _) P (C t))         => find t (P (C false)) ;
+find true  (POutput (C true) P (C false))  => False ;
+find _     (POutput (C true) P (C true))   => False ;
+find _     (POutput (C t) P (C false))     => find t (P (C false)) ;
+find _     (POutput (C false) P (C t))     => find t (P (C false)) ;
+find true  (PComp P Q)                     => ~ (or (find true P) (find true Q)) ;
+find false (PComp P Q)                     => or (find false P) (find false Q) ;
+find true  (PEnd (C true))                 => False ;
+find false (PEnd (C false))                => False ;
+find t     (PEnd (C _))                    => True ;
+find true  (PSelect i P (C true))          => False ;
+find _     (PSelect i P (C t))             => find t (P (C false)) ;
+find true  (PBranch Ps (C true))           => False ;
+find _     (PBranch Ps (C t))              =>
+  let fix find_branches {n} {ss : Vector.t SType n}
+          (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : Prop :=
        match ps with
-       | Forall_nil _ => 0
-       | Forall_cons _ _ _ p ps' => count_marked (p unmarked) + count_branches ps'
+       | Forall_nil _ => True
+       | Forall_cons _ P Ps' => find t (P unmarked) /\ find_branches Ps'
        end
   in
-  match p with
-  | PNew _ _ _ p => count_marked (p unmarked unmarked)
-
-  | PInput p c =>
-    count_if_marked c + branch_input p
-      (fun _ p' => count_marked (p' (V tt) unmarked))
-      (fun _ p' => count_marked (p' unmarked unmarked))
-
-  | POutput m p c =>
-    count_if_marked c + count_if_marked m + count_marked (p unmarked)
-
-  | PBranch p c =>
-    count_if_marked c + count_branches p
-
-  | PSelect i p c =>
-    count_if_marked c + count_marked (p unmarked)
-
-  | PComp l r  => count_marked l + count_marked r
-
-  | PEnd c => count_if_marked c
-  end
+  find_branches Ps
 .
 
-Notation "'none_marked' p" := (count_marked p = 0)(at level 50).
-Notation "'single_marked' p" := (count_marked p = 1)(at level 50).
+Notation "'none_marked' p" := (find true p)(at level 50).
+Notation "'single_marked' p" := (find false p)(at level 50).
 
 Fixpoint linear (p : Process bool TMT) : Prop :=
   (* Coq's termination checker complains if this is generalised *)
@@ -295,7 +298,7 @@ Fixpoint linear (p : Process bool TMT) : Prop :=
           (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : Prop :=
        match ps with
        | Forall_nil _ => True
-       | Forall_cons _ _ _ p ps' =>
+       | Forall_cons _ p ps' =>
          single_marked (p marked) /\
          linear (p unmarked) /\
          linear_branches ps'
