@@ -1,10 +1,12 @@
 Require Import Unicode.Utf8.
 Require Import Program.Equality.
 Require Import Arith.
+Require Import Lists.List.
 Require Import Forall.
 Require Vectors.Vector.
 Require Import Arith.Plus.
-Import Vector.VectorNotations.
+Import ListNotations.
+From Equations Require Import Equations.
 
 Inductive MType : Type :=
 | Base : Set → MType
@@ -97,7 +99,7 @@ Section Processes.
   | PSelect
     : ∀ {n : nat} {ss : Vector.t SType n}
     (i : Fin.t n)
-    , (Message C[ss[@i]] → Process)
+    , (Message C[Vector.nth ss i] → Process)
     → Message C[Select ss]
     → Process
 
@@ -162,7 +164,7 @@ Section Processes.
   | RCase {n mt} {i : Fin.t n} {ss rs : Vector.t SType n} {sDr} {Ps Qs} {m : Message mt} :
       PNew (Select ss) (Branch rs) (SRight sDr)
            (fun a b => PComp (PSelect i Ps a) (PBranch Qs b)) ⇒
-      PNew ss[@i] rs[@i] (nthForall2 sDr i)
+      PNew (Vector.nth ss i) (Vector.nth rs i) (nthForall2 sDr i)
            (fun a b => PComp (Ps a) (nthForall Qs i b))
 
   | RRes {s r P Q} :
@@ -200,9 +202,9 @@ Notation "c ?( m ); p" := (PInput _ _ (fun m => p) c)(at level 79).
 Notation "◃( i ); p" := (PSelect _ _ i p)(at level 80).
 Notation "c ◃( i ); p" := (PSelect _ _ i p c)(at level 79).
 Notation "▹[ x ; .. ; y ]" :=
-  (PBranch _ _ (Forall_cons x .. (Forall_cons y Forall_nil) ..))(at level 80).
+  (PBranch _ _ (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..))(at level 80).
 Notation "c ▹[ x ; .. ; y ]" :=
-  (PBranch _ _ (Forall_cons x .. (Forall_cons y Forall_nil) ..) c)(at level 79).
+  (PBranch _ _ (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..) c)(at level 79).
 Definition ε {ST : Type} {MT: Type → Type} : Message ST MT (Channel ø) → Process ST MT:= PEnd ST MT.
 
 Arguments V [ST MT M].
@@ -220,112 +222,62 @@ Arguments PEnd [ST MT].
 (**************************)
 
 Definition TMT : Type → Type := fun _ => unit.
-Definition fMT : ∀ (S: Set), S → Message bool TMT (Base S) := fun _ _ => V tt.
+Definition fMT : ∀ (S: Set), S → Message nat TMT (Base S) := fun _ _ => V tt.
 
-Definition is_marked {MT : Type → Type} {mt : MType} (m : Message bool MT mt) : bool :=
-  match m with
-  | V _ => false
-  | C m => m
-  end
+Inductive Splitting {A : Set} : list A → list A → list A → Set :=
+| Left (x : A) {l r m : list A} : Splitting l m r → Splitting (x :: l) (x :: m) r
+| Right (x : A) {l r m : list A} : Splitting l m r → Splitting l (x :: m) (x :: r)
+| Stop : Splitting [] [] []
 .
-Notation "'count_if_marked' c" := (if is_marked c then 1 else 0)(at level 50).
-Definition marked : ∀ s, Message bool TMT C[s] := fun s => C true.
-Definition unmarked : ∀ s, Message bool TMT C[s] := fun s => C false.
-Arguments marked [s].
-Arguments unmarked [s].
-Hint Unfold is_marked.
-Hint Unfold marked.
-Hint Unfold unmarked.
 
-(* Always recurse by passing unmarked arguments.
-   If the constructor accepts a channel as an argument, it has been used.
-   If a channel is sent as output, it has been used.
-   Channels received as input are considered fresh.
-*)
+Derive NoConfusion for MType.
 
-Definition branch_input {ST MT A B mt}
-           (P : Message ST MT mt → A)
-           (MP : ∀ {bmt}, (Message ST MT (Base bmt) → A) → B)
-           (CP : ∀ {smt}, (Message ST MT (Channel smt) → A) → B) : B :=
-  (match mt as mt' return (Message ST MT mt' → A) → B with
-   | Base _ => fun P' => MP P'
-   | Channel _ => fun P' => CP P'
-   end) P
-.
-Hint Unfold branch_input.
+Equations linear (n : nat) (fresh : list nat) (p : Process nat TMT) : Prop :=
 
-Fixpoint count_marked (p : Process bool TMT) : nat :=
+linear n fresh (PNew _ _ _ P) =>
+  linear (2+n) (n :: 1+n :: fresh) (P (C n) (C (1+n))) ;
+
+linear n fresh (@PInput (Base _) _ P (C c)) =>
+  In c fresh /\
+  linear (1+n) (n :: remove _ c fresh) (P (V tt) (C n)) ;
+
+linear n fresh (@PInput (Channel _) _ P (C c)) =>
+  In c fresh /\
+  linear (2+n) (n :: 1+n :: remove _ c fresh) (P (C n) (C (1+n))) ;
+
+linear n fresh (POutput (V _) P (C c)) =>
+  In c fresh /\
+  linear (1+n) (n :: remove _ c fresh) (P (C n)) ;
+
+linear n fresh (POutput (C m) P (C c)) =>
+  In c fresh /\
+  In m fresh /\
+  linear (1+n) (n :: remove _ m (remove _ c fresh)) (P (C n)) ;
+
+linear n fresh (PBranch ps (C c)) =>
   (* Coq's termination checker complains if this is generalised *)
-  let fix count_branches {n} {ss : Vector.t SType n}
-          (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : nat :=
-       match ps with
-       | Forall_nil _ => 0
-       | Forall_cons _ _ _ p ps' => count_marked (p unmarked) + count_branches ps'
-       end
-  in
-  match p with
-  | PNew _ _ _ p => count_marked (p unmarked unmarked)
-
-  | PInput p c =>
-    count_if_marked c + branch_input p
-      (fun _ p' => count_marked (p' (V tt) unmarked))
-      (fun _ p' => count_marked (p' unmarked unmarked))
-
-  | POutput m p c =>
-    count_if_marked c + count_if_marked m + count_marked (p unmarked)
-
-  | PBranch p c =>
-    count_if_marked c + count_branches p
-
-  | PSelect i p c =>
-    count_if_marked c + count_marked (p unmarked)
-
-  | PComp l r  => count_marked l + count_marked r
-
-  | PEnd c => count_if_marked c
-  end
-.
-
-Notation "'none_marked' p" := (count_marked p = 0)(at level 50).
-Notation "'single_marked' p" := (count_marked p = 1)(at level 50).
-
-Fixpoint linear (p : Process bool TMT) : Prop :=
-  (* Coq's termination checker complains if this is generalised *)
-  let fix linear_branches {n} {ss : Vector.t SType n}
-          (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : Prop :=
+  let fix linear_branches (n : nat) (fresh : list nat)
+          {l} {ss : Vector.t SType l}
+          (ps : Forall (fun s => Message nat TMT C[s] → Process nat TMT) ss) : Prop :=
        match ps with
        | Forall_nil _ => True
-       | Forall_cons _ _ _ p ps' =>
-         single_marked (p marked) /\
-         linear (p unmarked) /\
-         linear_branches ps'
+       | Forall_cons _ p ps' =>
+         linear (1+n) (n :: fresh) (p (C n)) /\
+         linear_branches n fresh ps'
        end
   in
-  none_marked p /\ (
-    match p with
-    | PNew _ _ _ p =>
-      single_marked (p marked unmarked) /\
-      single_marked (p unmarked marked) /\
-      linear (p unmarked unmarked)
+  In c fresh /\
+  linear_branches n (remove _ c fresh) ps ;
 
-    | PInput p _ => branch_input p
-       (fun _ p' => single_marked (p' (V tt) marked) /\
-                 linear (p' (V tt) unmarked))
-       (fun _ p' => single_marked (p' marked unmarked) /\
-                 single_marked (p' unmarked marked) /\
-                 linear (p' unmarked unmarked))
+linear n fresh (PSelect _ P (C c)) =>
+  In c fresh /\
+  linear (1+n) (n :: remove _ c fresh) (P (C n)) ;
 
-    | POutput _ p _ => single_marked (p marked) /\ linear (p unmarked)
+linear n fresh (PComp l r) => linear n fresh l /\ linear n fresh r ;
 
-    | PBranch p _ => linear_branches p
-
-    | PSelect _ p _ => single_marked (p marked) /\ linear (p unmarked)
-
-    | PComp l r => linear l /\ linear r
-
-    | PEnd _ => True
-    end
-  )
+linear n fresh (PEnd (C c)) =>
+  In c fresh /\
+  remove _ c fresh = []
 .
 
 (******************************)
@@ -607,7 +559,10 @@ Proof.
   compute; intros; decompose [and] H; discriminate.
 Qed.
 
-Example branch_and_select : PProcess.
-refine
-  ([υ]> (new i <- ▹ (! Base bool; ø) :: (? Base bool; ø) :: [], o <- ◃ (? Base bool; ø) :: (! Base bool; ø) :: [], _)
-          i▹[ (!(υ _ true); ε) ; (!(υ _ true); ε)] <|> o◃(Fin.F1); o?(m); ε).
+Hint Transparent Vector.nth.
+Hint Unfold Vector.nth.
+
+Example branch_and_select : PProcess :=
+  [υ]> (new i <- ▹ (! Base bool; ø) :: (? Base bool; ø) :: [],
+            o <- ◃ (? Base bool; ø) :: (! Base bool; ø) :: [], _)
+         i▹[ (!(υ _ true); ε) ; (?(m); ε)] <|> o◃(Fin.F1); ?(m); ε.
