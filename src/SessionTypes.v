@@ -223,37 +223,16 @@ Arguments PEnd [ST MT].
 Definition TMT : Type → Type := fun _ => unit.
 Definition fMT : ∀ (S: Set), S → Message bool TMT (Base S) := fun _ _ => V tt.
 
-Definition is_marked {MT : Type → Type} {mt : MType} (m : Message bool MT mt) : bool :=
-  match m with
-  | V _ => false
-  | C m => m
-  end
-.
-Notation "'count_if_marked' c" := (if is_marked c then 1 else 0)(at level 50).
 Definition marked : ∀ s, Message bool TMT C[s] := fun s => C true.
 Definition unmarked : ∀ s, Message bool TMT C[s] := fun s => C false.
 Arguments marked [s].
 Arguments unmarked [s].
-Hint Unfold is_marked.
-Hint Unfold marked.
-Hint Unfold unmarked.
 
 (* Always recurse by passing unmarked arguments.
    If the constructor accepts a channel as an argument, it has been used.
    If a channel is sent as output, it has been used.
    Channels received as input are considered fresh.
 *)
-
-Definition branch_input {ST MT A B mt}
-           (P : Message ST MT mt → A)
-           (MP : ∀ {bmt}, (Message ST MT (Base bmt) → A) → B)
-           (CP : ∀ {smt}, (Message ST MT (Channel smt) → A) → B) : B :=
-  (match mt as mt' return (Message ST MT mt' → A) → B with
-   | Base _ => fun P' => MP P'
-   | Channel _ => fun P' => CP P'
-   end) P
-.
-Hint Unfold branch_input.
 
 Derive NoConfusion for MType.
 Derive Signature for Message.
@@ -279,11 +258,12 @@ find true  (PSelect i P (C true))          => False ;
 find _     (PSelect i P (C t))             => find t (P (C false)) ;
 find true  (PBranch Ps (C true))           => False ;
 find _     (PBranch Ps (C t))              =>
+  (* Coq's termination checker complains if this is generalised *)
   let fix find_branches {n} {ss : Vector.t SType n}
           (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : Prop :=
        match ps with
        | Forall_nil _ => True
-       | Forall_cons _ P Ps' => find t (P unmarked) /\ find_branches Ps'
+       | Forall_cons _ P Ps' => find t (P (C false)) /\ find_branches Ps'
        end
   in
   find_branches Ps
@@ -292,43 +272,51 @@ find _     (PBranch Ps (C t))              =>
 Notation "'none_marked' p" := (find true p)(at level 50).
 Notation "'single_marked' p" := (find false p)(at level 50).
 
-Fixpoint linear (p : Process bool TMT) : Prop :=
+Equations linear (P : Process bool TMT) : Prop := {
+linear P => none_marked P /\ linear_do P }
+where
+linear_do (P : Process bool TMT) : Prop :=
+linear_do (PNew _ _ _ P) =>
+  single_marked (P marked unmarked) /\
+  single_marked (P unmarked marked) /\
+  linear (P unmarked unmarked) ;
+
+linear_do (@PInput (Base _) _ P _) =>
+  single_marked (P (V tt) marked) /\
+  linear (P (V tt) unmarked) ;
+
+linear_do (@PInput (Channel _) _ P _) =>
+  single_marked (P marked unmarked) /\
+  single_marked (P unmarked marked) /\
+  linear (P unmarked unmarked) ;
+
+linear_do (POutput _ P _) =>
+  single_marked (P marked) /\
+  linear (P unmarked) ;
+
+linear_do (PComp P Q) =>
+  linear P /\
+  linear Q ;
+
+linear_do (PEnd _) => True ;
+
+linear_do (PSelect _ P _) =>
+  single_marked (P marked) /\
+  linear (P unmarked) ;
+
+linear_do (PBranch Ps _) =>
   (* Coq's termination checker complains if this is generalised *)
   let fix linear_branches {n} {ss : Vector.t SType n}
           (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : Prop :=
        match ps with
        | Forall_nil _ => True
-       | Forall_cons _ p ps' =>
-         single_marked (p marked) /\
-         linear (p unmarked) /\
-         linear_branches ps'
+       | Forall_cons _ P Ps' =>
+         single_marked (P marked) /\
+         linear (P unmarked) /\
+         linear_branches Ps'
        end
   in
-  none_marked p /\ (
-    match p with
-    | PNew _ _ _ p =>
-      single_marked (p marked unmarked) /\
-      single_marked (p unmarked marked) /\
-      linear (p unmarked unmarked)
-
-    | PInput p _ => branch_input p
-       (fun _ p' => single_marked (p' (V tt) marked) /\
-                 linear (p' (V tt) unmarked))
-       (fun _ p' => single_marked (p' marked unmarked) /\
-                 single_marked (p' unmarked marked) /\
-                 linear (p' unmarked unmarked))
-
-    | POutput _ p _ => single_marked (p marked) /\ linear (p unmarked)
-
-    | PBranch p _ => linear_branches p
-
-    | PSelect _ p _ => single_marked (p marked) /\ linear (p unmarked)
-
-    | PComp l r => linear l /\ linear r
-
-    | PEnd _ => True
-    end
-  )
+  linear_branches Ps
 .
 
 (******************************)
