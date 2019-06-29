@@ -363,6 +363,9 @@ Ltac destruct_linear :=
   | [ H : linear _ |- _ ] => destruct H
   end;
   try match goal with
+  | [ H : find _ _ |- _ ] => destruct H
+  end;
+  try match goal with
   | [ H : and _ _ |- _ ] => destruct H
   end;
   autounfold with * in *
@@ -377,79 +380,129 @@ Ltac destruct_linear :=
 Lemma false_unmarked s : @C bool _ s false = unmarked. eauto. Qed.
 Hint Rewrite false_unmarked.
 
-Lemma linearity_count {P} : linear P → count_marked P = 0.
+Lemma linearity_none_marked {P} : linear P → none_marked P.
 Proof.
   intro lP.
   induction P.
   all: simpl; destruct_linear; eauto.
 Qed.
-Hint Resolve linearity_count.
+Hint Resolve linearity_none_marked.
 
-Lemma congruence_count {P Q} : Congruence _ _ P Q → count_marked P = count_marked Q.
+Lemma congruence_none_marked {P Q} : Congruence _ _ P Q → none_marked P → none_marked Q.
 Proof.
-  intros PcQ.
-  induction PcQ.
-  all: simpl; eauto; try ring.
-  - induction mt; eauto.
-  - rewrite IHPcQ1. rewrite IHPcQ2. reflexivity.
+  intros PcQ nmP.
+  dependent induction PcQ; simpl; intuition; try tauto.
+  - dependent induction c;
+      dependent induction m;
+      dependent induction s;
+      compute in nmP;
+      try tauto;
+      try exact (H0 (C false) nmP).
+    dependent induction s0.
+    contradiction.
+    exact (H0 (C false) nmP).
+  - dependent induction c;
+      dependent induction mt;
+      dependent induction s.
+    contradiction.
+    exact (H0 (V tt) (C false) nmP).
+    all: dependent induction s0;
+      try contradiction;
+      exact (H0 (C false) (C false) nmP).
 Qed.
-Hint Resolve congruence_count.
 
-Theorem congruence_linearity : ∀ P Q, Congruence _ _ P Q → linear P → linear Q.
+Hint Resolve congruence_none_marked.
+
+Lemma congruence_single_marked {P Q} : Congruence _ _ P Q → single_marked P → single_marked Q.
+  intros PcQ smP.
+  dependent induction PcQ; simpl in smP; decompose [and or] smP; simpl; eauto.
+  + dependent induction m;
+      dependent induction c;
+      dependent induction s.
+    exact (congruence_none_marked (H (C false)) smP).
+    exact (H0 (C false) smP).
+    dependent induction s0.
+    contradiction.
+    exact (congruence_none_marked (H (C false)) smP).
+    dependent induction s0.
+    exact (congruence_none_marked (H (C false)) smP).
+    exact (H0 (C false) smP).
+  + dependent induction mt;
+      dependent induction c;
+      dependent induction s.
+    exact (congruence_none_marked (H (V tt) (C false)) smP).
+    exact (H0 (V tt) (C false) smP).
+    dependent induction s0.
+    exact (congruence_none_marked (H (C false) (C false)) smP).
+    exact (H0 (C false) (C false) smP).
+    dependent induction s0.
+    exact (congruence_none_marked (H (C false) (C false)) smP).
+    exact (H0 (C false) (C false) smP).
+    dependent induction s0.
+    exact (congruence_none_marked (H (C false) (C false)) smP).
+    exact (H0 (C false) (C false) smP).
+    dependent induction s0.
+    exact (congruence_none_marked (H (C false) (C false)) smP).
+    exact (H0 (C false) (C false) smP).
+    dependent induction s0.
+    exact (congruence_none_marked (H (C false) (C false)) smP).
+    exact (H0 (C false) (C false) smP).
+Qed.
+Hint Resolve congruence_single_marked.
+
+Theorem congruence_liearity {P Q} : Congruence _ _ P Q → linear P → linear Q.
 Proof.
-  intros P Q PcQ lP.
-  induction PcQ.
-  all: simpl; destruct_linear.
-  + rewrite (linearity_count H0).
-    rewrite (linearity_count H1).
+  intros PcQ lP.
+  induction PcQ; simpl; destruct_linear; auto.
+  - pose (congruence_none_marked (H _ _) H1).
+    pose (congruence_single_marked (H _ _) H5).
+    pose (congruence_single_marked (H _ _) H6).
+    repeat split; auto.
+  - pose (congruence_none_marked (H _ _ _ _) H1).
+    pose (congruence_single_marked (H _ _ _ _) H2).
+    pose (congruence_single_marked (H _ _ _ _) H3).
+    pose (congruence_single_marked (H _ _ _ _) H5).
+    pose (congruence_single_marked (H _ _ _ _) H6).
+    repeat split; auto.
+  - pose (congruence_none_marked (H _ _) H1).
+    pose (congruence_single_marked (H _ _) H2).
+    pose (congruence_single_marked (H _ _) H3).
+    repeat split; auto.
+  - pose (congruence_none_marked (H _ _) H1).
+    pose (congruence_single_marked (H _ _) H2).
+    pose (congruence_single_marked (H _ _) H3).
+    repeat split; auto.
+  - dependent induction c.
+    dependent induction s.
+    contradiction H1.
+    dependent induction m.
+    pose (congruence_none_marked (H _) H1).
+    pose (congruence_single_marked (H _) H2).
     auto.
-  + rewrite (linearity_count H1).
-    rewrite (linearity_count H2).
-    rewrite (linearity_count H3).
-    eauto.
-  + rewrite (linearity_count (IHPcQ1 H0)).
-    rewrite (linearity_count (IHPcQ2 H1)).
-    eauto.
-  + rewrite (linearity_count (H0 _ _ H6)).
-    rewrite (linearity_count H3).
-    repeat rewrite <- (congruence_count (H _ _)).
-    rewrite H4.
-    rewrite H5.
-    repeat split; eauto.
-  + rewrite <- (congruence_count (H _ _ _ _)).
-    rewrite <- (congruence_count (H (C true) _ _ _)).
-    rewrite <- (congruence_count (H _ (C true) _ _)).
-    rewrite <- (congruence_count (H _ _ (C true) _)).
-    rewrite <- (congruence_count (H _ _ _ (C true))).
-    repeat split; eauto.
-  + rewrite <- (congruence_count (H _ _)).
-    rewrite <- (congruence_count (H (C true) _)).
-    rewrite <- (congruence_count (H _ (C true))).
-    repeat split; eauto.
-  + rewrite <- (congruence_count (H _ _)).
-    rewrite <- (congruence_count (H (C true) _)).
-    rewrite <- (congruence_count (H _ (C true))).
-    repeat split; eauto.
-  + simpl in *.
-    destruct (plus_is_O _ _ H1).
-    destruct (plus_is_O _ _ H5).
-    rewrite <- (congruence_count (H _)).
-    rewrite <- (congruence_count (H (C true))).
-    repeat split; eauto.
-  + dependent induction mt.
-    destruct_linear.
-    rewrite <- (congruence_count (H _ _)).
-    rewrite <- (congruence_count (H _ (C true))).
-    eauto.
-    destruct_linear.
-    rewrite <- (congruence_count (H _ _)).
-    rewrite <- (congruence_count (H (C true) _)).
-    rewrite <- (congruence_count (H _ (C true))).
-    repeat split; eauto.
-  + assumption.
-  + eauto.
+    dependent induction s.
+    contradiction H1.
+    pose (congruence_none_marked (H _) H1).
+    pose (congruence_single_marked (H _) H2).
+    auto.
+  - dependent induction mt.
+    dependent induction c.
+    dependent induction s.
+    contradiction H1.
+    decompose [and] H2.
+    pose (congruence_none_marked (H _ _) H1).
+    pose (congruence_single_marked (H _ _) H3).
+    auto.
+    dependent induction c.
+    dependent induction s0.
+    contradiction H1.
+    decompose [and] H2.
+    pose (congruence_none_marked (H _ _) H1).
+    pose (congruence_single_marked (H _ _) H3).
+    pose (congruence_single_marked (H _ _) H5).
+    auto.
 Qed.
 
+(*
 Theorem reduction_count {P Q} : Reduction _ _ P Q → count_marked P = count_marked Q.
   intro PrQ.
   dependent induction PrQ.
@@ -518,6 +571,7 @@ Proof.
   all: intros slP sPrQ.
   exact (reduction_linearity sPrQ slP).
 Qed.
+*)
 
 (******************************************)
 (*               EXAMPLES                 *)
