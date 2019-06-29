@@ -239,35 +239,37 @@ Derive Signature for Message.
 
 (* t means "Has it been already found?" *)
 Equations find (t : bool) (p : Process bool TMT) : Prop :=
-find t     (PNew _ _ _ P)                  => find t (P (C false) (C false)) ;
+find _     (PNew _ _ _ P)                  => find t (P (C false) (C false)) ;
 find true  (PInput P (C true))             => False ;
-find _     (@PInput (Base _) _ P (C t))    => find t (P (V tt) (C false)) ;
-find _     (@PInput (Channel _) _ P (C t)) => find t (P (C false) (C false)) ;
+find t     (@PInput (Base _) _ P (C c))    => find (t || c) (P (V tt) (C false)) ;
+find t     (@PInput (Channel _) _ P (C c)) => find (t || c) (P (C false) (C false)) ;
 find true  (POutput m P (C true))          => False ;
-find _     (POutput (V _) P (C t))         => find t (P (C false)) ;
+find t     (POutput (V _) P (C c))         => find (t || c) (P (C false)) ;
 find true  (POutput (C true) P (C false))  => False ;
 find _     (POutput (C true) P (C true))   => False ;
-find _     (POutput (C t) P (C false))     => find t (P (C false)) ;
-find _     (POutput (C false) P (C t))     => find t (P (C false)) ;
-find true  (PComp P Q)                     => ~ (or (find true P) (find true Q)) ;
-find false (PComp P Q)                     => or (find false P) (find false Q) ;
+find t     (POutput (C c) P (C false))     => find (t || c) (P (C false)) ;
+find t     (POutput (C false) P (C c))     => find (t || c) (P (C false)) ;
+find true  (PComp P Q)                     => and (find true P) (find true Q) ;
+find false (PComp P Q)                     => or (and (find true P) (find false Q))
+                                                (and (find false P) (find true Q)) ;
 find true  (PEnd (C true))                 => False ;
 find false (PEnd (C false))                => False ;
-find t     (PEnd (C _))                    => True ;
+find _     (PEnd (C _))                    => True ;
 find true  (PSelect i P (C true))          => False ;
-find _     (PSelect i P (C t))             => find t (P (C false)) ;
+find t     (PSelect i P (C c))             => find (t || c) (P (C false)) ;
 find true  (PBranch Ps (C true))           => False ;
-find _     (PBranch Ps (C t))              =>
+find t     (PBranch Ps (C c))              =>
   (* Coq's termination checker complains if this is generalised *)
   let fix find_branches {n} {ss : Vector.t SType n}
           (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : Prop :=
        match ps with
        | Forall_nil _ => True
-       | Forall_cons _ P Ps' => find t (P (C false)) /\ find_branches Ps'
+       | Forall_cons _ P Ps' => find (t || c) (P (C false)) /\ find_branches Ps'
        end
   in
   find_branches Ps
 .
+Global Transparent find.
 
 Notation "'none_marked' p" := (find true p)(at level 50).
 Notation "'single_marked' p" := (find false p)(at level 50).
@@ -318,6 +320,7 @@ linear_do (PBranch Ps _) =>
   in
   linear_branches Ps
 .
+Global Transparent linear.
 
 (******************************)
 (*  PARAMETRIC GENERALISATION *)
@@ -588,15 +591,12 @@ Example nonlinear_example : PProcess :=
   [υ]> (new i <- ? Base bool ; ø, o <- ! Base bool; ø, MLeft Ends)
 
     (* Cheat the system by using the channel o twice *)
-    i?(_); ε <|> o!(υ _ true); (fun _ => o!(υ _ true); ε)
+    i?[_]; ε <|> o![υ _ true]; (fun _ => o![υ _ true]; ε)
     .
 
 Example linear_example1 : Linear example1. compute. tauto. Qed.
 
-Example nonlinear_example1 : ~ (Linear nonlinear_example).
-Proof.
-  compute; intros; decompose [and] H; discriminate.
-Qed.
+Example nonlinear_example1 : ~ (Linear nonlinear_example). compute. tauto. Qed.
 
 Example branch_and_select : PProcess.
 refine
