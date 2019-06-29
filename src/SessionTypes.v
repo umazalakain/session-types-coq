@@ -450,7 +450,7 @@ Lemma congruence_single_marked {P Q} : Congruence _ _ P Q → single_marked P �
 Qed.
 Hint Resolve congruence_single_marked.
 
-Theorem congruence_liearity {P Q} : Congruence _ _ P Q → linear P → linear Q.
+Theorem congruence_linearity {P Q} : Congruence _ _ P Q → linear P → linear Q.
 Proof.
   intros PcQ lP.
   induction PcQ; simpl; destruct_linear; auto.
@@ -502,10 +502,80 @@ Proof.
     auto.
 Qed.
 
-(*
-Theorem reduction_count {P Q} : Reduction _ _ P Q → count_marked P = count_marked Q.
-  intro PrQ.
+Theorem reduction_none_marked {P Q} : Reduction _ _ P Q → none_marked P → none_marked Q.
+  intros PrQ nmP.
   dependent induction PrQ.
+  - destruct_linear.
+    split.
+    dependent induction m.
+    auto.
+    dependent induction s0.
+    contradiction.
+    auto.
+    dependent induction mt.
+    destruct m.
+    destruct t.
+    auto.
+    destruct b.
+    contradiction.
+    auto.
+    simpl in H0.
+    dependent destruction m.
+    destruct b.
+    contradiction.
+    auto.
+  - admit.
+  - exact (H0 _ _ nmP).
+  - destruct_linear.
+    repeat split; auto.
+  - exact (IHPrQ (congruence_none_marked H nmP)).
+Admitted.
+
+Theorem output_marked {s P} :
+  single_marked (@POutput _ _ _ s (@C _ _ s true) P (C false)) →
+  none_marked (P (C false)).
+Proof.
+  auto.
+Qed.
+
+Theorem input_unmarked {s t} {P : Message _ TMT C[s] → Message _ TMT C[t] → Process _ _} :
+  linear (P (C false) (C false)) →
+  single_marked (P (C true) (C false)).
+Proof.
+  intro.
+  dependent induction P; destruct_linear.
+  - exact (H (C false) (C false) H1).
+  - dependent induction m.
+    dependent induction m0.
+    dependent induction s1.
+    simpl.
+    pose (H (V tt) (C false) H0).
+Admitted.
+
+Theorem reduction_single_marked {P Q} : Reduction _ _ P Q → single_marked P → single_marked Q.
+  intros PrQ nmP.
+  dependent induction PrQ.
+  - destruct_linear.
+    + destruct m.
+      destruct t.
+      left.
+      auto.
+      left.
+      destruct b.
+      contradiction.
+      auto.
+    + simpl.
+      destruct m.
+      destruct t.
+      right.
+      auto.
+      destruct b.
+      left.
+      pose (output_marked H).
+      simpl in H0.
+      admit.
+      right.
+      auto.
 Admitted.
 
 Theorem reduction_linearity {P Q} : Reduction _ _ P Q → linear P → linear Q.
@@ -515,22 +585,15 @@ Theorem reduction_linearity {P Q} : Reduction _ _ P Q → linear P → linear Q.
     dependent induction m.
     + destruct_linear.
       simpl in *.
-      repeat rewrite false_unmarked in *.
       destruct m.
-      rewrite H, H3, H4, H5, H6.
       repeat split; eauto.
     + destruct_linear.
       induction s0.
-      discriminate H3.
-      repeat rewrite false_unmarked in *.
-      simpl in *.
-      rewrite H3, H4, H6, H7.
+      contradiction.
       repeat split; eauto.
   - dependent induction i; dependent destruction Qs.
     + simpl in *.
       decompose [and] lP.
-      rewrite H3, H4, H5.
-      rewrite (linearity_count H8).
       repeat split; eauto.
     + dependent destruction ss.
       simpl in Ps.
@@ -540,20 +603,20 @@ Theorem reduction_linearity {P Q} : Reduction _ _ P Q → linear P → linear Q.
       dependent destruction mt.
       exact (V tt).
       exact (C false).
-      rewrite (linearity_count H8) in *.
+      simpl in *.
+      admit.
+      (*
+      pose (linearity_none_marked H8).
       repeat split; eauto.
+*)
   - destruct_linear.
-    simpl.
-    rewrite <- (reduction_count (H marked unmarked)).
-    rewrite <- (reduction_count (H unmarked marked)).
-    repeat split; eauto.
+    pose (reduction_none_marked (H _ _) H1).
+    pose (reduction_single_marked (H _ _) H2).
+    pose (reduction_single_marked (H _ _) H3).
+    repeat split; auto.
   - destruct_linear.
-    simpl in *.
-    destruct (plus_is_O _ _ H).
-    rewrite H3.
-    rewrite (linearity_count (IHPrQ H0)).
     repeat split; eauto.
-  - exact (IHPrQ (congruence_linearity _ _ H lP)).
+  - exact (IHPrQ (congruence_linearity H lP)).
 Admitted.
 
 Theorem TypePreservation : ∀ (P Q : PProcess), P ⇒ Q → Linear P → Linear Q.
@@ -571,7 +634,6 @@ Proof.
   all: intros slP sPrQ.
   exact (reduction_linearity sPrQ slP).
 Qed.
-*)
 
 (******************************************)
 (*               EXAMPLES                 *)
