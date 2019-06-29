@@ -98,8 +98,8 @@ Section Processes.
   | PSelect
     : ∀ {n : nat} {ss : Vector.t SType n}
     (i : Fin.t n)
-    , (Message C[ss[@i]] → Process)
-    → Message C[Select ss]
+    , Message C[Select ss]
+    → (Message C[ss[@i]] → Process)
     → Process
 
   | PComp : Process → Process → Process
@@ -162,7 +162,7 @@ Section Processes.
 
   | RCase {n mt} {i : Fin.t n} {ss rs : Vector.t SType n} {sDr} {Ps Qs} {m : Message mt} :
       PNew (Select ss) (Branch rs) (SRight sDr)
-           (fun a b => PComp (PSelect i Ps a) (PBranch Qs b)) ⇒
+           (fun a b => PComp (PSelect i a Ps) (PBranch Qs b)) ⇒
       PNew ss[@i] rs[@i] (nthForall2 sDr i)
            (fun a b => PComp (Ps a) (nthForall Qs i b))
 
@@ -198,12 +198,12 @@ Notation "![ m ]; p" := (POutput _ _ m p)(at level 80).
 Notation "c ![ m ]; p" := (POutput _ _ m p c)(at level 79).
 Notation "?[ m ]; p" := (PInput _ _ (fun m => p))(at level 80).
 Notation "c ?[ m ]; p" := (PInput _ _ (fun m => p) c)(at level 79).
-Notation "◃( i ]; p" := (PSelect _ _ i p)(at level 80).
-Notation "c ◃( i ]; p" := (PSelect _ _ i p c)(at level 79).
+Notation "◃[ i ]; p" := (fun c => PSelect _ _ i c p)(at level 80).
+Notation "c ◃[ i ]; p" := (PSelect _ _ i c p)(at level 79).
 Notation "▹[ x ; .. ; y ]" :=
-  (PBranch _ _ (Forall_cons x .. (Forall_cons y Forall_nil) ..))(at level 80).
+  (PBranch _ _ (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..))(at level 80).
 Notation "c ▹[ x ; .. ; y ]" :=
-  (PBranch _ _ (Forall_cons x .. (Forall_cons y Forall_nil) ..) c)(at level 79).
+  (PBranch _ _ (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..) c)(at level 79).
 Definition ε {ST : Type} {MT: Type → Type} : Message ST MT (Channel ø) → Process ST MT:= PEnd ST MT.
 
 Arguments V [ST MT M].
@@ -255,8 +255,8 @@ find false (PComp P Q)                     => or (and (find true P) (find false 
 find true  (PEnd (C true))                 => False ;
 find false (PEnd (C false))                => False ;
 find _     (PEnd (C _))                    => True ;
-find true  (PSelect i P (C true))          => False ;
-find t     (PSelect i P (C c))             => find (t || c) (P (C false)) ;
+find true  (PSelect i (C true) P)          => False ;
+find t     (PSelect i (C c) P)             => find (t || c) (P (C false)) ;
 find true  (PBranch Ps (C true))           => False ;
 find t     (PBranch Ps (C c))              =>
   (* Coq's termination checker complains if this is generalised *)
@@ -302,7 +302,7 @@ linear_do (PComp P Q) =>
 
 linear_do (PEnd _) => True ;
 
-linear_do (PSelect _ P _) =>
+linear_do (PSelect _ _ P) =>
   single_marked (P marked) /\
   linear (P unmarked) ;
 
@@ -601,4 +601,4 @@ Example nonlinear_example1 : ~ (Linear nonlinear_example). compute. tauto. Qed.
 Example branch_and_select : PProcess.
 refine
   ([υ]> (new i <- ▹ (! Base bool; ø) :: (? Base bool; ø) :: [], o <- ◃ (? Base bool; ø) :: (! Base bool; ø) :: [], _)
-          i▹[ (![υ _ true]; ε) ; (![υ _ true]; ε)] <|> o◃(Fin.F1]; o?[m]; ε).
+          i▹[ (![υ _ true]; ε) ; (?[m]; ε)] <|> o◃[Fin.F1]; ?[_]; ε).
