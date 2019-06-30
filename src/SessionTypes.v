@@ -558,7 +558,6 @@ Lemma reduction_find {P Q} : Reduction _ _ P Q → ∀ t, find t P → find t Q.
     auto.
     destruct b; destruct H0; auto.
 Qed.
-
 Hint Resolve reduction_find.
 
 Theorem reduction_linearity {P Q} : Reduction _ _ P Q → linear P → linear Q.
@@ -597,8 +596,9 @@ Theorem reduction_linearity {P Q} : Reduction _ _ P Q → linear P → linear Q.
     repeat split; eauto.
   - exact (IHPrQ (congruence_linearity H lP)).
 Qed.
+Hint Resolve reduction_linearity.
 
-Theorem TypePreservation : ∀ (P Q : PProcess), P ⇒ Q → Linear P → Linear Q.
+Theorem type_preservation : ∀ (P Q : PProcess), P ⇒ Q → Linear P → Linear Q.
 Proof.
   intros P Q PrQ lP.
   unfold PProcess in P, Q.
@@ -613,6 +613,7 @@ Proof.
   all: intros slP sPrQ.
   exact (reduction_linearity sPrQ slP).
 Qed.
+Hint Resolve type_preservation.
 
 (******************************************)
 (*               EXAMPLES                 *)
@@ -643,6 +644,10 @@ Example example3 : PProcess.
 Defined.
 
 Example reduction_example1 : example2 ⇒ example3. constructors. Qed.
+
+Example type_preservation_example1 : example2 ⇒ example3 → Linear example2 → Linear example3.
+eauto.
+Qed.
 
 Example example4 : PProcess.
   refine
