@@ -242,7 +242,10 @@ Equations find (t : bool) (p : Process bool TMT) : Prop :=
 find _     (PNew _ _ _ P)                  => find t (P (C false) (C false)) ;
 find true  (PInput P (C true))             => False ;
 find t     (@PInput (Base _) _ P (C c))    => find (t || c) (P (V tt) (C false)) ;
-find t     (@PInput (Channel _) _ P (C c)) => find (t || c) (P (C false) (C false)) ;
+find t     (@PInput (Channel _) _ P (C c)) => if (orb t c)
+                                             then and (find true (P (C false) (C false)))
+                                                      (find false (P (C true) (C false)))
+                                             else find false (P (C false) (C false)) ;
 find true  (POutput m P (C true))          => False ;
 find t     (POutput (V _) P (C c))         => find (t || c) (P (C false)) ;
 find true  (POutput (C true) P (C false))  => False ;
@@ -388,194 +391,166 @@ Proof.
 Qed.
 Hint Resolve linearity_none_marked.
 
-Lemma congruence_none_marked {P Q} : Congruence _ _ P Q → none_marked P → none_marked Q.
-Proof.
-  intros PcQ nmP.
-  dependent induction PcQ; simpl; intuition; try tauto.
-  - dependent induction c;
-      dependent induction m;
-      dependent induction s;
-      compute in nmP;
-      try tauto;
-      try exact (H0 (C false) nmP).
-    dependent induction s0.
+Lemma congruence_find {P Q} : Congruence _ _ P Q → ∀ t, find t P → find t Q.
+  intros PcQ t fP.
+  dependent induction PcQ; induction t; simpl; intuition; try tauto.
+  - destruct_linear; auto.
+  - destruct_linear; auto.
+  - destruct_linear.
+    left.
+    auto.
+    right.
+    auto.
+  - destruct_linear.
+    left.
+    auto.
+    right.
+    auto.
+  - dependent induction c.
+    dependent induction m.
+    destruct m.
+    destruct s.
     contradiction.
-    exact (H0 (C false) nmP).
-  - dependent induction c;
-      dependent induction mt;
-      dependent induction s.
+    exact (H0 _ true fP).
+    destruct s.
     contradiction.
-    exact (H0 (V tt) (C false) nmP).
-    all: dependent induction s0;
-      try contradiction;
-      exact (H0 (C false) (C false) nmP).
+    destruct s0.
+    contradiction.
+    exact (H0 _ true fP).
+  - dependent induction c.
+    dependent induction m.
+    destruct m.
+    destruct s.
+    exact (H0 _ true fP).
+    exact (H0 _ false fP).
+    destruct s0.
+    destruct s.
+    contradiction fP.
+    exact (H0 _ true fP).
+    destruct s.
+    exact (H0 _ true fP).
+    exact (H0 _ false fP).
+  - dependent induction c.
+    dependent induction mt.
+    destruct s.
+    contradiction.
+    exact (H0 _ _ true fP).
+    destruct s0.
+    contradiction.
+    destruct fP.
+    split.
+    exact (H0 _ _ true H1).
+    exact (H0 _ _ false H2).
+  - dependent induction c.
+    dependent induction mt.
+    destruct s.
+    exact (H0 _ _ true fP).
+    exact (H0 _ _ false fP).
+    destruct s0.
+    destruct fP.
+    split.
+    exact (H0 _ _ true H1).
+    exact (H0 _ _ false H2).
+    exact (H0 _ _ false fP).
 Qed.
-
-Hint Resolve congruence_none_marked.
-
-Lemma congruence_single_marked {P Q} : Congruence _ _ P Q → single_marked P → single_marked Q.
-  intros PcQ smP.
-  dependent induction PcQ; simpl in smP; decompose [and or] smP; simpl; eauto.
-  + dependent induction m;
-      dependent induction c;
-      dependent induction s.
-    exact (congruence_none_marked (H (C false)) smP).
-    exact (H0 (C false) smP).
-    dependent induction s0.
-    contradiction.
-    exact (congruence_none_marked (H (C false)) smP).
-    dependent induction s0.
-    exact (congruence_none_marked (H (C false)) smP).
-    exact (H0 (C false) smP).
-  + dependent induction mt;
-      dependent induction c;
-      dependent induction s.
-    exact (congruence_none_marked (H (V tt) (C false)) smP).
-    exact (H0 (V tt) (C false) smP).
-    dependent induction s0.
-    exact (congruence_none_marked (H (C false) (C false)) smP).
-    exact (H0 (C false) (C false) smP).
-    dependent induction s0.
-    exact (congruence_none_marked (H (C false) (C false)) smP).
-    exact (H0 (C false) (C false) smP).
-    dependent induction s0.
-    exact (congruence_none_marked (H (C false) (C false)) smP).
-    exact (H0 (C false) (C false) smP).
-    dependent induction s0.
-    exact (congruence_none_marked (H (C false) (C false)) smP).
-    exact (H0 (C false) (C false) smP).
-    dependent induction s0.
-    exact (congruence_none_marked (H (C false) (C false)) smP).
-    exact (H0 (C false) (C false) smP).
-Qed.
-Hint Resolve congruence_single_marked.
+Hint Resolve congruence_find.
 
 Theorem congruence_linearity {P Q} : Congruence _ _ P Q → linear P → linear Q.
 Proof.
   intros PcQ lP.
   induction PcQ; simpl; destruct_linear; auto.
-  - pose (congruence_none_marked (H _ _) H1).
-    pose (congruence_single_marked (H _ _) H5).
-    pose (congruence_single_marked (H _ _) H6).
+  - pose (congruence_find (H _ _) true H1).
+    pose (congruence_find (H _ _) false H5).
+    pose (congruence_find (H _ _) false H6).
     repeat split; auto.
-  - pose (congruence_none_marked (H _ _ _ _) H1).
-    pose (congruence_single_marked (H _ _ _ _) H2).
-    pose (congruence_single_marked (H _ _ _ _) H3).
-    pose (congruence_single_marked (H _ _ _ _) H5).
-    pose (congruence_single_marked (H _ _ _ _) H6).
+  - pose (congruence_find (H _ _ _ _) true H1).
+    pose (congruence_find (H _ _ _ _) false H2).
+    pose (congruence_find (H _ _ _ _) false H3).
+    pose (congruence_find (H _ _ _ _) false H5).
+    pose (congruence_find (H _ _ _ _) false H6).
     repeat split; auto.
-  - pose (congruence_none_marked (H _ _) H1).
-    pose (congruence_single_marked (H _ _) H2).
-    pose (congruence_single_marked (H _ _) H3).
+  - pose (congruence_find (H _ _) true H1).
+    pose (congruence_find (H _ _) false H2).
+    pose (congruence_find (H _ _) false H3).
     repeat split; auto.
-  - pose (congruence_none_marked (H _ _) H1).
-    pose (congruence_single_marked (H _ _) H2).
-    pose (congruence_single_marked (H _ _) H3).
+  - pose (congruence_find (H _ _) true H1).
+    pose (congruence_find (H _ _) false H2).
+    pose (congruence_find (H _ _) false H3).
     repeat split; auto.
   - dependent induction c.
     dependent induction s.
     contradiction H1.
     dependent induction m.
-    pose (congruence_none_marked (H _) H1).
-    pose (congruence_single_marked (H _) H2).
+    pose (congruence_find (H _) true H1).
+    pose (congruence_find (H _) false H2).
     auto.
     dependent induction s.
     contradiction H1.
-    pose (congruence_none_marked (H _) H1).
-    pose (congruence_single_marked (H _) H2).
+    pose (congruence_find (H _) true H1).
+    pose (congruence_find (H _) false H2).
     auto.
   - dependent induction mt.
     dependent induction c.
     dependent induction s.
     contradiction H1.
     decompose [and] H2.
-    pose (congruence_none_marked (H _ _) H1).
-    pose (congruence_single_marked (H _ _) H3).
+    pose (congruence_find (H _ _) true H1).
+    pose (congruence_find (H _ _) false H3).
     auto.
     dependent induction c.
     dependent induction s0.
     contradiction H1.
     decompose [and] H2.
-    pose (congruence_none_marked (H _ _) H1).
-    pose (congruence_single_marked (H _ _) H3).
-    pose (congruence_single_marked (H _ _) H5).
-    auto.
+    destruct H1.
+    repeat split; eauto.
 Qed.
 
-Theorem reduction_none_marked {P Q} : Reduction _ _ P Q → none_marked P → none_marked Q.
-  intros PrQ nmP.
-  dependent induction PrQ.
+Lemma reduction_find {P Q} : Reduction _ _ P Q → ∀ t, find t P → find t Q.
+  intros PrQ t fP.
+  dependent induction PrQ; induction t; simpl; intuition; try tauto.
   - destruct_linear.
-    split.
-    dependent induction m.
-    auto.
-    dependent induction s0.
+    destruct m.
+    destruct t.
+    assumption.
+    destruct b.
     contradiction.
-    auto.
-    dependent induction mt.
+    assumption.
+  - destruct_linear.
+    destruct m.
+    destruct t.
+    assumption.
+    destruct b.
+    destruct H0.
+    contradiction.
+    destruct H0.
+    assumption.
+  - destruct_linear.
     destruct m.
     destruct t.
     auto.
     destruct b.
     contradiction.
+    left.
     auto.
-    simpl in H0.
-    dependent destruction m.
+    destruct m.
+    destruct t.
+    auto.
     destruct b.
-    contradiction.
+    destruct H0.
+    left.
+    auto.
+    destruct H0.
+    right.
     auto.
   - admit.
-  - exact (H0 _ _ nmP).
+  - admit.
   - destruct_linear.
-    repeat split; auto.
-  - exact (IHPrQ (congruence_none_marked H nmP)).
-Admitted.
-
-Theorem output_marked {s P} :
-  single_marked (@POutput _ _ _ s (@C _ _ s true) P (C false)) →
-  none_marked (P (C false)).
-Proof.
-  auto.
-Qed.
-
-Theorem input_unmarked {s t} {P : Message _ TMT C[s] → Message _ TMT C[t] → Process _ _} :
-  linear (P (C false) (C false)) →
-  single_marked (P (C true) (C false)).
-Proof.
-  intro.
-  dependent induction P; destruct_linear.
-  - exact (H (C false) (C false) H1).
-  - dependent induction m.
-    dependent induction m0.
-    dependent induction s1.
-    simpl.
-    pose (H (V tt) (C false) H0).
-Admitted.
-
-Theorem reduction_single_marked {P Q} : Reduction _ _ P Q → single_marked P → single_marked Q.
-  intros PrQ nmP.
-  dependent induction PrQ.
-  - destruct_linear.
-    + destruct m.
-      destruct t.
-      left.
-      auto.
-      left.
-      destruct b.
-      contradiction.
-      auto.
-    + simpl.
-      destruct m.
-      destruct t.
-      right.
-      auto.
-      destruct b.
-      left.
-      pose (output_marked H).
-      simpl in H0.
-      admit.
-      right.
-      auto.
+    left.
+    auto.
+    right.
+    auto.
+  - exact (IHPrQ true (congruence_find H true fP)).
+  - exact (IHPrQ false (congruence_find H false fP)).
 Admitted.
 
 Theorem reduction_linearity {P Q} : Reduction _ _ P Q → linear P → linear Q.
@@ -610,9 +585,9 @@ Theorem reduction_linearity {P Q} : Reduction _ _ P Q → linear P → linear Q.
       repeat split; eauto.
 *)
   - destruct_linear.
-    pose (reduction_none_marked (H _ _) H1).
-    pose (reduction_single_marked (H _ _) H2).
-    pose (reduction_single_marked (H _ _) H3).
+    pose (reduction_find (H _ _) true H1).
+    pose (reduction_find (H _ _) false H2).
+    pose (reduction_find (H _ _) false H3).
     repeat split; auto.
   - destruct_linear.
     repeat split; eauto.
