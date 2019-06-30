@@ -15,6 +15,11 @@ Inductive Forall2 {A B} (P:A->B->Type): forall {n}, Vector.t A n -> Vector.t B n
  |Forall2_cons {m} x1 x2 (v1:Vector.t A m) v2: P x1 x2 -> Forall2 P v1 v2 ->
     Forall2 P (x1::v1) (x2::v2).
 
+Derive NoConfusionHom for Vector.t.
+Derive Signature for Vector.t.
+Derive Signature for Forall.
+Derive Signature for Forall2.
+
 Equations nthForall {A P n} {xs : Vector.t A n}
           (ps : Forall P xs) (i : Fin.t n) : P xs[@i] :=
 nthForall (Forall_cons _ p ps) Fin.F1 => p;

@@ -8,7 +8,7 @@ Import Vector.VectorNotations.
 From Equations Require Import Equations.
 
 Inductive MType : Type :=
-| Base : Set → MType
+| Base : Type → MType
 | Channel : SType → MType
 
 with SType : Type :=
@@ -61,7 +61,7 @@ Section Processes.
   Variable MT : Type → Type.
 
   Inductive Message : MType → Type :=
-  | V : ∀ {M : Set}, MT M → Message (Base M)
+  | V : ∀ {M : Type}, MT M → Message (Base M)
   | C : ∀ {S : SType}, ST → Message (Channel S)
   .
 
@@ -271,7 +271,7 @@ find t     (PBranch Ps (C c))              =>
        end
   in
   find_branches Ps
-.
+  .
 Global Transparent find.
 
 Notation "'none_marked' p" := (find true p)(at level 50).
@@ -505,6 +505,26 @@ Proof.
     repeat split; eauto.
 Qed.
 
+Lemma find_branches {n} (i : Fin.t n) {xs : Vector.t SType n}
+      {Ps : Forall (fun s => Message _ _ C[s] → Process _ _) xs} :
+  ∀ t, find t (PBranch Ps (C false)) → find t (nthForall Ps i (C false)).
+Proof.
+  intros t nmPs.
+  dependent induction i.
+  dependent induction Ps.
+  destruct t.
+  destruct nmPs.
+  exact H.
+  destruct nmPs.
+  exact H.
+  dependent induction Ps.
+  destruct t.
+  destruct nmPs.
+  exact (IHi _ _ true H0).
+  destruct nmPs.
+  exact (IHi _ _ false H0).
+Qed.
+
 Lemma reduction_find {P Q} : Reduction _ _ P Q → ∀ t, find t P → find t Q.
   intros PrQ t fP.
   dependent induction PrQ; induction t; simpl; intuition; try tauto.
@@ -542,8 +562,17 @@ Lemma reduction_find {P Q} : Reduction _ _ P Q → ∀ t, find t P → find t Q.
     destruct H0.
     right.
     auto.
-  - admit.
-  - admit.
+  - destruct_linear.
+    exact (find_branches i true H0).
+  - destruct_linear.
+    left.
+    split.
+    assumption.
+    exact (find_branches i false H0).
+    right.
+    split.
+    assumption.
+    exact (find_branches i true H0).
   - destruct_linear.
     left.
     auto.
@@ -551,7 +580,7 @@ Lemma reduction_find {P Q} : Reduction _ _ P Q → ∀ t, find t P → find t Q.
     auto.
   - exact (IHPrQ true (congruence_find H true fP)).
   - exact (IHPrQ false (congruence_find H false fP)).
-Admitted.
+Qed.
 
 Theorem reduction_linearity {P Q} : Reduction _ _ P Q → linear P → linear Q.
   intros PrQ lP.
@@ -687,9 +716,13 @@ Example nonlinear_example : PProcess :=
 
 Example linear_example1 : Linear example1. compute. tauto. Qed.
 
+Example linear_channel_over_channel : Linear channel_over_channel. compute. tauto. Qed.
+
 Example nonlinear_example1 : ~ (Linear nonlinear_example). compute. tauto. Qed.
 
 Example branch_and_select : PProcess.
 refine
   ([υ]> (new i <- ▹ (! Base bool; ø) :: (? Base bool; ø) :: [], o <- ◃ (? Base bool; ø) :: (! Base bool; ø) :: [], _)
           i▹[ (![υ _ true]; ε) ; (?[m]; ε)] <|> o◃[Fin.F1]; ?[_]; ε).
+constructors.
+Qed.
