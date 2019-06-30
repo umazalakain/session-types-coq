@@ -380,9 +380,6 @@ Ltac destruct_linear :=
 (*          TYPE PRESERVATION             *)
 (******************************************)
 
-Lemma false_unmarked s : @C bool _ s false = unmarked. eauto. Qed.
-Hint Rewrite false_unmarked.
-
 Lemma linearity_none_marked {P} : linear P → none_marked P.
 Proof.
   intro lP.
@@ -505,88 +502,69 @@ Proof.
     repeat split; eauto.
 Qed.
 
-Lemma find_branches {n} (i : Fin.t n) {xs : Vector.t SType n}
+Lemma branches_find {n t} (i : Fin.t n) {xs : Vector.t SType n}
       {Ps : Forall (fun s => Message _ _ C[s] → Process _ _) xs} :
-  ∀ t, find t (PBranch Ps (C false)) → find t (nthForall Ps i (C false)).
+  find t (PBranch Ps (C false)) → find t (nthForall Ps i (C false)).
 Proof.
-  intros t nmPs.
-  dependent induction i.
-  dependent induction Ps.
-  destruct t.
-  destruct nmPs.
-  exact H.
-  destruct nmPs.
-  exact H.
-  dependent induction Ps.
-  destruct t.
-  destruct nmPs.
-  exact (IHi _ _ true H0).
-  destruct nmPs.
-  exact (IHi _ _ false H0).
+  intros nmPs.
+  dependent induction i; dependent induction Ps; destruct t; destruct nmPs.
+  - exact H.
+  - exact H.
+  - exact (IHi _ _ H0).
+  - exact (IHi _ _ H0).
 Qed.
+Hint Resolve branches_find.
+
+Lemma branches_linear {n} (i : Fin.t n) {xs : Vector.t SType n}
+      {Ps : Forall (fun s => Message _ _ C[s] → Process _ _) xs} :
+  linear (PBranch Ps (C false)) →
+  single_marked (nthForall Ps i (C true)) /\
+  linear (nthForall Ps i (C false)).
+Proof.
+  intros lPs.
+  dependent induction i; dependent induction Ps; destruct lPs.
+  - destruct H0.
+    destruct H1.
+    split.
+    exact H0.
+    exact H1.
+  - destruct H.
+    destruct H0.
+    destruct H2.
+    refine (IHi _ _ _).
+    repeat split; auto.
+Qed.
+Hint Resolve branches_linear.
 
 Lemma reduction_find {P Q} : Reduction _ _ P Q → ∀ t, find t P → find t Q.
   intros PrQ t fP.
-  dependent induction PrQ; induction t; simpl; intuition; try tauto.
-  - destruct_linear.
-    destruct m.
+  dependent induction PrQ; induction t; destruct_linear; simpl; eauto.
+  - destruct m.
     destruct t.
-    assumption.
+    auto.
     destruct b.
     contradiction.
-    assumption.
-  - destruct_linear.
-    destruct m.
-    destruct t.
-    assumption.
-    destruct b.
     destruct H0.
-    contradiction.
-    destruct H0.
-    assumption.
-  - destruct_linear.
-    destruct m.
+    auto.
+  - destruct m.
     destruct t.
     auto.
     destruct b.
     contradiction.
     left.
     auto.
-    destruct m.
+  - destruct m.
     destruct t.
     auto.
-    destruct b.
-    destruct H0.
-    left.
-    auto.
-    destruct H0.
-    right.
-    auto.
-  - destruct_linear.
-    exact (find_branches i true H0).
-  - destruct_linear.
-    left.
-    split.
-    assumption.
-    exact (find_branches i false H0).
-    right.
-    split.
-    assumption.
-    exact (find_branches i true H0).
-  - destruct_linear.
-    left.
-    auto.
-    right.
-    auto.
-  - exact (IHPrQ true (congruence_find H true fP)).
-  - exact (IHPrQ false (congruence_find H false fP)).
+    destruct b; destruct H0; auto.
 Qed.
+
+Hint Resolve reduction_find.
 
 Theorem reduction_linearity {P Q} : Reduction _ _ P Q → linear P → linear Q.
   intros PrQ lP.
-  dependent induction PrQ.
-  - simpl.
-    dependent induction m.
+  dependent induction PrQ; destruct_linear; simpl; eauto.
+  - dependent induction m.
     + destruct_linear.
       simpl in *.
       destruct m.
@@ -595,24 +573,21 @@ Theorem reduction_linearity {P Q} : Reduction _ _ P Q → linear P → linear Q.
       induction s0.
       contradiction.
       repeat split; eauto.
-  - dependent induction i; dependent destruction Qs.
-    + simpl in *.
-      decompose [and] lP.
-      repeat split; eauto.
-    + dependent destruction ss.
-      simpl in Ps.
-      simpl in lP.
-      decompose [and] lP.
-      refine (IHi _ _ _ Ps Qs _ _).
-      dependent destruction mt.
-      exact (V tt).
-      exact (C false).
-      simpl in *.
-      admit.
-      (*
-      pose (linearity_none_marked H8).
-      repeat split; eauto.
-*)
+  - destruct_linear.
+    simpl.
+    repeat split; auto.
+    right.
+    split.
+    auto.
+    exact (branches_find i H6).
+    left.
+    split.
+    auto.
+    destruct (branches_linear i (conj H6 H7)).
+    exact H12.
+    exact (branches_find i H6).
+    destruct (branches_linear i (conj H6 H7)).
+    exact H13.
   - destruct_linear.
     pose (reduction_find (H _ _) true H1).
     pose (reduction_find (H _ _) false H2).
@@ -621,7 +596,7 @@ Theorem reduction_linearity {P Q} : Reduction _ _ P Q → linear P → linear Q.
   - destruct_linear.
     repeat split; eauto.
   - exact (IHPrQ (congruence_linearity H lP)).
-Admitted.
+Qed.
 
 Theorem TypePreservation : ∀ (P Q : PProcess), P ⇒ Q → Linear P → Linear Q.
 Proof.
