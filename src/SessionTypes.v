@@ -237,93 +237,134 @@ Arguments unmarked [s].
 Derive NoConfusion for MType.
 Derive Signature for Message.
 
-(* t means "Has it been already found?" *)
-Equations find (t : bool) (p : Process bool TMT) : Prop :=
-find _     (PNew _ _ _ P)                  => find t (P (C false) (C false)) ;
-find true  (PInput P (C true))             => False ;
-find t     (@PInput (Base _) _ P (C c))    => find (t || c) (P (V tt) (C false)) ;
-find t     (@PInput (Channel _) _ P (C c)) => if (orb t c)
-                                             then and (find true (P (C false) (C false)))
-                                                      (find false (P (C true) (C false)))
-                                             else find false (P (C false) (C false)) ;
-find true  (POutput m P (C true))          => False ;
-find t     (POutput (V _) P (C c))         => find (t || c) (P (C false)) ;
-find true  (POutput (C true) P (C false))  => False ;
-find _     (POutput (C true) P (C true))   => False ;
-find t     (POutput (C c) P (C false))     => find (t || c) (P (C false)) ;
-find t     (POutput (C false) P (C c))     => find (t || c) (P (C false)) ;
-find true  (PComp P Q)                     => and (find true P) (find true Q) ;
-find false (PComp P Q)                     => or (and (find true P) (find false Q))
-                                                (and (find false P) (find true Q)) ;
-find true  (PEnd (C true))                 => False ;
-find false (PEnd (C false))                => False ;
-find _     (PEnd (C _))                    => True ;
-find true  (PSelect i (C true) P)          => False ;
-find t     (PSelect i (C c) P)             => find (t || c) (P (C false)) ;
-find true  (PBranch Ps (C true))           => False ;
-find t     (PBranch Ps (C c))              =>
-  (* Coq's termination checker complains if this is generalised *)
-  let fix find_branches {n} {ss : Vector.t SType n}
-          (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : Prop :=
-       match ps with
-       | Forall_nil _ => True
-       | Forall_cons _ P Ps' => find (t || c) (P (C false)) /\ find_branches Ps'
-       end
-  in
-  find_branches Ps
-  .
-Global Transparent find.
-
-Notation "'none_marked' p" := (find true p)(at level 50).
-Notation "'single_marked' p" := (find false p)(at level 50).
-
 Equations linear (P : Process bool TMT) : Prop := {
-linear P => none_marked P /\ linear_do P }
-where
-linear_do (P : Process bool TMT) : Prop :=
-linear_do (PNew _ _ _ P) =>
+linear (PNew _ _ _ P) =>
   single_marked (P marked unmarked) /\
   single_marked (P unmarked marked) /\
   linear (P unmarked unmarked) ;
 
-linear_do (@PInput (Base _) _ P _) =>
+linear (PInput P (C true)) =>
+  False ;
+
+linear (@PInput (Base _) _ P (C false)) =>
   single_marked (P (V tt) marked) /\
   linear (P (V tt) unmarked) ;
 
-linear_do (@PInput (Channel _) _ P _) =>
+linear (@PInput (Channel _) _ P (C false)) =>
   single_marked (P marked unmarked) /\
   single_marked (P unmarked marked) /\
   linear (P unmarked unmarked) ;
 
-linear_do (POutput _ P _) =>
+linear (POutput m P (C true))
+  => False ;
+
+linear (POutput (C true) P (C false))
+  => False ;
+
+linear (POutput _ P (C false)) =>
   single_marked (P marked) /\
   linear (P unmarked) ;
 
-linear_do (PComp P Q) =>
+linear (PComp P Q) =>
   linear P /\
   linear Q ;
 
-linear_do (PEnd _) => True ;
+linear (PEnd (C true)) => False ;
 
-linear_do (PSelect _ _ P) =>
-  single_marked (P marked) /\
+linear (PEnd (C false)) => True ;
+
+linear (PSelect _ (C true) P)
+  => False ;
+
+linear (PSelect _ (C false) P)
+  => single_marked (P marked) /\
   linear (P unmarked) ;
 
-linear_do (PBranch Ps _) =>
-  (* Coq's termination checker complains if this is generalised *)
-  let fix linear_branches {n} {ss : Vector.t SType n}
-          (ps : Forall (fun s => Message _ _ C[s] → Process _ _) ss) : Prop :=
-       match ps with
-       | Forall_nil _ => True
-       | Forall_cons _ P Ps' =>
-         single_marked (P marked) /\
-         linear (P unmarked) /\
-         linear_branches Ps'
-       end
-  in
-  linear_branches Ps
-.
-Global Transparent linear.
+linear (PBranch Ps (C true))
+  => False ;
+
+linear (PBranch Ps (C false))
+  => let fix branches {n} {ss : Vector.t _ n} (Ps : Forall (fun s => _ → _) ss) :=
+        match Ps with
+        | Forall_nil _ => True
+        | Forall_cons _ P Ps' =>
+          linear (P unmarked) /\
+          single_marked (P marked) /\
+          branches Ps'
+        end
+    in branches Ps
+
+} where single_marked (p : Process bool TMT) : Prop := {
+
+single_marked (PNew _ _ _ P)
+  => single_marked (P unmarked unmarked) ;
+
+single_marked (@PInput (Base _) _ P (C false))
+  => single_marked (P (V tt) unmarked) ;
+
+single_marked (@PInput (Base _) _ P (C true))
+  => and (linear (P (V tt) unmarked))
+        (single_marked (P (V tt) marked));
+
+single_marked (@PInput (Channel _) _ P (C false))
+  => single_marked (P unmarked unmarked) ;
+
+single_marked (@PInput (Channel _) _ P (C true))
+  => and (linear (P unmarked unmarked))
+        (and (single_marked (P marked unmarked))
+             (single_marked (P unmarked marked))) ;
+
+single_marked (POutput (C true) P (C true))
+  => False ;
+
+single_marked (POutput (C true) P (C false))
+  => and (linear (P unmarked))
+        (single_marked (P marked)) ;
+
+single_marked (POutput _ P (C true))
+  => and (linear (P unmarked))
+        (single_marked (P marked)) ;
+
+single_marked (POutput _ P (C false))
+  => single_marked (P unmarked) ;
+
+single_marked (PComp P Q)
+  => or (and (linear P) (single_marked Q))
+       (and (single_marked P) (linear Q)) ;
+
+single_marked (PEnd (C false))
+  => False ;
+
+single_marked (PEnd (C true))
+  => True ;
+
+single_marked (PSelect i (C true) P)
+  => linear (P unmarked) /\ single_marked (P marked) ;
+
+single_marked (PSelect i (C false) P)
+  => single_marked (P unmarked) ;
+
+single_marked (PBranch Ps (C true))
+  => let fix branches {n} {ss : Vector.t _ n} (Ps : Forall (fun s => _ → _) ss) :=
+        match Ps with
+        | Forall_nil _ => True
+        | Forall_cons _ P Ps' =>
+          linear (P unmarked) /\
+          single_marked (P marked) /\
+          branches Ps'
+        end
+    in branches Ps ;
+
+single_marked (PBranch Ps (C false))
+  => let fix branches {n} {ss : Vector.t _ n} (Ps : Forall (fun s => _ → _) ss) :=
+        match Ps with
+        | Forall_nil _ => True
+        | Forall_cons _ P Ps' =>
+          single_marked (P unmarked) /\
+          branches Ps'
+        end
+    in branches Ps
+}.
 
 (******************************)
 (*  PARAMETRIC GENERALISATION *)
@@ -360,243 +401,144 @@ Ltac big_step_reduction :=
   repeat intros; compute; eapply RTrans; eapply RSmall; try reduction_step
 .
 
-Ltac destruct_linear :=
-  repeat (
-  try match goal with
-  | [ H : linear _ |- _ ] => destruct H
-  end;
-  try match goal with
-  | [ H : find _ _ |- _ ] => destruct H
-  end;
-  try match goal with
-  | [ H : and _ _ |- _ ] => destruct H
-  end;
-  autounfold with * in *
-  )
-.
-
-
 (******************************************)
 (*          TYPE PRESERVATION             *)
 (******************************************)
 
-Lemma linearity_none_marked {P} : linear P → none_marked P.
+Theorem congruence_linear {P Q} : Congruence _ _ P Q →
+  (single_marked P → single_marked Q) /\ (linear P → linear Q).
 Proof.
-  intro lP.
-  induction P.
-  all: simpl; destruct_linear; eauto.
+  intros PcQ.
+  induction PcQ; split; simp linear in *; try tauto.
+  - destruct (H0 unmarked unmarked).
+    tauto.
+  - destruct (H0 unmarked unmarked).
+    destruct (H0 marked unmarked).
+    destruct (H0 unmarked marked).
+    tauto.
+  - destruct (H0 unmarked unmarked unmarked unmarked).
+    tauto.
+  - destruct (H0 unmarked unmarked unmarked unmarked).
+    destruct (H0 marked unmarked unmarked unmarked).
+    destruct (H0 unmarked marked unmarked unmarked).
+    destruct (H0 unmarked unmarked marked unmarked).
+    destruct (H0 unmarked unmarked unmarked marked).
+    tauto.
+  - destruct (H0 unmarked unmarked).
+    tauto.
+  - destruct (H0 unmarked unmarked).
+    destruct (H0 marked unmarked).
+    destruct (H0 unmarked marked).
+    tauto.
+  - destruct (H0 unmarked unmarked).
+    tauto.
+  - destruct (H0 unmarked unmarked).
+    destruct (H0 marked unmarked).
+    destruct (H0 unmarked marked).
+    tauto.
+  - destruct (H0 unmarked).
+    destruct (H0 marked).
+    dependent destruction c; destruct b; destruct m; simp linear in *.
+    + tauto.
+    + destruct b.
+      contradiction.
+      simp linear.
+      tauto.
+    + destruct b; simp linear.
+      tauto.
+  - destruct (H0 unmarked).
+    destruct (H0 marked).
+    dependent destruction c; destruct b; destruct m; simp linear in *.
+    + tauto.
+    + destruct b.
+      contradiction.
+      simp linear.
+      tauto.
+  - dependent destruction c; destruct b; destruct mt; simp linear in *.
+    + destruct (H0 (V tt) unmarked).
+      destruct (H0 (V tt) marked).
+      tauto.
+    + destruct (H0 unmarked unmarked).
+      destruct (H0 marked unmarked).
+      destruct (H0 unmarked marked).
+      tauto.
+    + destruct (H0 (V tt) unmarked).
+      tauto.
+    + destruct (H0 unmarked unmarked).
+      tauto.
+  - dependent destruction c; destruct b; destruct mt; simp linear in *.
+    + destruct (H0 (V tt) unmarked).
+      destruct (H0 (V tt) marked).
+      tauto.
+    + destruct (H0 unmarked unmarked).
+      destruct (H0 marked unmarked).
+      destruct (H0 unmarked marked).
+      tauto.
 Qed.
-Hint Resolve linearity_none_marked.
-
-Lemma congruence_find {P Q} : Congruence _ _ P Q → ∀ t, find t P → find t Q.
-  intros PcQ t fP.
-  dependent induction PcQ; induction t; simpl; intuition; try tauto.
-  - destruct_linear; auto.
-  - destruct_linear; auto.
-  - destruct_linear.
-    left.
-    auto.
-    right.
-    auto.
-  - destruct_linear.
-    left.
-    auto.
-    right.
-    auto.
-  - dependent induction c.
-    dependent induction m.
-    destruct m.
-    destruct s.
-    contradiction.
-    exact (H0 _ true fP).
-    destruct s.
-    contradiction.
-    destruct s0.
-    contradiction.
-    exact (H0 _ true fP).
-  - dependent induction c.
-    dependent induction m.
-    destruct m.
-    destruct s.
-    exact (H0 _ true fP).
-    exact (H0 _ false fP).
-    destruct s0.
-    destruct s.
-    contradiction fP.
-    exact (H0 _ true fP).
-    destruct s.
-    exact (H0 _ true fP).
-    exact (H0 _ false fP).
-  - dependent induction c.
-    dependent induction mt.
-    destruct s.
-    contradiction.
-    exact (H0 _ _ true fP).
-    destruct s0.
-    contradiction.
-    destruct fP.
-    split.
-    exact (H0 _ _ true H1).
-    exact (H0 _ _ false H2).
-  - dependent induction c.
-    dependent induction mt.
-    destruct s.
-    exact (H0 _ _ true fP).
-    exact (H0 _ _ false fP).
-    destruct s0.
-    destruct fP.
-    split.
-    exact (H0 _ _ true H1).
-    exact (H0 _ _ false H2).
-    exact (H0 _ _ false fP).
-Qed.
-Hint Resolve congruence_find.
-
-Theorem congruence_linearity {P Q} : Congruence _ _ P Q → linear P → linear Q.
-Proof.
-  intros PcQ lP.
-  induction PcQ; simpl; destruct_linear; auto.
-  - pose (congruence_find (H _ _) true H1).
-    pose (congruence_find (H _ _) false H5).
-    pose (congruence_find (H _ _) false H6).
-    repeat split; auto.
-  - pose (congruence_find (H _ _ _ _) true H1).
-    pose (congruence_find (H _ _ _ _) false H2).
-    pose (congruence_find (H _ _ _ _) false H3).
-    pose (congruence_find (H _ _ _ _) false H5).
-    pose (congruence_find (H _ _ _ _) false H6).
-    repeat split; auto.
-  - pose (congruence_find (H _ _) true H1).
-    pose (congruence_find (H _ _) false H2).
-    pose (congruence_find (H _ _) false H3).
-    repeat split; auto.
-  - pose (congruence_find (H _ _) true H1).
-    pose (congruence_find (H _ _) false H2).
-    pose (congruence_find (H _ _) false H3).
-    repeat split; auto.
-  - dependent induction c.
-    dependent induction s.
-    contradiction H1.
-    dependent induction m.
-    pose (congruence_find (H _) true H1).
-    pose (congruence_find (H _) false H2).
-    auto.
-    dependent induction s.
-    contradiction H1.
-    pose (congruence_find (H _) true H1).
-    pose (congruence_find (H _) false H2).
-    auto.
-  - dependent induction mt.
-    dependent induction c.
-    dependent induction s.
-    contradiction H1.
-    decompose [and] H2.
-    pose (congruence_find (H _ _) true H1).
-    pose (congruence_find (H _ _) false H3).
-    auto.
-    dependent induction c.
-    dependent induction s0.
-    contradiction H1.
-    decompose [and] H2.
-    destruct H1.
-    repeat split; eauto.
-Qed.
-
-Lemma branches_find {n t} (i : Fin.t n) {xs : Vector.t SType n}
-      {Ps : Forall (fun s => Message _ _ C[s] → Process _ _) xs} :
-  find t (PBranch Ps (C false)) → find t (nthForall Ps i (C false)).
-Proof.
-  intros nmPs.
-  dependent induction i; dependent induction Ps; destruct t; destruct nmPs.
-  - exact H.
-  - exact H.
-  - exact (IHi _ _ H0).
-  - exact (IHi _ _ H0).
-Qed.
-Hint Resolve branches_find.
+Hint Resolve congruence_linear.
 
 Lemma branches_linear {n} (i : Fin.t n) {xs : Vector.t SType n}
       {Ps : Forall (fun s => Message _ _ C[s] → Process _ _) xs} :
-  linear (PBranch Ps (C false)) →
-  single_marked (nthForall Ps i (C true)) /\
-  linear (nthForall Ps i (C false)).
+  (single_marked (PBranch Ps (C false)) → single_marked (nthForall Ps i (C false))) /\
+  (linear (PBranch Ps (C false)) → single_marked (nthForall Ps i (C true))) /\
+  (linear (PBranch Ps (C false)) → linear (nthForall Ps i (C false))).
 Proof.
-  intros lPs.
-  dependent induction i; dependent induction Ps; destruct lPs.
-  - destruct H0.
-    destruct H1.
-    split.
-    exact H0.
-    exact H1.
+  induction i; dependent induction Ps; repeat split; intro H; simp linear in *.
+  - destruct H.
+    assumption.
   - destruct H.
     destruct H0.
-    destruct H2.
-    refine (IHi _ _ _).
-    repeat split; auto.
+    assumption.
+  - destruct H.
+    destruct H0.
+    assumption.
+  - destruct H.
+    decompose [and] (IHi v Ps).
+    auto.
+  - destruct H.
+    destruct H0.
+    decompose [and] (IHi v Ps).
+    auto.
+  - destruct H.
+    destruct H0.
+    decompose [and] (IHi v Ps).
+    auto.
 Qed.
 Hint Resolve branches_linear.
 
-Lemma reduction_find {P Q} : Reduction _ _ P Q → ∀ t, find t P → find t Q.
-  intros PrQ t fP.
-  dependent induction PrQ; induction t; destruct_linear; simpl; eauto.
-  - destruct m.
-    destruct t.
-    auto.
-    destruct b.
-    contradiction.
-    destruct H0.
-    auto.
-  - destruct m.
-    destruct t.
-    auto.
-    destruct b.
-    contradiction.
-    left.
-    auto.
-  - destruct m.
-    destruct t.
-    auto.
-    destruct b; destruct H0; auto.
+Theorem reduction_linear {P Q} : Reduction _ _ P Q →
+  (single_marked P → single_marked Q) /\ (linear P → linear Q).
+Proof.
+  intro PrQ.
+  induction PrQ; split; simp linear in *.
+  - intro A; destruct A; (destruct m;
+      [ destruct t; simp linear in *; tauto
+      | destruct b; simp linear in *; tauto ]).
+  - intro A.
+    decompose [and or] A; try contradiction.
+    destruct m;
+      [ destruct t; simp linear in *; tauto
+      | destruct b; simp linear in *; tauto ].
+  - destruct (@branches_linear _ i rs Qs).
+    intro A.
+    decompose [and or] A; tauto.
+  - decompose [and] (@branches_linear _ i rs Qs).
+    intro A.
+    decompose [and or] A; tauto.
+  - destruct (H0 unmarked unmarked).
+    tauto.
+  - destruct (H0 unmarked unmarked).
+    destruct (H0 marked unmarked).
+    destruct (H0 unmarked marked).
+    tauto.
+  - tauto.
+  - tauto.
+  - destruct (congruence_linear H).
+    tauto.
+  - destruct (congruence_linear H).
+    tauto.
 Qed.
-Hint Resolve reduction_find.
-
-Theorem reduction_linearity {P Q} : Reduction _ _ P Q → linear P → linear Q.
-  intros PrQ lP.
-  dependent induction PrQ; destruct_linear; simpl; eauto.
-  - dependent induction m.
-    + destruct_linear.
-      simpl in *.
-      destruct m.
-      repeat split; eauto.
-    + destruct_linear.
-      induction s0.
-      contradiction.
-      repeat split; eauto.
-  - destruct_linear.
-    simpl.
-    repeat split; auto.
-    right.
-    split.
-    auto.
-    exact (branches_find i H6).
-    left.
-    split.
-    auto.
-    destruct (branches_linear i (conj H6 H7)).
-    exact H12.
-    exact (branches_find i H6).
-    destruct (branches_linear i (conj H6 H7)).
-    exact H13.
-  - destruct_linear.
-    pose (reduction_find (H _ _) true H1).
-    pose (reduction_find (H _ _) false H2).
-    pose (reduction_find (H _ _) false H3).
-    repeat split; auto.
-  - destruct_linear.
-    repeat split; eauto.
-  - exact (IHPrQ (congruence_linearity H lP)).
-Qed.
-Hint Resolve reduction_linearity.
+Hint Resolve reduction_linear.
 
 Theorem type_preservation : ∀ (P Q : PProcess), P ⇒ Q → Linear P → Linear Q.
 Proof.
@@ -611,7 +553,8 @@ Proof.
        | _ => _
        end) lP (PrQ bool TMT fMT)).
   all: intros slP sPrQ.
-  exact (reduction_linearity sPrQ slP).
+  destruct (reduction_linear sPrQ) as [_ lPlQ].
+  exact (lPlQ lP).
 Qed.
 Hint Resolve type_preservation.
 
