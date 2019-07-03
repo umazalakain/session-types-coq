@@ -54,8 +54,7 @@
 \begin{document}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\title{$\pi$-calculus session types in Coq \\
-\large Using a parametric higher order abstract syntax with dependent types}
+\title{Type-checking\\ $\pi$-calculus session types\\ with Coq}
 \author{Uma Zalakain}
 \date{2019-09-06}
 \maketitle
@@ -77,7 +76,7 @@ abstract goes here
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Acknowledgements}
 
-acknowledgements go here
+Acknowledgements go here
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \tableofcontents
@@ -85,19 +84,56 @@ acknowledgements go here
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Introduction}\label{intro}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 The pi calculus models the exchange of messages between processes over
-two-endpoint communication channels. When two processes exchange a message
-through a channel computation advances: the receiving process gets reduced
-through substitution. Channels themselves can also be sent as messages, and then
-be used for further communication.
+two-endpoint communication channels. When two processes exchange a message over
+a channel computation advances: the receiving process gets reduced through
+substitution; the sending process proceeds further. Channels have types,
+limiting the data that can be exchanged over them. A brief introduction to the
+pi calculus is provided in \S \ref{pi-calculus}.
 
-It is often desirable to restrict the processes that are expressible to those
-that are deemed meaningful, leaving out the ones with undesirable features. This
-is usually accomplished by adding a type system to the calculus. In the pi
-calculus, session types can be used to impose types onto channel endpoints --
-the session type of a channel endpoint is a finite sequence of types, each with
-an associated direction.
+Session types add sequential types to channels: the session type of a channel
+endpoint is a finite sequence of types, each with an associated direction.  When
+a channel endpoint is used by a process, the type and direction of the exchanged
+data must follow the specification of the associated session type. The theorems
+enabled by this type system are found in \S \ref{session-types}.
+
+Using a proof assistant to prove these theorems provides an exceptionally strong
+guarantee of their correctness. Moreover, it means that any kind of process that
+uses session types as an abstraction can have these theorems automatically
+derived for it. From the numerous proof assistants available, this project uses
+Coq to formalise the pi calculus with session types. Amongst its features, Coq
+includes a powerful tactic engine and a dependent type system, both key for the
+development of this project. An overview of Coq is given in \S \ref{coq}.
+
+Past efforts in formalising session types in Coq have created object languages
+and handled variable references, typing contexts, and typing judgments by hand
+\cite{Dilmore2019}. The present work takes advantage of dependent types (\S
+\ref{dependent-types}) and polymorphism (\S \ref{polymorphism}) and uses a
+higher-order abstract syntax to lift variable references, typing contexts and
+typing judgments to the host language -- as discussed in depth in \S
+\ref{encoding}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Background knowledge}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Pi calculus}\label{pi-calculus}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\todo{Typing rules}
+\todo{Channels as messages}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Session types}\label{session-types}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\todo{Typing rules}
+\todo{Channels as messages}
+\todo{Guarantees}
 
 The two endpoints of a channel must have dual session types: if one end is
 sending data of type \texttt{T}, the other must be receiving data of type
@@ -110,51 +146,88 @@ occurs and messages are exchanged, the session types of channels advance.
 Ensuring that this reduction process respects session types involves proving
 both \textit{subject reduction} and \textit{type soundness}. \cite{Dardha2016m}
 
-Using a proof assistant to prove these theorems provides a strong guarantee of
-the correctness. Moreover, it means that any process described in these terms
-will have these theorems automatically derived. From the numerous proof
-assistants available, this project uses Coq to formalise the pi calculus with
-session types. Amongst its features, Coq includes a powerful tactic engine and a
-dependent type system, both key for the development of this project.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The Coq proof assistant}\label{coq}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Past efforts in formalising session types in Coq have created an object language
-and handled variable references, typing contexts, and typing judgments manually
-\cite{Dilmore2019}. The present work lifts those responsibilities to the
-metalanguage by using a parametric higher order abstract syntax to model
-processes. This results in the following key features:
-
-\begin{description}
-    \item [Variable references]
-        The introduction of both channels and received messages is modelled as
-        function abstraction in Coq and therefore handled transparently -- no
-        substitution related lemmas are required. Channel types are parametrised
-        to make them opaque -- no cheating is allowed.
-
-    \item [Congruence and reduction]
-        Congruence and reduction are inductively defined on processes --
-        reduction by message passing requires pattern matching on function
-        definitions. Tactics are used to find congruent processes that reduce.
-
-    \item [Type preservation]
-        Assuming linearity, processes are \textbf{correct by construction}:
-        the processes that can be constructed depend on the session types in the
-        environment; an action strips off the outer layer of a channel's session
-        type -- modelling \textbf{continuation passing}.
-
-        Ensuring that linearity is preserved through reduction is therefore
-        essential:
-        \begin{theorem}
-        If $P$ is linear and $P$ reduces to $Q$, then $Q$ is linear.
-        \end{theorem}
-\end{description}
-
-\todo{mention we only do closed processes}
-\todo{mention we keep nothing in context}
-\todo{mention parametric HOAS and dependent types somewhere}
-
+\todo{Powerful tactics}
+\todo{Not so good with dependent types}
+\todo{Equations package}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% it is fine to change the bibliography style if you want
+\section{Dependent types}\label{dependent-types}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\todo{Indexed datatypes}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Polymorphism}\label{polymorphism}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\todo{Theorems for free}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Encoding}\label{encoding}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Parametric HOAS}\label{continuation-passing}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\todo{We use polymorphism to make channels opaque}
+\todo{We do not do open processes}
+\todo{We use polymorphism on messages to make processes traversable}
+
+The introduction of both channels and received messages is modelled as function
+abstraction in Coq, therefore \textbf{variables are handled transparently} -- no
+substitution related lemmas are required. Channel types are parametrised to make
+them opaque -- they cannot be illicitly created or inspected by the user.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Continuation passing and linearity}\label{continuation-passing}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\todo{We merge pi calculus and session types into one}
+
+Assuming linearity, \textbf{processes are correct by construction}: the
+processes that can be constructed depend on the session types of the channels in
+the environment of the host language; an action strips off the outer layer of a
+channel's session type -- modelling \textbf{continuation passing}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Type preservation}\label{type-preservation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Ensuring that linearity is preserved through reduction is therefore essential:
+\begin{theorem}
+    $lin(P) \Rightarrow P \rightarrow Q \Rightarrow lin(Q).$
+\end{theorem}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Implementation}\label{implementation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Processes}\label{processes}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Congruence}
+\subsection{Reduction}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Linearity}\label{linearity}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Linearity preservation}\label{linearity-preservation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Related work}\label{related-work}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Conclusion}\label{conclusion}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \bibliographystyle{plain}
 \bibliography{mproj}
 \end{document}
