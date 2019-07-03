@@ -378,6 +378,22 @@ Notation "P ≡ Q" := (∀ ST MT mf, Congruence _ _ (P ST MT mf) (Q ST MT mf))(a
 Notation "P ⇒ Q" := (∀ ST MT mf, Reduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 Notation "P ⇒⇒ Q" := (∀ ST MT mf, BigStepReduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 
+(*****************************)
+(*         PROGRESS          *)
+(*****************************)
+
+Fixpoint completed (P : Process unit id) : Prop :=
+  match P with
+  | (PNew ø ø _ P) => completed (P (C tt) (C tt))
+  | (PComp P Q) => completed P /\ completed Q
+  | (PEnd _) => True
+  | _ => False
+  end
+.
+Definition Completed (P : PProcess) : Prop := completed (P unit id (fun _ v => V v)).
+
+Definition Completes (P : PProcess) := exists Q, P ⇒⇒ Q /\ Completed Q.
+
 (*********************************)
 (*      REDUCTION TACTICS        *)
 (*********************************)
@@ -391,8 +407,12 @@ Ltac reduction_step :=
   repeat match goal with
   | [ |- Reduction _ _ (PNew (? _; _) (! _; _) ?D ?P) _ ] =>
     apply RStruct with (PNew _ _ (inverse_duality D) (fun a b => P b a))
+  | [ |- Reduction _ _ (PNew (▹ _) (◃ _) ?D ?P) _ ] =>
+    apply RStruct with (PNew _ _ (inverse_duality D) (fun a b => P b a))
   | [ |- Reduction _ _ (PNew _ _ ?D (fun a b => b?[m]; ?PB <|> a![?M]; ?PA)) _ ] =>
     apply RStruct with (PNew _ _ D (fun a b => a![M]; PA <|> b?[m]; PB))
+  | [ |- Reduction _ _ (PNew _ _ ?D (fun a b => PBranch ?BB b ?PB <|> a◃[?M]; ?PA)) _ ] =>
+    apply RStruct with (PNew _ _ D (fun a b => a◃[M]; PA <|> PBranch BB b PB))
   end;
   constructors
 .
@@ -608,6 +628,16 @@ Example reduction_example2 : example4 ⇒ example5. constructors. Qed.
 
 Example big_step_reduction : example1 ⇒⇒ example5. big_step_reduction. Qed.
 
+Example completion : Completes example1.
+Proof.
+  compute.
+  exists example5.
+  split.
+  big_step_reduction.
+  compute.
+  tauto.
+Qed.
+
 Example channel_over_channel : PProcess :=
   [υ]>
     (new i <- ? C[ ! Base bool ; ø ] ; ø, o <- ! C[ ! Base bool ; ø ] ; ø, MLeft Ends)
@@ -637,11 +667,11 @@ Example nonlinear_example : PProcess :=
     i?[_]; ε <|> o![υ _ true]; (fun _ => o![υ _ true]; ε)
     .
 
-Example linear_example1 : Linear example1. compute. tauto. Qed.
+Example linear_example1 : Linear example1. compute. simp linear in *. tauto. Qed.
 
-Example linear_channel_over_channel : Linear channel_over_channel. compute. tauto. Qed.
+Example linear_channel_over_channel : Linear channel_over_channel. compute. simp linear in *. tauto. Qed.
 
-Example nonlinear_example1 : ~ (Linear nonlinear_example). compute. tauto. Qed.
+Example nonlinear_example1 : ~ (Linear nonlinear_example). compute. simp linear in *. tauto. Qed.
 
 Example branch_and_select : PProcess.
 refine
