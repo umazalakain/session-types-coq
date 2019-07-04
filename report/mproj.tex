@@ -107,14 +107,25 @@ Coq to formalise the pi calculus with session types. Amongst its features, Coq
 includes a powerful tactic engine and a dependent type system, both key for the
 development of this project. An overview of Coq is given in \S \ref{coq}.
 
+The present work takes advantage of polymorphism (\S \ref{polymorphism}) and
+dependent types (\S \ref{dependent-types}) and uses a parametric higher-order
+abstract syntax (\S \ref{phoas}) and continuation passing (\S
+\ref{continuation-passing}) to \textbf{discharge the type-checking of pi
+calculus terms on Coq}. However, this method relies on channel endpoints being
+used exactly once, i.e. linearly (\S \ref{linearity}). Coq does not support
+linearity, and thus this check will have to be addressed ad-hoc. Once a
+linearity check is available, the type-checking of terms is decidable and
+\textbf{variable references, typing contexts and typing judgments can be lifted
+to the host language}. The details of how this is carried out in practice are
+explained in \S \ref{implementation}.
+
 Past efforts in formalising session types in Coq have created object languages
 and handled variable references, typing contexts, and typing judgments by hand
-\cite{Dilmore2019}. The present work takes advantage of dependent types (\S
-\ref{dependent-types}) and polymorphism (\S \ref{polymorphism}) and uses a
-higher-order abstract syntax to lift variable references, typing contexts and
-typing judgments to the host language -- as discussed in depth in \S
-\ref{encoding}.
+\cite{Dilmore2019}. These and other approaches are mentioned in \S
+\ref{related-work}.
 
+Finally, \S \ref{conclusion} suggests future work that might be of interest, and
+offers conclusions on what this project has achieved.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Background knowledge}
@@ -155,21 +166,21 @@ both \textit{subject reduction} and \textit{type soundness}. \cite{Dardha2016m}
 \todo{Equations package}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Dependent types}\label{dependent-types}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\todo{Indexed datatypes}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Polymorphism}\label{polymorphism}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \todo{Theorems for free}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Dependent types}\label{dependent-types}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\todo{Indexed datatypes}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Encoding}\label{encoding}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Parametric HOAS}\label{continuation-passing}
+\section{Parametric HOAS}\label{phoas}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \todo{We use polymorphism to make channels opaque}
@@ -182,7 +193,7 @@ substitution related lemmas are required. Channel types are parametrised to make
 them opaque -- they cannot be illicitly created or inspected by the user.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Continuation passing and linearity}\label{continuation-passing}
+\section{Continuation passing}\label{continuation-passing}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \todo{We merge pi calculus and session types into one}
@@ -191,6 +202,10 @@ Assuming linearity, \textbf{processes are correct by construction}: the
 processes that can be constructed depend on the session types of the channels in
 the environment of the host language; an action strips off the outer layer of a
 channel's session type -- modelling \textbf{continuation passing}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Linearity}\label{linearity}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Type preservation}\label{type-preservation}
@@ -212,7 +227,7 @@ Ensuring that linearity is preserved through reduction is therefore essential:
 \subsection{Reduction}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Linearity}\label{linearity}
+\section{Linearity check}\label{linearity-check}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
