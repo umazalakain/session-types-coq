@@ -1,6 +1,7 @@
 \documentclass{mproj}
 \usepackage{graphicx}
 
+\usepackage{amsmath}
 \usepackage[utf8]{inputenc}
 \usepackage{url}
 \usepackage{fancyvrb}
@@ -10,6 +11,9 @@
 \usepackage{titlesec}
 \usepackage{enumitem}
 \setlist{nolistsep}
+
+% Inference rules
+\usepackage{mathpartir}
 
 % Links and their colors
 \usepackage[
@@ -40,17 +44,31 @@
 
 \newtheorem{theorem}{Theorem}
 
-% for alternative page numbering use the following package
-% and see documentation for commands
-%\usepackage{fancyheadings}
+% Commands for the pi-calculus
+\newcommand{\PO}{\mathbf{0}}
+\newcommand{\comp}[2]{#1 \mid #2}
+\newcommand{\new}[2]{(\boldsymbol{\nu} #1 #2)}
+\newcommand{\cout}[2]{\overline{#1}\langle#2\rangle.}
+\newcommand{\cin}[2]{#1(#2)}
+\newcommand{\select}[2]{#1\triangleleft#2.}
+\newcommand{\branch}[2]{#1\triangleright#2}
 
+\newcommand{\subst}[3]{#1[#2/#3]}
 
-% other potentially useful packages
-%\uspackage{amssymb,amsmath}
-%\usepackage{url}
-%\usepackage{fancyvrb}
-%\usepackage[final]{pdfpages}
+\def\picalc/{\(\pi\)-calculus}
+\def\Picalc/{\(\pi\)-Calculus}
 
+\newcommand{\type}{\texttt}
+\newcommand{\End}{\type{End}}
+\newcommand{\Send}[1]{!#1.}
+\newcommand{\Recv}[1]{?#1.}
+\newcommand{\Select}{\oplus}
+\newcommand{\Branch}{\&}
+\newcommand{\dual}{\overline}
+
+\newcommand{\reduce}{\rightarrow}
+\renewcommand{\emptyset}{\varnothing}
+\newcommand{\types}{\vdash}
 \begin{document}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -138,6 +156,82 @@ offers conclusions on what this project has achieved.
 \todo{Typing rules}
 \todo{Channels as messages}
 
+\begin{align*}
+P,Q ::= \; &\PO                                 & \text{inaction}             \\
+           &\new{x}{y}P                         & \text{scope restriction}    \\
+           &\cout{x}{u}P                        & \text{output}               \\
+           &\cin{y}{u}P                         & \text{input}                \\
+           &\select{x}{l_j}P                    & \text{selection}            \\
+           &\branch{x}{\{l_i : P_i\}_{i \in I}} & \text{branching}            \\
+           &\comp{P}{Q}                         & \text{parallel composition}
+\end{align*}
+
+\begin{mathpar}
+\inferrule
+    { }
+    {\comp{P}{Q} \equiv \comp{Q}{P}}
+    \quad (\textsc{C-CompComm})
+
+\inferrule
+    { }
+    {\new{x}{y} \new{z}{w} P \equiv \new{z}{w} \new{x}{y} P}
+    \quad (\textsc{C-ScopeComm})
+
+\inferrule
+    { }
+    {\comp{P}{\PO} \equiv P}
+    \quad (\textsc{C-Comp0})
+
+\inferrule
+    { }
+    {\comp {\comp{P}{Q}} {R} \equiv \comp {P} {\comp{Q}{R}}}
+    \quad (\textsc{C-CompAssoc})
+
+\inferrule
+    { }
+    {\new{x}{y} \PO \equiv \PO}
+    \quad (\textsc{C-Scope0})
+
+\inferrule
+    {x,y \not\in fn(Q)}
+    {\comp {\new{x}{y}P} {Q} \equiv \new{x}{y} \comp{P}{Q}}
+    \quad (\textsc{C-ScopeExp})
+
+\inferrule
+    { }
+    {\new{x}{y}P \equiv \new{y}{x}P}
+    \quad (\textsc{C-ScopeSwap})
+\end{mathpar}
+
+\begin{mathpar}
+\inferrule 
+    { }
+    {\new{x}{y}(\comp {\cout{x}{a}P} {\cin{y}{b}Q}) \reduce
+     \new{x}{y}(\comp {P}            {\subst{Q}{a}{b}})}
+    \quad (\textsc{R-Comm})
+
+\inferrule
+    {j \in I}
+    {\new{x}{y}(\comp {\select{x}{l_j}P} {\branch{y}{\{l_i : Q_i\}_{i \in I}}}) \reduce
+     \new{x}{y}(\comp {P}                {Q_j})}
+    \quad (\textsc{R-Case})
+
+\inferrule
+    {P \reduce Q}
+    {\new{x}{y}P \reduce \new{x}{y}Q}
+    \quad (\textsc{R-Res})
+
+\inferrule
+    {P \reduce Q}
+    {\comp{P}{R} \reduce \comp{Q}{R}}
+    \quad (\textsc{R-Par})
+
+\inferrule
+    {P \equiv P' \\ P' \reduce Q' \\ Q' \equiv Q}
+    {P \reduce Q}
+    \quad (\textsc{R-Struct})
+\end{mathpar}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Session types}\label{session-types}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -156,6 +250,67 @@ their specification -- ensuring \textit{session fidelity}. As communication
 occurs and messages are exchanged, the session types of channels advance.
 Ensuring that this reduction process respects session types involves proving
 both \textit{subject reduction} and \textit{type soundness}. \cite{Dardha2016m}
+
+\begin{mathpar}
+\inferrule{}{\dual{\Send{T}S} = \Recv{T}\dual{S}}
+
+\inferrule{}{\dual{\Recv{T}S} = \Send{T}\dual{S}}
+
+\inferrule{}{
+    \dual{\Branch \{l_i : S_i\}_{i \in I}} =
+    \Select \{l_i : \dual{S_i}\}_{i \in I}}
+
+\inferrule{}{
+    \dual{\Select\{l_i : S_i\}_{i \in I}} =
+    \Branch \{l_i : \dual{S_i}\}_{i \in I}}
+
+\inferrule{}{\dual{\End} = \End}
+\end{mathpar}
+
+\begin{mathpar}
+\inferrule
+    {\Gamma \types x : \End}
+    {\Gamma \types \PO}
+    \quad (\textsc{T-Inact})
+
+\inferrule
+    {\Gamma_1 \types P \\
+     \Gamma_2 \types Q}
+    {\Gamma_1 \circ \Gamma_2 \types \comp{P}{Q}}
+    \quad (\textsc{T-Par})
+
+\inferrule
+    {\Gamma,x:T,y:\dual{T} \types P}
+    {\Gamma \types \new{x}{y}P}
+    \quad (\textsc{T-Res})
+
+\inferrule
+    {\Gamma_1 \types x:\Recv{T}S \\
+     \Gamma_2,x:S,y:T \types P}
+    {\Gamma_1 \circ \Gamma_2 \types \cin{x}{y}P}
+    \quad (\textsc{T-In})
+
+\inferrule
+    {\Gamma_1 \types x:\Send{T}S \\
+     \Gamma_2 \types v:T \\
+     \Gamma_3,x:S \types P}
+    {\Gamma_1 \circ \Gamma_2 \circ \Gamma_3 \types \cout{x}{v}P}
+    \quad (\textsc{T-Out})
+
+\inferrule
+    {\Gamma_1 \types x:\Branch{\{l_i : S_i\}_{i \in I}} \\
+     \Gamma_2,x:S_i \types P_i \\
+     \forall i \in I}
+    {\Gamma_1 \circ \Gamma_2 \types x \branch{\{l_i : P_i\}_{i \in I}}}
+    \quad (\textsc{T-Branch})
+
+\inferrule
+    {\Gamma_1 \types x:\Select{\{l_i : S_i\}_{i \in I}} \\
+     \Gamma_2,x:S_i \types P_i \\
+     \exists j \in I}
+    {\Gamma_1 \circ \Gamma_2 \types x \select{l_j}P}
+    \quad (\textsc{T-Select})
+\end{mathpar}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The Coq proof assistant}\label{coq}
