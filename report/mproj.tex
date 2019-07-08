@@ -106,25 +106,25 @@ Acknowledgements go here
 \chapter{Introduction}\label{intro}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-The pi calculus models the exchange of messages between processes over
-two-endpoint communication channels. When two processes exchange a message over
-a channel computation advances: the receiving process gets reduced through
-substitution; the sending process proceeds further. Channels have types,
-limiting the data that can be exchanged over them. A brief introduction to the
-pi calculus is provided in \S \ref{pi-calculus}.
+The pi calculus models the exchange of messages between agents over two-endpoint
+communication channels. When two agents exchange a message over a channel
+computation advances: the receiving agent gets reduced through substitution; the
+sending agent proceeds further. Channels are typed, limiting the data that can
+be exchanged over them. A further introduction to the pi calculus is provided in
+\S \ref{pi-calculus}.
 
 Session types add sequential types to channels: the session type of a channel
 endpoint is a finite sequence of types, each with an associated direction.  When
-a channel endpoint is used by a process, the type and direction of the exchanged
+a channel endpoint is used by an agent, the type and direction of the exchanged
 data must follow the specification of the associated session type. The theorems
 enabled by this type system are found in \S \ref{session-types}.
 
 Using a proof assistant to prove these theorems provides an exceptionally strong
-guarantee of their correctness. Moreover, it means that any kind of process that
-uses session types as an abstraction can have these theorems automatically
-derived for it. From the numerous proof assistants available, this project uses
-Coq to formalise the pi calculus with session types. Amongst its features, Coq
-includes a powerful tactic engine and a dependent type system, both key for the
+guarantee of their correctness. Moreover, it means that any agent that uses
+session types as an abstraction can have these theorems automatically derived
+for it. From the numerous proof assistants available, this project uses Coq to
+formalise the pi calculus with session types. Amongst its features, Coq includes
+a powerful tactic engine and a dependent type system, both key for the
 development of this project. An overview of Coq is given in \S \ref{coq}.
 
 The present work takes advantage of polymorphism (\S \ref{polymorphism}) and
@@ -156,8 +156,8 @@ offers conclusions on what this project has achieved.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \cite{Vasconcelos2009}
-\todo{Typing rules}
 \todo{Channels as messages}
+\todo{Limit ourselves to binary channels}
 
 \begin{align*}
 P,Q ::= \; &\PO                                 & \text{inaction}             \\
@@ -242,12 +242,13 @@ P,Q ::= \; &\PO                                 & \text{inaction}             \\
 \todo{Typing rules}
 \todo{Channels as messages}
 \todo{Guarantees}
+\todo{Limit ourselves to linear types: $\circ$ is union of non intersecting sets}
 
 The two endpoints of a channel must have dual session types: if one end is
 sending data of type \texttt{T}, the other must be receiving data of type
 \texttt{T} -- ensuring \textit{communication safety}. Channel endpoints can be
 passed along as messages, but can never be duplicated: communication must only
-ever occur between two processes -- ensuring \textit{privacy}.  Processes must
+ever occur between two agents -- ensuring \textit{privacy}. Agents must
 follow the session types of channel endpoints: channels must be used as per
 their specification -- ensuring \textit{session fidelity}. As communication
 occurs and messages are exchanged, the session types of channels advance.
