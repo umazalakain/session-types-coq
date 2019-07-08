@@ -22,8 +22,8 @@ with SType : Type :=
 Notation "C[ s ]" := (Channel s).
 Notation "! m ; s" := (Send m s) (at level 90, right associativity).
 Notation "? m ; s" := (Receive m s) (at level 90, right associativity).
-Notation "▹ ss" := (Branch ss) (at level 90, right associativity).
-Notation "◃ ss" := (Select ss) (at level 90, right associativity).
+Notation "&{ ss }" := (Branch ss) (at level 90, right associativity).
+Notation "⊕{ ss }" := (Select ss) (at level 90, right associativity).
 
 Inductive Duality : SType → SType → Prop :=
 | Ends : Duality ø ø
@@ -198,11 +198,11 @@ Notation "![ m ]; p" := (POutput _ _ m p)(at level 80).
 Notation "c ![ m ]; p" := (POutput _ _ m p c)(at level 79).
 Notation "?[ m ]; p" := (PInput _ _ (fun m => p))(at level 80).
 Notation "c ?[ m ]; p" := (PInput _ _ (fun m => p) c)(at level 79).
-Notation "◃[ i ]; p" := (fun c => PSelect _ _ i c p)(at level 80).
-Notation "c ◃[ i ]; p" := (PSelect _ _ i c p)(at level 79).
-Notation "▹[ x ; .. ; y ]" :=
+Notation "◃ i ; p" := (fun c => PSelect _ _ i c p)(at level 80).
+Notation "c ◃ i ; p" := (PSelect _ _ i c p)(at level 79).
+Notation "▹{ x ; .. ; y }" :=
   (PBranch _ _ (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..))(at level 80).
-Notation "c ▹[ x ; .. ; y ]" :=
+Notation "c ▹{ x ; .. ; y }" :=
   (PBranch _ _ (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..) c)(at level 79).
 Definition ε {ST : Type} {MT: Type → Type} : Message ST MT (Channel ø) → Process ST MT:= PEnd ST MT.
 
@@ -407,12 +407,12 @@ Ltac reduction_step :=
   repeat match goal with
   | [ |- Reduction _ _ (PNew (? _; _) (! _; _) ?D ?P) _ ] =>
     apply RStruct with (PNew _ _ (inverse_duality D) (fun a b => P b a))
-  | [ |- Reduction _ _ (PNew (▹ _) (◃ _) ?D ?P) _ ] =>
+  | [ |- Reduction _ _ (PNew (&{_}) (⊕{_}) ?D ?P) _ ] =>
     apply RStruct with (PNew _ _ (inverse_duality D) (fun a b => P b a))
   | [ |- Reduction _ _ (PNew _ _ ?D (fun a b => b?[m]; ?PB <|> a![?M]; ?PA)) _ ] =>
     apply RStruct with (PNew _ _ D (fun a b => a![M]; PA <|> b?[m]; PB))
-  | [ |- Reduction _ _ (PNew _ _ ?D (fun a b => PBranch ?BB b ?PB <|> a◃[?M]; ?PA)) _ ] =>
-    apply RStruct with (PNew _ _ D (fun a b => a◃[M]; PA <|> PBranch BB b PB))
+  | [ |- Reduction _ _ (PNew _ _ ?D (fun a b => PBranch ?BB b ?PB <|> a◃?M; ?PA)) _ ] =>
+    apply RStruct with (PNew _ _ D (fun a b => a◃M; PA <|> PBranch BB b PB))
   end;
   constructors
 .
@@ -675,7 +675,10 @@ Example nonlinear_example1 : ~ (Linear nonlinear_example). compute. simp linear 
 
 Example branch_and_select : PProcess.
 refine
-  ([υ]> (new i <- ▹ (! Base bool; ø) :: (? Base bool; ø) :: [], o <- ◃ (? Base bool; ø) :: (! Base bool; ø) :: [], _)
-          i▹[ (![υ _ true]; ε) ; (?[m]; ε)] <|> o◃[Fin.F1]; ?[_]; ε).
+  ([υ]> (new
+           i <- &{ (! Base bool; ø) :: (? Base bool; ø) :: [] },
+           o <- ⊕{ (? Base bool; ø) :: (! Base bool; ø) :: [] },
+           _)
+          i▹{(![υ _ true]; ε) ; (?[m]; ε)} <|> o◃Fin.F1; ?[_]; ε).
 constructors.
 Qed.
