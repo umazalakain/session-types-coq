@@ -402,6 +402,41 @@ Ltac constructors :=
   repeat (intros; compute; constructor)
 .
 
+Ltac linearity_hypotheses :=
+  match goal with
+  | [ s : SType, r : SType , s' : SType, r' : SType |- _ ] =>
+    match goal with
+    | [ H : Message bool TMT C[s] → Message bool TMT C[r] →
+            Message bool TMT C[s'] → Message bool TMT C[r'] →
+            _ |- _ ] =>
+      destruct (H unmarked unmarked unmarked unmarked);
+      destruct (H marked unmarked unmarked unmarked);
+      destruct (H unmarked marked unmarked unmarked);
+      destruct (H unmarked unmarked marked unmarked);
+      destruct (H unmarked unmarked unmarked marked)
+    end
+  | [ s : SType, r : SType |- _ ] =>
+    match goal with
+    | [ H : ∀ (a : Message bool TMT C[s]) (b : Message bool TMT C[r]), _ |- _ ] =>
+      destruct (H unmarked unmarked);
+      destruct (H unmarked marked);
+      destruct (H marked unmarked)
+    end
+  | [ T : Type, s : SType |- _ ] =>
+    match goal with
+    | [ H : ∀ (a : Message bool TMT (Base T)) (b : Message bool TMT C[s]), _ |- _ ] =>
+      destruct (H (V tt) unmarked);
+      destruct (H (V tt) marked)
+    end
+  | [ s : SType |- _ ] =>
+    match goal with
+    | [ H : ∀ (a : Message bool TMT C[s]), _ |- _ ] =>
+      destruct (H unmarked);
+      destruct (H marked)
+    end
+  end
+.
+
 Ltac reduction_step :=
   intros; compute;
   repeat match goal with
@@ -429,70 +464,25 @@ Theorem congruence_linear {P Q} : Congruence _ _ P Q →
   (single_marked P → single_marked Q) /\ (linear P → linear Q).
 Proof.
   intros PcQ.
-  induction PcQ; split; simp linear in *; try tauto.
-  - destruct (H0 unmarked unmarked).
-    tauto.
-  - destruct (H0 unmarked unmarked).
-    destruct (H0 marked unmarked).
-    destruct (H0 unmarked marked).
-    tauto.
-  - destruct (H0 unmarked unmarked unmarked unmarked).
-    tauto.
-  - destruct (H0 unmarked unmarked unmarked unmarked).
-    destruct (H0 marked unmarked unmarked unmarked).
-    destruct (H0 unmarked marked unmarked unmarked).
-    destruct (H0 unmarked unmarked marked unmarked).
-    destruct (H0 unmarked unmarked unmarked marked).
-    tauto.
-  - destruct (H0 unmarked unmarked).
-    tauto.
-  - destruct (H0 unmarked unmarked).
-    destruct (H0 marked unmarked).
-    destruct (H0 unmarked marked).
-    tauto.
-  - destruct (H0 unmarked unmarked).
-    tauto.
-  - destruct (H0 unmarked unmarked).
-    destruct (H0 marked unmarked).
-    destruct (H0 unmarked marked).
-    tauto.
-  - destruct (H0 unmarked).
-    destruct (H0 marked).
-    dependent destruction c; destruct b; destruct m; simp linear in *.
+  induction PcQ; split; simp linear in *; try linearity_hypotheses; try tauto.
+  - dependent destruction c; destruct b; destruct m; simp linear in *.
     + tauto.
-    + destruct b.
-      contradiction.
-      simp linear.
-      tauto.
-    + destruct b; simp linear.
-      tauto.
-  - destruct (H0 unmarked).
-    destruct (H0 marked).
-    dependent destruction c; destruct b; destruct m; simp linear in *.
+    + destruct b; simp linear; tauto.
+    + destruct b; simp linear; tauto.
+  - dependent destruction c; destruct b; destruct m; simp linear in *.
     + tauto.
-    + destruct b.
-      contradiction.
-      simp linear.
+    + destruct b; simp linear; tauto.
+  - dependent destruction c;
+      destruct b;
+      destruct mt;
+      simp linear in *;
+      linearity_hypotheses;
       tauto.
-  - dependent destruction c; destruct b; destruct mt; simp linear in *.
-    + destruct (H0 (V tt) unmarked).
-      destruct (H0 (V tt) marked).
-      tauto.
-    + destruct (H0 unmarked unmarked).
-      destruct (H0 marked unmarked).
-      destruct (H0 unmarked marked).
-      tauto.
-    + destruct (H0 (V tt) unmarked).
-      tauto.
-    + destruct (H0 unmarked unmarked).
-      tauto.
-  - dependent destruction c; destruct b; destruct mt; simp linear in *.
-    + destruct (H0 (V tt) unmarked).
-      destruct (H0 (V tt) marked).
-      tauto.
-    + destruct (H0 unmarked unmarked).
-      destruct (H0 marked unmarked).
-      destruct (H0 unmarked marked).
+  - dependent destruction c;
+      destruct b;
+      destruct mt;
+      simp linear in *;
+      linearity_hypotheses;
       tauto.
 Qed.
 Hint Resolve congruence_linear.
@@ -545,12 +535,8 @@ Proof.
   - decompose [and] (@branches_linear _ i rs Qs).
     intro A.
     decompose [and or] A; tauto.
-  - destruct (H0 unmarked unmarked).
-    tauto.
-  - destruct (H0 unmarked unmarked).
-    destruct (H0 marked unmarked).
-    destruct (H0 unmarked marked).
-    tauto.
+  - linearity_hypotheses; tauto.
+  - linearity_hypotheses; tauto.
   - tauto.
   - tauto.
   - destruct (congruence_linear H).
