@@ -1,0 +1,161 @@
+\documentclass{beamer}
+
+\usepackage{mathtools}
+\usepackage{xcolor}
+
+\mode<presentation>
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{}
+
+\title{
+    Type-checking \\
+    session typed $\pi$-calculus \\
+    with Coq
+}
+\author{Uma Zalakain \and Ornela Dardha}
+\institute{University of Glasgow}
+
+\date{}
+
+\begin{document}
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}
+    \frametitle{Some context}
+    \begin{itemize}
+        \item Undergraduate degree at the University of Strathclyde\\
+            {\small
+            \textbf{Evidence-providing problem solvers in Agda},
+            s: \textit{Conor McBride} \\
+            \scriptsize Solver for equations on monoids\\
+            Incomplete solver for Presburger arithmetic \\
+            }
+        \item Master's degree at the University of Glasgow\\
+            {\scriptsize
+            Briefly exposed to session types through Ornela's \textit{theory of
+            computation} class\\
+            Started working on this project in June\\
+            }
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{A problem}
+    \begin{block}{Formalising session typed $\pi$-calculus in Coq}
+        \begin{itemize}
+            \item strong correctness guarantees
+            \item no hand-waiving
+            \item interesting modelling exercise
+            \item perfect excuse to familiarise with Coq
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{A subset}
+    \begin{itemize}
+        \item no replication
+        \item all channels have session types
+        \item branching and selection
+        \item base type $\in$ \texttt{Type}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{A goal}
+    \begin{block}{Correctness by construction}
+    coq type-checks process $\iff$ process uses STs correctly
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Some ingredients}
+    \begin{block}{Continuation passing}
+        \begin{itemize}
+            \item $\xrightarrow{x : C[H.T]} f(x) \xrightarrow{y : C[T]} \ldots$
+            \item channels type indexed by session types
+            \item provides session fidelity
+        \end{itemize}
+    \end{block}
+
+    \begin{block}{HOAS}
+        \begin{itemize}
+            \item channels/messages as arguments
+            \item variable references lifted to Coq
+            \item no substitution lemmas
+            \item no environments (only closed processes)
+        \end{itemize}
+    \end{block}
+
+    \begin{block}{Parametric channel type}
+        \begin{itemize}
+            \item opaque unforgeable channels
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{An obstacle}
+    \centering
+    \LARGE
+    $
+    \xrightarrow{x : C[H.T]} f(x)
+    \xrightarrow{y : C[T]} g(\colorbox{red}{x})
+    \xrightarrow{y : C[T]} \ldots$
+    \vfill
+    i.e., linearity
+\end{frame}
+
+\begin{frame}
+    \frametitle{A hack}
+    \begin{itemize}
+        \item define linearity as a inductive proposition on processes
+        \item ensures session privacy
+        \item ensures communication safety
+        \item process is well-typed $\iff$ process is linear
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{An equivalence}
+    \LARGE
+    \centering
+    $\forall \ P \ Q : Process,$ 
+    \vfill
+    $\Gamma \vdash P, \,P \rightarrow Q \implies \Gamma \vdash Q$ \\
+    $\Updownarrow$ \\
+    $lin(P), \, P \rightarrow Q \implies lin(Q)$ \\
+\end{frame}
+
+\begin{frame}
+    \frametitle{Another idea}
+    \begin{itemize}
+        \item keep an env with linearly available channels
+        \begin{itemize}
+            \item index processes with their env
+            \item add created channels to env
+            \item remove consumed channels from env
+        \end{itemize}
+        \item composition decides where channels go
+        \item reduction by communication redirects channels through compositions
+        \item \textcolor{violet}{processes are correct by construction}
+        \item \textcolor{violet}{type preservation requires no proofs}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Some questions}
+    \begin{itemize}
+        \item how to handle channels in the env?
+        \begin{itemize}
+            \item no decidable equality on session types
+            \item destruct env list modulo some permutation?
+            \item inductive $\in$ type with a \texttt{remove} operation?
+        \end{itemize}
+        \item will I bump into an invisible wall?
+    \end{itemize}
+\end{frame}
+
+\end{document}
