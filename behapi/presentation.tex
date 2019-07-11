@@ -10,11 +10,10 @@
 \title{
     Type-checking \\
     session typed $\pi$-calculus \\
-    with Coq
+    with Coq\\
 }
-\author{Uma Zalakain \and Ornela Dardha}
+\author{\textbf{Uma Zalakain}}
 \institute{University of Glasgow}
-
 \date{}
 
 \begin{document}
@@ -23,30 +22,31 @@
 \end{frame}
 
 \begin{frame}
-    \frametitle{Some context}
+    \frametitle{Background}
     \begin{itemize}
         \item Undergraduate degree at the University of Strathclyde\\
             {\small
-            \textbf{Evidence-providing problem solvers in Agda},
-            s: \textit{Conor McBride} \\
+            \textbf{Evidence-providing problem solvers in Agda} \\
+            Supervised by \textit{Conor McBride} \\
             \scriptsize Solver for equations on monoids\\
             Incomplete solver for Presburger arithmetic \\
             }
         \item Master's degree at the University of Glasgow\\
+            Supervised by \textit{Ornela Dardha} \\
             {\scriptsize
-            Briefly exposed to session types through Ornela's \textit{theory of
-            computation} class\\
-            Started working on this project in June\\
+            First experience with session types and process calculi \\
+            Started working in June \\
+            Soon applying for PhD \\
             }
     \end{itemize}
 \end{frame}
 
 \begin{frame}
-    \frametitle{A problem}
+    \frametitle{Problem}
     \begin{block}{Formalising session typed $\pi$-calculus in Coq}
         \begin{itemize}
+            \item subset (finite, no shared channels)
             \item strong correctness guarantees
-            \item no hand-waiving
             \item interesting modelling exercise
             \item perfect excuse to familiarise with Coq
         \end{itemize}
@@ -54,29 +54,21 @@
 \end{frame}
 
 \begin{frame}
-    \frametitle{A subset}
-    \begin{itemize}
-        \item no replication
-        \item all channels have session types
-        \item branching and selection
-        \item base type $\in$ \texttt{Type}
-    \end{itemize}
-\end{frame}
-
-\begin{frame}
-    \frametitle{A goal}
+    \frametitle{Goal}
     \begin{block}{Correctness by construction}
-    coq type-checks process $\iff$ process uses STs correctly
+        \begin{itemize}
+            \item coq type-checks process $\iff$ process uses STs correctly
+            \item bonus: the STs a process uses get type-inferred
+        \end{itemize}
     \end{block}
 \end{frame}
 
 \begin{frame}
-    \frametitle{Some ingredients}
+    \frametitle{Ingredients}
     \begin{block}{Continuation passing}
         \begin{itemize}
             \item $\xrightarrow{x : C[H.T]} f(x) \xrightarrow{y : C[T]} \ldots$
             \item channels type indexed by session types
-            \item provides session fidelity
         \end{itemize}
     \end{block}
 
@@ -97,7 +89,7 @@
 \end{frame}
 
 \begin{frame}
-    \frametitle{An obstacle}
+    \frametitle{Obstacle}
     \centering
     \LARGE
     $
@@ -109,9 +101,10 @@
 \end{frame}
 
 \begin{frame}
-    \frametitle{A hack}
+    \frametitle{Solution}
     \begin{itemize}
         \item define linearity as a inductive proposition on processes
+        \item ensures session fidelity
         \item ensures session privacy
         \item ensures communication safety
         \item process is well-typed $\iff$ process is linear
@@ -119,18 +112,18 @@
 \end{frame}
 
 \begin{frame}
-    \frametitle{An equivalence}
+    \frametitle{Type preservation}
     \LARGE
     \centering
     $\forall \ P \ Q : Process,$ 
     \vfill
-    $\Gamma \vdash P, \,P \rightarrow Q \implies \Gamma \vdash Q$ \\
+    $\emptyset \vdash P, \,P \rightarrow Q \implies \emptyset \vdash Q$ \\
     $\Updownarrow$ \\
     $lin(P), \, P \rightarrow Q \implies lin(Q)$ \\
 \end{frame}
 
 \begin{frame}
-    \frametitle{Another idea}
+    \frametitle{Recent explorations}
     \begin{itemize}
         \item keep an env with linearly available channels
         \begin{itemize}
@@ -154,6 +147,7 @@
             \item destruct env list modulo some permutation?
             \item inductive $\in$ type with a \texttt{remove} operation?
         \end{itemize}
+        \item is it possible to type-infer where channels go?
         \item will I bump into an invisible wall?
     \end{itemize}
 \end{frame}
