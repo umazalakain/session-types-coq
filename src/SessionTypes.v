@@ -19,6 +19,7 @@ with SType : Type :=
 | Select : ∀ {n}, Vector.t SType n → SType
 .
 
+Notation "B[ s ]" := (Base s).
 Notation "C[ s ]" := (Channel s).
 Notation "! m ; s" := (Send m s) (at level 90, right associativity).
 Notation "? m ; s" := (Receive m s) (at level 90, right associativity).
@@ -61,8 +62,8 @@ Section Processes.
   Variable MT : Type → Type.
 
   Inductive Message : MType → Type :=
-  | V : ∀ {M : Type}, MT M → Message (Base M)
-  | C : ∀ {S : SType}, ST → Message (Channel S)
+  | V : ∀ {M : Type}, MT M → Message B[M]
+  | C : ∀ {S : SType}, ST → Message C[S]
   .
 
   Arguments V [M].
@@ -204,7 +205,7 @@ Notation "▹{ x ; .. ; y }" :=
   (PBranch _ _ (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..))(at level 80).
 Notation "c ▹{ x ; .. ; y }" :=
   (PBranch _ _ (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..) c)(at level 79).
-Definition ε {ST : Type} {MT: Type → Type} : Message ST MT (Channel ø) → Process ST MT:= PEnd ST MT.
+Definition ε {ST : Type} {MT: Type → Type} : Message ST MT C[ø] → Process ST MT:= PEnd ST MT.
 
 Arguments V [ST MT M].
 Arguments C [ST MT S].
@@ -221,7 +222,7 @@ Arguments PEnd [ST MT].
 (**************************)
 
 Definition TMT : Type → Type := fun _ => unit.
-Definition fMT : ∀ (S: Set), S → Message bool TMT (Base S) := fun _ _ => V tt.
+Definition fMT : ∀ (S: Set), S → Message bool TMT B[S] := fun _ _ => V tt.
 
 Definition marked : ∀ s, Message bool TMT C[s] := fun s => C true.
 Definition unmarked : ∀ s, Message bool TMT C[s] := fun s => C false.
@@ -246,11 +247,11 @@ linear (PNew _ _ _ P) =>
 linear (PInput P (C true)) =>
   False ;
 
-linear (@PInput (Base _) _ P (C false)) =>
+linear (@PInput B[_] _ P (C false)) =>
   single_marked (P (V tt) marked) /\
   linear (P (V tt) unmarked) ;
 
-linear (@PInput (Channel _) _ P (C false)) =>
+linear (@PInput C[_] _ P (C false)) =>
   single_marked (P marked unmarked) /\
   single_marked (P unmarked marked) /\
   linear (P unmarked unmarked) ;
@@ -299,17 +300,17 @@ linear (PBranch Ps (C false))
 single_marked (PNew _ _ _ P)
   => single_marked (P unmarked unmarked) ;
 
-single_marked (@PInput (Base _) _ P (C false))
+single_marked (@PInput B[_] _ P (C false))
   => single_marked (P (V tt) unmarked) ;
 
-single_marked (@PInput (Base _) _ P (C true))
+single_marked (@PInput B[_] _ P (C true))
   => and (linear (P (V tt) unmarked))
         (single_marked (P (V tt) marked));
 
-single_marked (@PInput (Channel _) _ P (C false))
+single_marked (@PInput C[_] _ P (C false))
   => single_marked (P unmarked unmarked) ;
 
-single_marked (@PInput (Channel _) _ P (C true))
+single_marked (@PInput C[_] _ P (C true))
   => and (linear (P unmarked unmarked))
         (and (single_marked (P marked unmarked))
              (single_marked (P unmarked marked))) ;
@@ -371,7 +372,7 @@ single_marked (PBranch Ps (C false))
 (******************************)
 
 (* Abstract over parametric types and their constructors *)
-Definition PProcess := ∀ ST MT (mf : ∀ (S: Set), S → Message ST MT (Base S)) , Process ST MT.
+Definition PProcess := ∀ ST MT (mf : ∀ (S: Set), S → Message ST MT B[S]) , Process ST MT.
 Definition Linear (p : PProcess) : Prop := linear (p bool TMT fMT).
 Notation "[ f ]> P" := (fun _ _ f => P)(at level 80).
 Notation "P ≡ Q" := (∀ ST MT mf, Congruence _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
@@ -424,7 +425,7 @@ Ltac linearity_hypotheses :=
     end
   | [ T : Type, s : SType |- _ ] =>
     match goal with
-    | [ H : ∀ (a : Message bool TMT (Base T)) (b : Message bool TMT C[s]), _ |- _ ] =>
+    | [ H : ∀ (a : Message bool TMT B[T]) (b : Message bool TMT C[s]), _ |- _ ] =>
       destruct (H (V tt) unmarked);
       destruct (H (V tt) marked)
     end
@@ -578,7 +579,7 @@ Print example1.
 
 Example example2 : PProcess.
   refine
-  ([υ]> (new o <- ! Base bool ; ? Base bool ; ø, i <- ? Base bool ; ! Base bool ; ø, _)
+  ([υ]> (new o <- ! B[bool] ; ? B[bool] ; ø, i <- ? B[bool] ; ! B[bool] ; ø, _)
     (o![υ _ true]; ?[m]; ε) <|> i?[m]; ![m]; ε).
   constructors.
 Defined.
@@ -587,7 +588,7 @@ Example congruent_example1 : example1 ≡ example2. constructors. Qed.
 
 Example example3 : PProcess.
   refine
-  ([υ]> (new o <- ? Base bool ; ø, i <- ! Base bool ; ø, _)
+  ([υ]> (new o <- ? B[bool] ; ø, i <- ! B[bool] ; ø, _)
     (o?[m]; ε) <|> i![υ _ true]; ε).
   constructors.
 Defined.
@@ -600,7 +601,7 @@ Qed.
 
 Example example4 : PProcess.
   refine
-  ([υ]> (new i <- ! Base bool ; ø, o <- ? Base bool ; ø, _)
+    ([υ]> (new i <- ! B[bool] ; ø, o <- ? B[bool] ; ø, _)
     (i![υ _ true]; ε <|> o?[m]; ε)).
   constructors.
 Defined.
@@ -626,8 +627,8 @@ Qed.
 
 Example channel_over_channel : PProcess :=
   [υ]>
-    (new i <- ? C[ ! Base bool ; ø ] ; ø, o <- ! C[ ! Base bool ; ø ] ; ø, MLeft Ends)
-    (new i' <- ? Base bool ; ø, o' <- _, MLeft Ends)
+    (new i <- ? C[ ! B[bool] ; ø ] ; ø, o <- ! C[ ! B[bool] ; ø ] ; ø, MLeft Ends)
+    (new i' <- ? B[bool] ; ø, o' <- _, MLeft Ends)
 
     (i?[c]; fun a => ε a <|> c![υ _ true]; ε)
     <|>
@@ -636,8 +637,8 @@ Example channel_over_channel : PProcess :=
 
 Example channel_over_channel1 : PProcess :=
   [υ]>
-    (new i' <- ? Base bool ; ø, o' <- ! Base bool ; ø, MLeft Ends)
-    (new i <- ? C[ ! Base bool ; ø ] ; ø, o <- ! C[ ! Base bool ; ø ] ; ø, MLeft Ends)
+    (new i' <- ? B[bool] ; ø, o' <- ! B[bool] ; ø, MLeft Ends)
+    (new i <- ? C[ ! B[bool] ; ø ] ; ø, o <- ! C[ ! B[bool] ; ø ] ; ø, MLeft Ends)
 
     (i?[c]; fun a => c![υ _ true]; ε <|> ε a)
     <|>
@@ -647,7 +648,7 @@ Example channel_over_channel1 : PProcess :=
 Example congruent_example3: channel_over_channel ≡ channel_over_channel1. constructors. Qed.
 
 Example nonlinear_example : PProcess :=
-  [υ]> (new i <- ? Base bool ; ø, o <- ! Base bool; ø, MLeft Ends)
+  [υ]> (new i <- ? B[bool] ; ø, o <- ! B[bool] ; ø, MLeft Ends)
 
     (* Cheat the system by using the channel o twice *)
     i?[_]; ε <|> o![υ _ true]; (fun _ => o![υ _ true]; ε)
@@ -662,8 +663,8 @@ Example nonlinear_example1 : ~ (Linear nonlinear_example). compute. simp linear 
 Example branch_and_select : PProcess.
 refine
   ([υ]> (new
-           i <- &{ (! Base bool; ø) :: (? Base bool; ø) :: [] },
-           o <- ⊕{ (? Base bool; ø) :: (! Base bool; ø) :: [] },
+           i <- &{ (! B[bool] ; ø) :: (? B[bool] ; ø) :: [] },
+           o <- ⊕{ (? B[bool] ; ø) :: (! B[bool] ; ø) :: [] },
            _)
           i▹{(![υ _ true]; ε) ; (?[m]; ε)} <|> o◃Fin.F1; ?[_]; ε).
 constructors.
