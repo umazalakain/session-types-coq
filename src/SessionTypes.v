@@ -1,9 +1,7 @@
 Require Import Unicode.Utf8.
 Require Import Program.Equality.
-Require Import Arith.
 Require Import Forall.
 Require Vectors.Vector.
-Require Import Arith.Plus.
 Import Vector.VectorNotations.
 From Equations Require Import Equations.
 
