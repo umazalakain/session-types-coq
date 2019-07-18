@@ -82,7 +82,21 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-abstract goes here
+    This project formalises session types in Coq using a mix of continuation
+    passing, parametric HOAS, dependent types and ad-hoc linearity checks. Each
+    action that a process takes requires a channel capable of that action. The
+    head of that channel's type is then stripped off and its continuation is
+    passed to the next action the process takes. Dependent types guarantee this
+    continuation passing is correct by construction. The type of channels is
+    parametrised over, so that users are unable to skip the proper mechanisms to
+    create channels. The HOAS makes the syntax easy to use for both the end user
+    and the designer: all variables are lifted to Coq, all typing judgments
+    happen in Coq, no typing contexts are required. The continuation passing
+    always creates channels that must be used exactly once. Unfortunately Coq
+    has no linearity support, so this check needs to happen ad-hoc, by
+    traversing processes. Ultimately, the claim is this: if the definition of a
+    process typechecks in Coq, and the process uses channels linearly, then type
+    safety and type preservation through reduction hold.
 \end{abstract}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -151,13 +165,23 @@ offers conclusions on what this project has achieved.
 \chapter{Background knowledge}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+Discuss general pi calculus
+Discuss session types
+Discuss our subset of session types
+Overview Coq
+Polymorphism
+Dependent types
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Pi calculus}\label{pi-calculus}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
 \cite{Vasconcelos2009}
 \todo{Channels as messages}
 \todo{Limit ourselves to binary channels}
+\todo{Typed only as \#T}
 
 \begin{align*}
 P,Q ::= \; &\PO                                 & \text{inaction}             \\
@@ -239,9 +263,10 @@ P,Q ::= \; &\PO                                 & \text{inaction}             \\
 \section{Session types}\label{session-types}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\todo{Typing rules}
+\todo{Can be binary (diadic) or multiparty}
 \todo{Channels as messages}
 \todo{Guarantees}
+\todo{Limit ourselves to channels with session types, no \#T}
 \todo{Limit ourselves to linear types: $\circ$ is union of non intersecting sets}
 
 The two endpoints of a channel must have dual session types: if one end is
@@ -398,6 +423,10 @@ Ensuring that linearity is preserved through reduction is therefore essential:
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Linearity preservation}\label{linearity-preservation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Results}\label{results}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
