@@ -2,6 +2,7 @@
 \usepackage{graphicx}
 
 \usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage[utf8]{inputenc}
 \usepackage{url}
 \usepackage{fancyvrb}
@@ -57,8 +58,8 @@
 
 \newcommand{\subst}[3]{#1[#2/#3]}
 
-\def\picalc/{\(\pi\)-calculus}
-\def\Picalc/{\(\pi\)-Calculus}
+\newcommand{\picalc}{$\pi$-calculus}
+\newcommand{\Picalc}{$\pi$-Calculus}
 
 \newcommand{\type}{\texttt}
 \newcommand{\End}{\type{End}}
@@ -74,7 +75,7 @@
 \begin{document}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\title{Type-checking\\ $\pi$-calculus session types\\ with Coq}
+\title{Type-checking\\ session-typed \picalc \\ with Coq}
 \author{Uma Zalakain}
 \date{2019-09-06}
 \maketitle
@@ -364,6 +365,58 @@ both \textit{subject reduction} and \textit{type soundness}. \cite{Dardha2016m}
 \chapter{Encoding}\label{encoding}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+Central to computing session-typed \picalc is the need to handle the state
+transitions of session types. One approach is \textit{continuation passing},
+introduced in \S \ref{continuation-passing}, which destroys channels and creates
+new ones as part of every action of a process \cite{Dardha2016m}. While there
+exist other approaches \todo{citation needed}, they all require for every state
+a session type is in to be used exactly once, i.e. linearity, discussed in \S
+\ref{linearity}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Continuation passing}\label{continuation-passing}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\cite{Vasconcelos2010}
+\todo{We merge pi calculus and session types into one}
+
+
+Assuming linearity, \textbf{processes are correct by construction}: the
+processes that can be constructed depend on the session types of the channels in
+the environment of the host language; an action strips off the outer layer of a
+channel's session type -- modelling \textbf{continuation passing}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Linearity}\label{linearity}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\cite{Kobayashi1999}
+\cite{Toninho2011}
+
+One approach to simulating linearity is by doing it \textit{a priori}, at
+construction time, by keeping track of the linearly available channels through a
+context by which processes are indexed. This means that channel creation cannot
+be represented through function abstraction, and that there must be a way of
+addressing a particular channel within a context -- strings with the Barendregt
+convention, De Bruijn indices, locally nameless De Bruijn indices, or a
+parametric HOAS. Since only channels need to be used linearly, message input can
+still be represented as function abstraction when the message does not contain a
+channel. \todo{talk about context split}
+
+Another approach to simulating linearity is traversing processes \textit{a
+posteriori}, after they have been defined, and check that each channel is used
+exactly once. This can be done by making the type of channels parametric, and
+then instantiating it to $\mathbb{B}$ and \textit{marking} each channel for
+inspection. This allows both channel creation and message input to be modelled
+as function abstraction, because channels of a parametric type cannot be forged.
+However, to be able to traverse processes where message passing is modelled as
+function abstraction, one has to be able to provide some sort of message by
+projecting the types of data sent over messages to the unit type -- by
+parametrising functions over a $\mathrm{Type} \rightarrow \mathrm{Type}$
+function. Unfortunately this makes it impossible for processes to use any logic
+that is external to the calculus and depends on the type of messages. \todo{is
+this bad?}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Parametric HOAS}\label{phoas}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -378,25 +431,6 @@ The introduction of both channels and received messages is modelled as function
 abstraction in Coq, therefore \textbf{variables are handled transparently} -- no
 substitution related lemmas are required. Channel types are parametrised to make
 them opaque -- they cannot be illicitly created or inspected by the user.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Continuation passing}\label{continuation-passing}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\cite{Vasconcelos2010}
-\todo{We merge pi calculus and session types into one}
-
-Assuming linearity, \textbf{processes are correct by construction}: the
-processes that can be constructed depend on the session types of the channels in
-the environment of the host language; an action strips off the outer layer of a
-channel's session type -- modelling \textbf{continuation passing}.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Linearity}\label{linearity}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\cite{Kobayashi1999}
-\cite{Toninho2011}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Type preservation}\label{type-preservation}
