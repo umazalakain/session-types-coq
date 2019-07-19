@@ -545,23 +545,37 @@ Proof.
 Qed.
 Hint Resolve reduction_linear.
 
-Theorem type_preservation : ∀ (P Q : PProcess), P ⇒ Q → Linear P → Linear Q.
+Theorem type_preservation P Q : P ⇒ Q → Linear P → Linear Q.
 Proof.
-  intros P Q PrQ lP.
-  unfold PProcess in P, Q.
-  unfold Linear.
-  unfold Linear in lP.
+  intros PrQ lP.
   refine (
       (match (P bool TMT fMT) as P'
              return linear P' → Reduction _ _ P' (Q bool TMT fMT) → linear (Q bool TMT fMT)
        with
        | _ => _
        end) lP (PrQ bool TMT fMT)).
-  all: intros slP sPrQ.
+  intros slP sPrQ.
   destruct (reduction_linear sPrQ) as [_ lPlQ].
   exact (lPlQ lP).
 Qed.
 Hint Resolve type_preservation.
+
+Theorem big_step_type_preservation P Q : P ⇒⇒ Q → Linear P → Linear Q.
+Proof.
+  intros PrQ lP.
+  refine (
+      (match (P bool TMT fMT) as P'
+             return linear P' → BigStepReduction _ _ P' (Q bool TMT fMT) → linear (Q bool TMT fMT)
+       with
+       | _ => _
+       end) lP (PrQ bool TMT fMT)).
+  intros slP sPrQ.
+  induction sPrQ.
+  destruct (reduction_linear H); auto.
+  auto.
+  auto.
+Qed.
+Hint Resolve big_step_type_preservation.
 
 (******************************************)
 (*               EXAMPLES                 *)
@@ -612,6 +626,11 @@ Example example5 : PProcess :=
 Example reduction_example2 : example4 ⇒ example5. constructors. Qed.
 
 Example big_step_reduction : example1 ⇒⇒ example5. big_step_reduction. Qed.
+
+Example big_step_type_preservation_example1
+  : example1 ⇒⇒ example5 → Linear example1 → Linear example5.
+eauto.
+Qed.
 
 Example completion : Completes example1.
 Proof.
