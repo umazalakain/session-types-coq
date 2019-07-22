@@ -400,6 +400,8 @@ Definition Completes (P : PProcess) := exists Q, P ⇒⇒ Q /\ Completed Q.
 Ltac constructors :=
   repeat (intros; compute; constructor)
 .
+Hint Extern 1 (Duality _ _) => constructors.
+Hint Extern 1 (_ ≡ _) => constructors.
 
 Ltac linearity_hypotheses :=
   match goal with
@@ -450,10 +452,18 @@ Ltac reduction_step :=
   end;
   constructors
 .
+Hint Extern 1 (_ ⇒ _) => reduction_step.
 
 Ltac big_step_reduction :=
   repeat intros; compute; eapply RTrans; eapply RSmall; try reduction_step
 .
+Hint Extern 1 (_ ⇒⇒ _) => big_step_reduction.
+
+Ltac linearity :=
+  unfold Linear; simp linear in *; tauto
+.
+Hint Extern 1 (Linear _) => linearity.
+Hint Extern 1 (~ (Linear _)) => linearity.
 
 (******************************************)
 (*          TYPE PRESERVATION             *)
@@ -585,47 +595,38 @@ Example example1 : PProcess.
   refine
   ([υ]> (new i <- _, o <- _, _)
     (i?[m]; ![m]; ε) <|> (o![υ _ true]; ?[m]; ε)).
-  constructors.
+  auto.
 Defined.
 Print example1.
 
-Example example2 : PProcess.
-  refine
-  ([υ]> (new o <- ! B[bool] ; ? B[bool] ; ø, i <- ? B[bool] ; ! B[bool] ; ø, _)
+Example example2 : PProcess :=
+  ([υ]> (new o <- ! B[bool] ; ? B[bool] ; ø, i <- ? B[bool] ; ! B[bool] ; ø, ltac:(auto))
     (o![υ _ true]; ?[m]; ε) <|> i?[m]; ![m]; ε).
-  constructors.
-Defined.
 
-Example congruent_example1 : example1 ≡ example2. constructors. Qed.
+Example congruent_example1 : example1 ≡ example2. auto. Qed.
 
-Example example3 : PProcess.
-  refine
-  ([υ]> (new o <- ? B[bool] ; ø, i <- ! B[bool] ; ø, _)
+Example example3 : PProcess :=
+  ([υ]> (new o <- ? B[bool] ; ø, i <- ! B[bool] ; ø, ltac:(auto))
     (o?[m]; ε) <|> i![υ _ true]; ε).
-  constructors.
-Defined.
 
-Example reduction_example1 : example2 ⇒ example3. constructors. Qed.
+Example reduction_example1 : example2 ⇒ example3. auto. Qed.
 
 Example type_preservation_example1 : example2 ⇒ example3 → Linear example2 → Linear example3.
 eauto.
 Qed.
 
-Example example4 : PProcess.
-  refine
-    ([υ]> (new i <- ! B[bool] ; ø, o <- ? B[bool] ; ø, _)
+Example example4 : PProcess :=
+  ([υ]> (new i <- ! B[bool] ; ø, o <- ? B[bool] ; ø, ltac:(auto))
     (i![υ _ true]; ε <|> o?[m]; ε)).
-  constructors.
-Defined.
 
-Example congruent_example2 : example3 ≡ example4. constructors. Qed.
+Example congruent_example2 : example3 ≡ example4. auto. Qed.
 
 Example example5 : PProcess :=
   ([υ]> (new i <- ø, o <- ø, Ends) (ε i <|> ε o)).
 
-Example reduction_example2 : example4 ⇒ example5. constructors. Qed.
+Example reduction_example2 : example4 ⇒ example5. auto. Qed.
 
-Example big_step_reduction : example1 ⇒⇒ example5. big_step_reduction. Qed.
+Example big_step_reduction : example1 ⇒⇒ example5. auto. Qed.
 
 Example big_step_type_preservation_example1
   : example1 ⇒⇒ example5 → Linear example1 → Linear example5.
@@ -662,7 +663,7 @@ Example channel_over_channel1 : PProcess :=
     (o![o']; fun a => i'?[_]; ε <|> ε a)
 .
 
-Example congruent_example3: channel_over_channel ≡ channel_over_channel1. constructors. Qed.
+Example congruent_example3: channel_over_channel ≡ channel_over_channel1. auto. Qed.
 
 Example nonlinear_example : PProcess :=
   [υ]> (new i <- ? B[bool] ; ø, o <- ! B[bool] ; ø, MLeft Ends)
@@ -671,18 +672,15 @@ Example nonlinear_example : PProcess :=
     i?[_]; ε <|> o![υ _ true]; (fun _ => o![υ _ true]; ε)
     .
 
-Example linear_example1 : Linear example1. compute. simp linear in *. tauto. Qed.
+Example linear_example1 : Linear example1. auto. Qed.
 
-Example linear_channel_over_channel : Linear channel_over_channel. compute. simp linear in *. tauto. Qed.
+Example linear_channel_over_channel : Linear channel_over_channel. auto. Qed.
 
-Example nonlinear_example1 : ~ (Linear nonlinear_example). compute. simp linear in *. tauto. Qed.
+Example nonlinear_example1 : ~ (Linear nonlinear_example). auto. Qed.
 
-Example branch_and_select : PProcess.
-refine
+Example branch_and_select : PProcess :=
   ([υ]> (new
            i <- &{ (! B[bool] ; ø) :: (? B[bool] ; ø) :: [] },
            o <- ⊕{ (? B[bool] ; ø) :: (! B[bool] ; ø) :: [] },
-           _)
+           ltac:(auto))
           i▹{(![υ _ true]; ε) ; (?[m]; ε)} <|> o◃Fin.F1; ?[_]; ε).
-constructors.
-Qed.
