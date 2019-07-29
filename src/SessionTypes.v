@@ -178,12 +178,11 @@ Section Processes.
   where "P ⇒ Q" := (Reduction P Q)
   .
 
-  Reserved Notation "P ⇒⇒ Q" (at level 60).
-  Inductive BigStepReduction : Process → Process → Prop :=
-  | RSmall P Q : P ⇒ Q → P ⇒⇒ Q
-  | RTrans P Q R : P ⇒⇒ Q → Q ⇒⇒ R → P ⇒⇒ R
-  | RRefl P : P ⇒⇒ P
-  where "P ⇒⇒ Q" := (BigStepReduction P Q)
+  Reserved Notation "P ⇒* Q" (at level 60).
+  Inductive RTReduction : Process → Process → Prop :=
+  | RRefl P : P ⇒* P
+  | RStep P Q R : P ⇒ Q → Q ⇒* R → P ⇒* R
+  where "P ⇒* Q" := (RTReduction P Q)
   .
 End Processes.
 
@@ -375,7 +374,7 @@ Definition Linear (p : PProcess) : Prop := linear (p bool TMT fMT).
 Notation "[ f ]> P" := (fun _ _ f => P)(at level 80).
 Notation "P ≡ Q" := (∀ ST MT mf, Congruence _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 Notation "P ⇒ Q" := (∀ ST MT mf, Reduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
-Notation "P ⇒⇒ Q" := (∀ ST MT mf, BigStepReduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
+Notation "P ⇒* Q" := (∀ ST MT mf, RTReduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 
 (*****************************)
 (*         PROGRESS          *)
@@ -455,9 +454,9 @@ Ltac reduction_step :=
 Hint Extern 1 (_ ⇒ _) => reduction_step.
 
 Ltac big_step_reduction :=
-  repeat intros; compute; eapply RTrans; eapply RSmall; try reduction_step
+  intros; compute; repeat (eapply RStep; reduction_step)
 .
-Hint Extern 1 (_ ⇒⇒ _) => big_step_reduction.
+Hint Extern 1 (_ ⇒* _) => big_step_reduction.
 
 Ltac linearity :=
   unfold Linear; simp linear in *; tauto
@@ -466,7 +465,7 @@ Hint Extern 1 (Linear _) => linearity.
 Hint Extern 1 (~ (Linear _)) => linearity.
 
 (******************************************)
-(*          TYPE PRESERVATION             *)
+(*          SUBJECT REDUCTION             *)
 (******************************************)
 
 Theorem congruence_linear {P Q} : Congruence _ _ P Q →
@@ -555,7 +554,7 @@ Proof.
 Qed.
 Hint Resolve reduction_linear.
 
-Theorem type_preservation P Q : P ⇒ Q → Linear P → Linear Q.
+Theorem subject_reduction P Q : P ⇒ Q → Linear P → Linear Q.
 Proof.
   intros PrQ lP.
   refine (
@@ -568,24 +567,23 @@ Proof.
   destruct (reduction_linear sPrQ) as [_ lPlQ].
   exact (lPlQ lP).
 Qed.
-Hint Resolve type_preservation.
+Hint Resolve subject_reduction.
 
-Theorem big_step_type_preservation P Q : P ⇒⇒ Q → Linear P → Linear Q.
+Theorem big_step_subject_reduction P Q : P ⇒* Q → Linear P → Linear Q.
 Proof.
   intros PrQ lP.
   refine (
       (match (P bool TMT fMT) as P'
-             return linear P' → BigStepReduction _ _ P' (Q bool TMT fMT) → linear (Q bool TMT fMT)
+             return linear P' → RTReduction _ _ P' (Q bool TMT fMT) → linear (Q bool TMT fMT)
        with
        | _ => _
        end) lP (PrQ bool TMT fMT)).
   intros slP sPrQ.
   induction sPrQ.
+  auto.
   destruct (reduction_linear H); auto.
-  auto.
-  auto.
 Qed.
-Hint Resolve big_step_type_preservation.
+Hint Resolve big_step_subject_reduction.
 
 (******************************************)
 (*               EXAMPLES                 *)
@@ -611,7 +609,7 @@ Example example3 : PProcess :=
 
 Example reduction_example1 : example2 ⇒ example3. auto. Qed.
 
-Example type_preservation_example1 : example2 ⇒ example3 → Linear example2 → Linear example3.
+Example subject_reduction_example1 : example2 ⇒ example3 → Linear example2 → Linear example3.
 eauto.
 Qed.
 
@@ -626,10 +624,10 @@ Example example5 : PProcess :=
 
 Example reduction_example2 : example4 ⇒ example5. auto. Qed.
 
-Example big_step_reduction : example1 ⇒⇒ example5. auto. Qed.
+Example big_step_reduction : example1 ⇒* example5. auto. Qed.
 
-Example big_step_type_preservation_example1
-  : example1 ⇒⇒ example5 → Linear example1 → Linear example5.
+Example big_step_subject_reduction_example1
+  : example1 ⇒* example5 → Linear example1 → Linear example5.
 eauto.
 Qed.
 
