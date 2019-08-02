@@ -219,7 +219,7 @@ Arguments PEnd [ST MT].
 (**************************)
 
 Definition TMT : Type → Type := fun _ => unit.
-Definition fMT : ∀ (S: Set), S → Message bool TMT B[S] := fun _ _ => V tt.
+Definition fMT : ∀ (S: Type), S → Message bool TMT B[S] := fun _ _ => V tt.
 
 Definition marked : ∀ s, Message bool TMT C[s] := fun s => C true.
 Definition unmarked : ∀ s, Message bool TMT C[s] := fun s => C false.
@@ -337,7 +337,7 @@ single_marked (PBranch Ps c) with c => {
 (******************************)
 
 (* Abstract over parametric types and their constructors *)
-Definition PProcess := ∀ ST MT (mf : ∀ (S: Set), S → Message ST MT B[S]) , Process ST MT.
+Definition PProcess := ∀ ST MT (mf : ∀ (S: Type), S → Message ST MT B[S]) , Process ST MT.
 Definition Linear (p : PProcess) : Prop := linear (p bool TMT fMT).
 Notation "[ f ]> P" := (fun _ _ f => P)(at level 80).
 Notation "P ≡ Q" := (∀ ST MT mf, Congruence _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
@@ -358,7 +358,7 @@ Fixpoint completed (P : Process unit id) : Prop :=
 .
 Definition Completed (P : PProcess) : Prop := completed (P unit id (fun _ v => V v)).
 
-Definition Completes (P : PProcess) := exists Q, P ⇒⇒ Q /\ Completed Q.
+Definition Completes (P : PProcess) := exists Q, P ⇒* Q /\ Completed Q.
 
 (*********************************)
 (*      REDUCTION TACTICS        *)
@@ -629,7 +629,7 @@ Example channel_over_channel1 : PProcess :=
     (o![o']; fun a => i'?[_]; ε <|> ε a)
 .
 
-Example congruent_example3: channel_over_channel ≡ channel_over_channel1. auto. Qed.
+Example congruent_example3 : channel_over_channel ≡ channel_over_channel1. auto. Qed.
 
 Example nonlinear_example : PProcess :=
   [υ]> (new i <- ? B[bool] ; ø, o <- ! B[bool] ; ø, MLeft Ends)
