@@ -240,129 +240,97 @@ linear (PNew _ _ _ P) =>
   single_marked (P marked unmarked) /\
   single_marked (P unmarked marked) /\
   linear (P unmarked unmarked) ;
-
-linear (PInput P (C true)) =>
-  False ;
-
-linear (@PInput B[_] _ P (C false)) =>
-  single_marked (P (V tt) marked) /\
-  linear (P (V tt) unmarked) ;
-
-linear (@PInput C[_] _ P (C false)) =>
-  single_marked (P marked unmarked) /\
-  single_marked (P unmarked marked) /\
-  linear (P unmarked unmarked) ;
-
-linear (POutput m P (C true))
-  => False ;
-
-linear (POutput (C true) P (C false))
-  => False ;
-
-linear (POutput _ P (C false)) =>
+linear (@PInput m _ P c) with c => {
+| (C true) => False ;
+| (C false) with m => {
+  | B[_] =>
+    single_marked (P (V tt) marked) /\
+    linear (P (V tt) unmarked) ;
+  | C[_] =>
+    single_marked (P marked unmarked) /\
+    single_marked (P unmarked marked) /\
+    linear (P unmarked unmarked)}};
+linear (POutput m P c) with c => {
+| (C true) => False ;
+| (C false) with m => {
+  | (C true) => False ;
+  | _ =>
+    single_marked (P marked) /\
+    linear (P unmarked)}};
+linear (PComp P Q) => linear P /\ linear Q ;
+linear (PEnd c) with c => {
+| (C true) => False ;
+| (C false) => True};
+linear (PSelect _ c P) with c => {
+| (C true) => False ;
+| (C false) =>
   single_marked (P marked) /\
-  linear (P unmarked) ;
-
-linear (PComp P Q) =>
-  linear P /\
-  linear Q ;
-
-linear (PEnd (C true)) => False ;
-
-linear (PEnd (C false)) => True ;
-
-linear (PSelect _ (C true) P)
-  => False ;
-
-linear (PSelect _ (C false) P)
-  => single_marked (P marked) /\
-  linear (P unmarked) ;
-
-linear (PBranch Ps (C true))
-  => False ;
-
-linear (PBranch Ps (C false))
-  => let fix branches {n} {ss : Vector.t _ n} (Ps : Forall (fun s => _ → _) ss) :=
-        match Ps with
-        | Forall_nil _ => True
-        | Forall_cons _ P Ps' =>
-          linear (P unmarked) /\
-          single_marked (P marked) /\
-          branches Ps'
-        end
-    in branches Ps
+  linear (P unmarked)};
+linear (PBranch Ps c) with c => {
+| (C true) => False ;
+| (C false) =>
+  let fix branches {n} {ss : Vector.t _ n} (Ps : Forall (fun s => _ → _) ss) :=
+      match Ps with
+      | Forall_nil _ => True
+      | Forall_cons _ P Ps' =>
+        linear (P unmarked) /\
+        single_marked (P marked) /\
+        branches Ps'
+      end
+  in branches Ps}
 
 } where single_marked (p : Process bool TMT) : Prop := {
 
-single_marked (PNew _ _ _ P)
-  => single_marked (P unmarked unmarked) ;
-
-single_marked (@PInput B[_] _ P (C false))
-  => single_marked (P (V tt) unmarked) ;
-
-single_marked (@PInput B[_] _ P (C true))
-  => and (linear (P (V tt) unmarked))
-        (single_marked (P (V tt) marked));
-
-single_marked (@PInput C[_] _ P (C false))
-  => single_marked (P unmarked unmarked) ;
-
-single_marked (@PInput C[_] _ P (C true))
-  => and (linear (P unmarked unmarked))
-        (and (single_marked (P marked unmarked))
-             (single_marked (P unmarked marked))) ;
-
-single_marked (POutput (C true) P (C true))
-  => False ;
-
-single_marked (POutput (C true) P (C false))
-  => and (linear (P unmarked))
-        (single_marked (P marked)) ;
-
-single_marked (POutput _ P (C true))
-  => and (linear (P unmarked))
-        (single_marked (P marked)) ;
-
-single_marked (POutput _ P (C false))
-  => single_marked (P unmarked) ;
-
-single_marked (PComp P Q)
-  => or (and (linear P) (single_marked Q))
-       (and (single_marked P) (linear Q)) ;
-
-single_marked (PEnd (C false))
-  => False ;
-
-single_marked (PEnd (C true))
-  => True ;
-
-single_marked (PSelect i (C true) P)
-  => linear (P unmarked) /\ single_marked (P marked) ;
-
-single_marked (PSelect i (C false) P)
-  => single_marked (P unmarked) ;
-
-single_marked (PBranch Ps (C true))
-  => let fix branches {n} {ss : Vector.t _ n} (Ps : Forall (fun s => _ → _) ss) :=
-        match Ps with
-        | Forall_nil _ => True
-        | Forall_cons _ P Ps' =>
-          linear (P unmarked) /\
-          single_marked (P marked) /\
-          branches Ps'
-        end
-    in branches Ps ;
-
-single_marked (PBranch Ps (C false))
-  => let fix branches {n} {ss : Vector.t _ n} (Ps : Forall (fun s => _ → _) ss) :=
-        match Ps with
-        | Forall_nil _ => True
-        | Forall_cons _ P Ps' =>
-          single_marked (P unmarked) /\
-          branches Ps'
-        end
-    in branches Ps
-}.
+single_marked (PNew _ _ _ P) => single_marked (P unmarked unmarked) ;
+single_marked (@PInput m _ P c) with c => {
+| (C true) with m => {
+  | B[_] =>
+    linear (P (V tt) unmarked) /\
+    single_marked (P (V tt) marked);
+  | C[_] =>
+    linear (P unmarked unmarked) /\
+    single_marked (P marked unmarked) /\
+    single_marked (P unmarked marked)};
+| (C false) with m => {
+  | B[_] => single_marked (P (V tt) unmarked) ;
+  | C[_] => single_marked (P unmarked unmarked)}};
+single_marked (POutput m P c) with c => {
+| (C true) with m => {
+  | (C true) => False ;
+  | _ => linear (P unmarked) /\ single_marked (P marked)};
+| (C false) with m => {
+  | (C true) => linear (P unmarked) /\ single_marked (P marked) ;
+  | _ => single_marked (P unmarked)}};
+single_marked (PComp P Q) =>
+  (linear P /\ single_marked Q) \/
+  (single_marked P /\ linear Q) ;
+single_marked (PEnd c) with c => {
+| (C true) => True;
+| (C false) => False};
+single_marked (PSelect i c P) with c => {
+| (C true) => linear (P unmarked) /\ single_marked (P marked) ;
+| (C false) => single_marked (P unmarked)};
+single_marked (PBranch Ps c) with c => {
+| (C true) =>
+  let fix branches {n} {ss : Vector.t _ n} (Ps : Forall (fun s => _ → _) ss) :=
+      match Ps with
+      | Forall_nil _ => True
+      | Forall_cons _ P Ps' =>
+        linear (P unmarked) /\
+        single_marked (P marked) /\
+        branches Ps'
+      end
+  in branches Ps ;
+| (C false) =>
+  let fix branches {n} {ss : Vector.t _ n} (Ps : Forall (fun s => _ → _) ss) :=
+      match Ps with
+      | Forall_nil _ => True
+      | Forall_cons _ P Ps' =>
+        single_marked (P unmarked) /\
+        branches Ps'
+      end
+  in branches Ps
+}}.
 
 (******************************)
 (*  PARAMETRIC GENERALISATION *)
