@@ -52,7 +52,7 @@
 \newcommand{\comp}[2]{#1 \mid #2}
 \newcommand{\new}[2]{(\boldsymbol{\nu} #1 #2)}
 \newcommand{\cout}[2]{\overline{#1}\langle#2\rangle.}
-\newcommand{\cin}[2]{#1(#2)}
+\newcommand{\cin}[2]{#1(#2).}
 \newcommand{\select}[2]{#1\triangleleft#2.}
 \newcommand{\branch}[2]{#1\triangleright#2}
 
@@ -83,21 +83,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-    This project formalises session types in Coq using a mix of continuation
-    passing, parametric HOAS, dependent types and ad-hoc linearity checks. Each
-    action that a process takes requires a channel capable of that action. The
-    head of that channel's type is then stripped off and its continuation is
-    passed to the next action the process takes. Dependent types guarantee this
-    continuation passing is correct by construction. The type of channels is
-    parametrised over, so that users are unable to skip the proper mechanisms to
-    create channels. The HOAS makes the syntax easy to use for both the end user
-    and the designer: all variables are lifted to Coq, all typing judgments
-    happen in Coq, no typing contexts are required. The continuation passing
-    always creates channels that must be used exactly once. Unfortunately Coq
-    has no linearity support, so this check needs to happen ad-hoc, by
-    traversing processes. Ultimately, the claim is this: if the definition of a
-    process typechecks in Coq, and the process uses channels linearly, then type
-    safety and type preservation through reduction hold.
+    This project formalises session types in Coq using a mix of continuation passing, parametric HOAS, dependent types and ad-hoc linearity checks. Each action that a process takes requires a channel capable of that action. The head of that channel's type is then stripped off and its continuation is passed to the next action the process takes. Dependent types guarantee this continuation passing is correct by construction. The type of channels is parametrised over, so that users are unable to skip the proper mechanisms to create channels. The HOAS makes the syntax easy to use for both the end user and the designer: all variables are lifted to Coq, all typing judgments happen in Coq, no typing contexts are required. The continuation passing always creates channels that must be used exactly once.  Unfortunately Coq has no linearity support, so this check needs to happen ad-hoc, by traversing processes. Ultimately, the claim is this: if the definition of a process typechecks in Coq, and the process uses channels linearly, then type safety and type preservation through reduction hold.
 \end{abstract}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -115,56 +101,24 @@ Acknowledgements go here
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \tableofcontents
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Introduction}\label{intro}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-The pi calculus models the exchange of messages between agents over two-endpoint
-communication channels. When two agents exchange a message over a channel
-computation advances: the receiving agent gets reduced through substitution; the
-sending agent proceeds further. Channels are typed, limiting the data that can
-be exchanged over them. A further introduction to the pi calculus is provided in
-\S \ref{pi-calculus}.
+The pi calculus models the exchange of messages between agents over two-endpoint communication channels. When two agents exchange a message over a channel computation advances: the receiving agent gets reduced through substitution; the sending agent proceeds further. Channels are typed, limiting the data that can be exchanged over them. A further introduction to the pi calculus is provided in \S \ref{pi-calculus}.
 
-Session types add sequential types to channels: the session type of a channel
-endpoint is a finite sequence of types, each with an associated direction.  When
-a channel endpoint is used by an agent, the type and direction of the exchanged
-data must follow the specification of the associated session type. The theorems
-enabled by this type system are found in \S \ref{session-types}.
+Session types add sequential types to channels: the session type of a channel endpoint is a finite sequence of types, each with an associated direction.  When a channel endpoint is used by an agent, the type and direction of the exchanged data must follow the specification of the associated session type. The theorems enabled by this type system are found in \S \ref{session-types}.
 
-Using a proof assistant to prove these theorems provides an exceptionally strong
-guarantee of their correctness. Moreover, it means that any agent that uses
-session types as an abstraction can have these theorems automatically derived
-for it. From the numerous proof assistants available, this project uses Coq to
-formalise the pi calculus with session types. Amongst its features, Coq includes
-a powerful tactic engine and a dependent type system, both key for the
-development of this project. An overview of Coq is given in \S \ref{coq}.
+Using a proof assistant to prove these theorems provides an exceptionally strong guarantee of their correctness. Moreover, it means that any agent that uses session types as an abstraction can have these theorems automatically derived for it. From the numerous proof assistants available, this project uses Coq to formalise the pi calculus with session types. Amongst its features, Coq includes a powerful tactic engine and a dependent type system, both key for the development of this project. An overview of Coq is given in \S \ref{coq}.
 
-The present work takes advantage of polymorphism (\S \ref{polymorphism}) and
-dependent types (\S \ref{dependent-types}) and uses a parametric higher-order
-abstract syntax (\S \ref{phoas}) and continuation passing (\S
-\ref{continuation-passing}) to \textbf{discharge the type-checking of pi
-calculus terms on Coq}. However, this method relies on channel endpoints being
-used exactly once, i.e. linearly (\S \ref{linearity}). Coq does not support
-linearity, and thus this check will have to be addressed ad-hoc. Once a
-linearity check is available, the type-checking of terms is decidable and
-\textbf{variable references, typing contexts and typing judgments can be lifted
-to the host language}. The details of how this is carried out in practice are
-explained in \S \ref{implementation}.
+The present work takes advantage of polymorphism (\S \ref{polymorphism}) and dependent types (\S \ref{dependent-types}) and uses a parametric higher-order abstract syntax (\S \ref{phoas}) and continuation passing (\S \ref{continuation-passing}) to \textbf{discharge the type-checking of pi calculus terms on Coq}. However, this method relies on channel endpoints being used exactly once, i.e. linearly (\S \ref{linearity}). Coq does not support linearity, and thus this check will have to be addressed ad-hoc. Once a linearity check is available, the type-checking of terms is decidable and \textbf{variable references, typing contexts and typing judgments can be lifted to the host language}. The details of how this is carried out in practice are explained in \S \ref{implementation}.
 
-Past efforts in formalising session types in Coq have created object languages
-and handled variable references, typing contexts, and typing judgments by hand
-\cite{Dilmore2019}. These and other approaches are mentioned in \S
-\ref{related-work}.
+Past efforts in formalising session types in Coq have created object languages and handled variable references, typing contexts, and typing judgments by hand \cite{Dilmore2019}. These and other approaches are mentioned in \S \ref{related-work}.
 
-Finally, \S \ref{conclusion} suggests future work that might be of interest, and
-offers conclusions on what this project has achieved.
+Finally, \S \ref{conclusion} suggests future work that might be of interest, and offers conclusions on what this project has achieved.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Background knowledge}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 Discuss general pi calculus
 Discuss session types
@@ -176,7 +130,6 @@ Dependent types
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Pi calculus}\label{pi-calculus}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \cite{Vasconcelos2009}
@@ -262,7 +215,6 @@ P,Q ::= \; &\PO                                 & \text{inaction}             \\
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Session types}\label{session-types}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \todo{Can be binary (diadic) or multiparty}
 \todo{Channels as messages}
@@ -270,16 +222,7 @@ P,Q ::= \; &\PO                                 & \text{inaction}             \\
 \todo{Limit ourselves to channels with session types, no \#T}
 \todo{Limit ourselves to linear types: $\circ$ is union of non intersecting sets}
 
-The two endpoints of a channel must have dual session types: if one end is
-sending data of type \texttt{T}, the other must be receiving data of type
-\texttt{T} -- ensuring \textit{communication safety}. Channel endpoints can be
-passed along as messages, but can never be duplicated: communication must only
-ever occur between two agents -- ensuring \textit{privacy}. Agents must
-follow the session types of channel endpoints: channels must be used as per
-their specification -- ensuring \textit{session fidelity}. As communication
-occurs and messages are exchanged, the session types of channels advance.
-Ensuring that this reduction process respects session types involves proving
-both \textit{subject reduction} and \textit{type soundness}. \cite{Dardha2016m}
+The two endpoints of a channel must have dual session types: if one end is sending data of type \texttt{T}, the other must be receiving data of type \texttt{T} -- ensuring \textit{communication safety}. Channel endpoints can be passed along as messages, but can never be duplicated: communication must only ever occur between two agents -- ensuring \textit{privacy}. Agents must follow the session types of channel endpoints: channels must be used as per their specification -- ensuring \textit{session fidelity}. As communication occurs and messages are exchanged, the session types of channels advance.  Ensuring that this reduction process respects session types involves proving both \textit{subject reduction} and \textit{type soundness}. \cite{Dardha2016m}
 
 \begin{mathpar}
 \inferrule{}{\dual{\Send{T}S} = \Recv{T}\dual{S}}
@@ -344,7 +287,6 @@ both \textit{subject reduction} and \textit{type soundness}. \cite{Dardha2016m}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The Coq proof assistant}\label{coq}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \todo{Powerful tactics}
 \todo{Not so good with dependent types}
@@ -352,74 +294,40 @@ both \textit{subject reduction} and \textit{type soundness}. \cite{Dardha2016m}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Polymorphism}\label{polymorphism}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \cite{Wadler1989}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Dependent types}\label{dependent-types}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \todo{Indexed datatypes}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Encoding}\label{encoding}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Central to computing session-typed \picalc is the need to handle the state
-transitions of session types. One approach is \textit{continuation passing},
-introduced in \S \ref{continuation-passing}, which destroys channels and creates
-new ones as part of every action of a process \cite{Dardha2016m}. While there
-exist other approaches \todo{citation needed}, they all require for every state
-a session type is in to be used exactly once, i.e. linearity, discussed in \S
-\ref{linearity}.
+Central to computing session-typed \picalc is the need to handle the state transitions of session types. One approach is \textit{continuation passing}, introduced in \S \ref{continuation-passing}, which destroys channels and creates new ones as part of every action of a process \cite{Dardha2016m}. While there exist other approaches \todo{citation needed}, they all require for every state a session type is in to be used exactly once, i.e. linearity, discussed in \S \ref{linearity}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Continuation passing}\label{continuation-passing}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \cite{Vasconcelos2010}
 \todo{We merge pi calculus and session types into one}
 
 
-Assuming linearity, \textbf{processes are correct by construction}: the
-processes that can be constructed depend on the session types of the channels in
-the environment of the host language; an action strips off the outer layer of a
-channel's session type -- modelling \textbf{continuation passing}.
+Assuming linearity, \textbf{processes are correct by construction}: the processes that can be constructed depend on the session types of the channels in the environment of the host language; an action strips off the outer layer of a channel's session type -- modelling \textbf{continuation passing}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Linearity}\label{linearity}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \cite{Kobayashi1999}
 \cite{Toninho2011}
 
-One approach to simulating linearity is by doing it \textit{a priori}, at
-construction time, by keeping track of the linearly available channels through a
-context by which processes are indexed. This means that channel creation cannot
-be represented through function abstraction, and that there must be a way of
-addressing a particular channel within a context -- strings with the Barendregt
-convention, De Bruijn indices, locally nameless De Bruijn indices, or a
-parametric HOAS. Since only channels need to be used linearly, message input can
-still be represented as function abstraction when the message does not contain a
-channel. \todo{talk about context split}
+One approach to simulating linearity is by doing it \textit{a priori}, at construction time, by keeping track of the linearly available channels through a context by which processes are indexed. This means that channel creation cannot be represented through function abstraction, and that there must be a way of addressing a particular channel within a context -- strings with the Barendregt convention, De Bruijn indices, locally nameless De Bruijn indices, or a parametric HOAS. Since only channels need to be used linearly, message input can still be represented as function abstraction when the message does not contain a channel. \todo{talk about context split}
 
-Another approach to simulating linearity is traversing processes \textit{a
-posteriori}, after they have been defined, and check that each channel is used
-exactly once. This can be done by making the type of channels parametric, and
-then instantiating it to $\mathbb{B}$ and \textit{marking} each channel for
-inspection. This allows both channel creation and message input to be modelled
-as function abstraction, because channels of a parametric type cannot be forged.
-However, to be able to traverse processes where message passing is modelled as
-function abstraction, one has to be able to provide some sort of message by
-projecting the types of data sent over messages to the unit type -- by
-parametrising functions over a $\mathrm{Type} \rightarrow \mathrm{Type}$
-function. Unfortunately this makes it impossible for processes to use any logic
-that is external to the calculus and depends on the type of messages. \todo{is
-this bad?}
+Another approach to simulating linearity is traversing processes \textit{a posteriori}, after they have been defined, and check that each channel is used exactly once. This can be done by making the type of channels parametric, and then instantiating it to $\mathbb{B}$ and \textit{marking} each channel for inspection. This allows both channel creation and message input to be modelled as function abstraction, because channels of a parametric type cannot be forged.  However, to be able to traverse processes where message passing is modelled as function abstraction, one has to be able to provide some sort of message by projecting the types of data sent over messages to the unit type -- by parametrising functions over a $\mathrm{Type} \rightarrow \mathrm{Type}$ function. Unfortunately this makes it impossible for processes to use any logic that is external to the calculus and depends on the type of messages. \todo{is this bad?}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Parametric HOAS}\label{phoas}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \cite{Wadler1989}
 \cite{Chlipala2008}
@@ -427,14 +335,10 @@ this bad?}
 \todo{We do not do open processes}
 \todo{We use polymorphism on messages to make processes traversable}
 
-The introduction of both channels and received messages is modelled as function
-abstraction in Coq, therefore \textbf{variables are handled transparently} -- no
-substitution related lemmas are required. Channel types are parametrised to make
-them opaque -- they cannot be illicitly created or inspected by the user.
+The introduction of both channels and received messages is modelled as function abstraction in Coq, therefore \textbf{variables are handled transparently} -- no substitution related lemmas are required. Channel types are parametrised to make them opaque -- they cannot be illicitly created or inspected by the user.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Type preservation}\label{type-preservation}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Subject reduction}\label{subject-reduction}
 
 Ensuring that linearity is preserved through reduction is therefore essential:
 \begin{theorem}
@@ -443,35 +347,26 @@ Ensuring that linearity is preserved through reduction is therefore essential:
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Implementation}\label{implementation}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Processes}\label{processes}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Congruence}
-\subsection{Reduction}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Linearity check}\label{linearity-check}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Linearity preservation}\label{linearity-preservation}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Results}\label{results}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Related work}\label{related-work}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Conclusion}\label{conclusion}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\bibliographystyle{plain}
+\bibliographystyle{alpha}
 \bibliography{mproj}
 \end{document}
