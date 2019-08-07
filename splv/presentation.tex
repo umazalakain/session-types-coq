@@ -1,0 +1,140 @@
+% !TEX TS-program = XeLaTeX
+
+\documentclass{beamer}
+
+\usepackage{xcolor}
+\usepackage{mathtools}
+\usepackage{listings}
+
+\usepackage{fontspec}
+\usepackage{xunicode}
+\usepackage{xltxtra}
+\usepackage{babel}
+\setmonofont{Latin Modern Mono}
+
+
+\mode<presentation>
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{}
+\usecolortheme[named=purple]{structure}
+
+\title{
+    Type-checking \\
+    session-typed $\pi$-calculus \\
+    with Coq\\
+}
+\author{Uma Zalakain}
+\institute{University of Glasgow}
+\date{}
+
+\begin{document}
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}
+    \frametitle{Problem}
+    \begin{block}{Formalising session typed $\pi$-calculus in Coq}
+        \begin{itemize}
+            \item subset (finite, no shared channels)
+            \item strong correctness guarantees
+            \item interesting modelling exercise
+            \item perfect excuse to familiarise with Coq
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Goal}
+    \begin{block}{Correctness by construction}
+        \begin{itemize}
+            \item coq type-checks process $\iff$ process uses STs correctly
+            \item bonus: the session types of channels are type-inferred
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Ingredients}
+    \begin{block}{Continuation passing}
+        \begin{itemize}
+            \item an action \texttt{A}\\
+                consumes a channel \texttt{:A.T}\\
+                creates a channel \texttt{:T}
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Ingredients}
+    \begin{block}{Abstraction}
+        \begin{itemize}
+            \item channels and messages as arguments
+            \item variable references lifted to Coq
+            \item no environments (only closed processes)
+            \item no substitution lemmas
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Ingredients}
+    \begin{block}{Parametric channel type}
+        \begin{itemize}
+            \item opaque unforgeable channels
+            \item indexed by session type
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Ingredients}
+    \begin{verbatim}
+| PNew
+  : forall (s r : SType)
+  , Duality s r
+  → (Message C[s] → Message C[r] → Process)
+  → Process
+
+| PInput
+  : forall {m : MType} {s : SType}
+  , (Message m → Message C[s] → Process)
+  → Message C[? m ; s]
+  → Process
+    \end{verbatim}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{The catch}
+    \centering
+    \LARGE
+    $
+    \xrightarrow{x : C[A.T]} A(x)
+    \xrightarrow{y : C[T]} A(\colorbox{red}{x})
+    \xrightarrow{z : C[T]} \ldots$
+\end{frame}
+
+\begin{frame}
+    \frametitle{Workaround}
+    \begin{itemize}
+        \item linearity as an inductive predicate on processes
+        \item process traversal:
+            \begin{itemize}
+                \item need to construct messages of arbitrary type
+                \item parametrise message types
+                \item project messages types to the unit type
+                \item cannot use constructs of the metalanguage anymore
+            \end{itemize}
+        \item process is linear $\iff$ process uses STs correctly
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Subject reduction}
+    \LARGE
+    \centering
+    $\forall \ P \ Q : Process,$\\
+    $P \rightarrow Q, \, lin(P) \implies lin(Q)$ \\
+\end{frame}
+\end{document}
