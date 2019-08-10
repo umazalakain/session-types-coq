@@ -27,9 +27,9 @@
   ]{hyperref}
 
 % Use a single line for chapter headers
-\titleformat{\chapter}[hang]{\normalfont\huge\bfseries}{\thechapter.}{1em}{} 
+% \titleformat{\chapter}[hang]{\normalfont\huge\bfseries}{\thechapter.}{1em}{} 
 % Remove the space before chapter titles
-\titlespacing*{\chapter}{0pt}{0pt}{40pt}
+% \titlespacing*{\chapter}{0pt}{0pt}{40pt}
 
 % Appendices
 \usepackage[header,title,titletoc]{appendix}
@@ -41,6 +41,18 @@
     modifier={by-sa},
     version={3.0},
 ]{doclicense}
+
+\usepackage[many]{tcolorbox}
+\newtcolorbox{thesis-statement}[1]{%
+    tikznode boxed title,
+    enhanced,
+    arc=0mm,
+    interior style={white},
+    attach boxed title to top center= {yshift=-\tcboxedtitleheight/2},
+    fonttitle=\bfseries,
+    colbacktitle=white,coltitle=black,
+    boxed title style={size=normal,colframe=white,boxrule=0pt},
+    title={#1}}
 
 % Add bibliography to TOC
 \usepackage[nottoc,numbib]{tocbibind}
@@ -83,7 +95,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-    This project formalises session types in Coq using a mix of continuation passing, parametric HOAS, dependent types and ad-hoc linearity checks. Each action that a process takes requires a channel capable of that action. The head of that channel's type is then stripped off and its continuation is passed to the next action the process takes. Dependent types guarantee this continuation passing is correct by construction. The type of channels is parametrised over, so that users are unable to skip the proper mechanisms to create channels. The HOAS makes the syntax easy to use for both the end user and the designer: all variables are lifted to Coq, all typing judgments happen in Coq, no typing contexts are required. The continuation passing always creates channels that must be used exactly once.  Unfortunately Coq has no linearity support, so this check needs to happen ad-hoc, by traversing processes. Ultimately, the claim is this: if the definition of a process typechecks in Coq, and the process uses channels linearly, then type safety and type preservation through reduction hold.
+    This project formalises the session-typed \picalc{} in Coq using a mix of continuation passing, parametric HOAS, dependent types and ad-hoc linearity checks. Each action a process takes requires a channel capable of that action. The head of that channel's type is then stripped off and its continuation is passed to the next action the process takes. Dependent types guarantee this continuation passing is correct by construction. The type of channels is parametrised over, so that users are unable to skip the proper mechanisms to create channels. The HOAS makes the syntax easy to use for both the end user and the designer: all variables are lifted to Coq, no typing contexts are required. The continuation passing always creates channels that must be used exactly once, but unfortunately Coq has no support for linearity, so this check needs to happen ad-hoc, by traversing processes. Ultimately, the claim is this: if the definition of a process typechecks in Coq, and the process uses channels linearly, then type safety and type preservation through reduction hold.
 \end{abstract}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -105,37 +117,35 @@ Acknowledgements go here
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Introduction}\label{intro}
 
-The pi calculus models the exchange of messages between agents over two-endpoint communication channels. When two agents exchange a message over a channel computation advances: the receiving agent gets reduced through substitution; the sending agent proceeds further. Channels are typed, limiting the data that can be exchanged over them. A further introduction to the pi calculus is provided in \S \ref{pi-calculus}.
+During the last decades, while the frequency at which processors run has peaked, the number of available processing units has kept growing. Computing has consequently shifted its focus into making processes safely communicate with one another --- no matter if they run concurrently on different CPU cores or on different hosts. The interest in the formalisation and verification of \emph{communicating concurrent} systems (where processes share no state and change as communication occurs) has grown as a result.
 
-Session types add sequential types to channels: the session type of a channel endpoint is a finite sequence of types, each with an associated direction.  When a channel endpoint is used by an agent, the type and direction of the exchanged data must follow the specification of the associated session type. The theorems enabled by this type system are found in \S \ref{session-types}.
+Communicating concurrent processes must satisfy some safety properties, such as following a pre-established communication protocol (where all messages sent by one process are expected by the other and vice versa) or communicating over private channels only known to the involved participants. To make properties like these easier to prove, formal models such as the \emph{\picalc{}} \cite{Walker1989,Milner1989,Milner1991,Sangiorgi2001} abstract real-world systems into suitable mathematical representations. \S \ref{pi-calculus} provides a brief overview of the \picalc.
 
-Using a proof assistant to prove these theorems provides an exceptionally strong guarantee of their correctness. Moreover, it means that any agent that uses session types as an abstraction can have these theorems automatically derived for it. From the numerous proof assistants available, this project uses Coq to formalise the pi calculus with session types. Amongst its features, Coq includes a powerful tactic engine and a dependent type system, both key for the development of this project. An overview of Coq is given in \S \ref{coq}.
+The properties of a formal system can be verified either \emph{dynamically}, by monitoring processes at runtime, or \emph{statically}, by reasoning on the definition of the processes themselves.  Static guarantees --- while harder to define and sometimes more conservative than dynamic ones --- are \emph{total}, and thus satisfied regardless of the execution path. The basis of static verification is comprised of \emph{types} and \emph{type systems}, which are also the basis of programming languages and tools, making type-based verification techniques transferable to practical applications. An example of this are the plethora of types for communication and process calculi: from standard channel types, as you can find in e.g., Erlang or Go, to \emph{session types} \cite{Honda1993, Takeuchi1994, Honda1998}, a formalism used to specify and verify communication protocols (more in \S \ref{session-types}).
 
-The present work takes advantage of polymorphism (\S \ref{polymorphism}) and dependent types (\S \ref{dependent-types}) and uses a parametric higher-order abstract syntax (\S \ref{phoas}) and continuation passing (\S \ref{continuation-passing}) to \textbf{discharge the type-checking of pi calculus terms on Coq}. However, this method relies on channel endpoints being used exactly once, i.e. linearly (\S \ref{linearity}). Coq does not support linearity, and thus this check will have to be addressed ad-hoc. Once a linearity check is available, the type-checking of terms is decidable and \textbf{variable references, typing contexts and typing judgments can be lifted to the host language}. The details of how this is carried out in practice are explained in \S \ref{implementation}.
+The mechanised formalisation and verification of programming languages and calculi is an ongoing community effort in securing existing work: humans are able to check proofs, but they are very likely to make mistakes; machines can verify proofs mechanically. A remarkable example of a community effort towards machine verification is RustBelt \cite{Dreyer2018}, a project that aims to formalise and machine-check the ownership system of the programming language Rust with the help of separation logic \cite{} and the proof assistant Coq. Not only does mechanisation increase confidence in what is mechanised, but also in all other derived work that is yet unverified: proving the correctness of Rust's type system immediately increases the confidence in all software written in it.
 
-Past efforts in formalising session types in Coq have created object languages and handled variable references, typing contexts, and typing judgments by hand \cite{Dilmore2019}. These and other approaches are mentioned in \S \ref{related-work}.
+\todo{mention different methods to refer to variables}
 
-Finally, \S \ref{conclusion} suggests future work that might be of interest, and offers conclusions on what this project has achieved.
+\begin{thesis-statement}{THESIS STATEMENT}
+    This project \emph{formalises the session-typed \picalc{}} using function abstraction to lift variable references to the host language. It then \emph{verifies subject reduction} for the resulting object language, which preserves \emph{communication privacy}, \emph{communication safety} and \emph{session fidelity} (refer to \S \ref{session-types-properties}).
+\end{thesis-statement}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Background knowledge}
+We choose Coq \cite{Coquand1989, CoqDeveloperCommunity} to machine-verify the session-typed \picalc{}, mainly due to its widespread use as a proof assistant (refer to \S \ref{coq} for an overview). A first challenge with Coq is that it offers \emph{no} support for \emph{linearity}, which is at the very heart of session types (as communication occurs, a session type must transition through each of its stages exactly once). As a result, extra work is required to simulate the linearity of the terms in the object language.
 
-Discuss general pi calculus
-Discuss session types
-Discuss our subset of session types
-Overview Coq
-Polymorphism
-Dependent types
+The present work simulates linearity by defining it as an inductive predicate on processes (\S \ref{linearity}). Once such a predicate establishes that a process uses channels linearly, the use of channels according to their specification is guaranteed by construction. As a consequence of this approach, \textbf{no typing contexts} are required in the host language and \textbf{variable references are lifted to Coq}, making the resulting syntax amicable to the user.
 
+Other approaches to formalising process calculi are briefly exposed in \S \ref{related-work}. Closing, \S \ref{conclusion} suggests future work that might be of interest, and offers conclusions on what this project has achieved.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Pi calculus}\label{pi-calculus}
+\chapter{Background}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{\picalc}\label{pi-calculus}
 
-\cite{Vasconcelos2009}
-\todo{Channels as messages}
-\todo{Limit ourselves to binary channels}
-\todo{Typed only as \#T}
+The \picalc{} \cite{Walker1989,Milner1989,Milner1991,Sangiorgi2001} is introduced as a way of modelling processes that change their structure by communicating with each other. The \picalc{} features \emph{channel mobility}, which allows communication channels to be sent over communication channels. In the \picalc{} any number of processes can communicate over a channel. While the \picalc{} can be typed, the type of a channel does \emph{not} evolve as communication occurs: it only specifies the type of data sent over it. An overview of the FAQs can be found in \cite{Wing2002}.
+
+\subsection{Syntax}
 
 \begin{align*}
 P,Q ::= \; &\PO                                 & \text{inaction}             \\
@@ -146,6 +156,29 @@ P,Q ::= \; &\PO                                 & \text{inaction}             \\
            &\branch{x}{\{l_i : P_i\}_{i \in I}} & \text{branching}            \\
            &\comp{P}{Q}                         & \text{parallel composition}
 \end{align*}
+
+The following example creates two linked channel endpoints $x$ and $y$ and composes two processes in parallel: one that uses $x$ to send integers $3$ and $4$, and then expect a response bound as $r$, do some $P$, then end; another that uses $y$ to receive $a$ and $b$, then send $a+b$, then end. Both processes communicate with one another when composed in parallel, changing their structure. Both channels $x$ and $y$ are of type \type{\#Int}).
+\begin{align*}
+\new{x}{y} (\comp{\cout{x}{3} \cout{x}{4} \cin{x}{r} P. \PO &}
+                 {\cin{y}{a} \cin{y}{b} \cout{y}{a+b} \PO})
+\reduce
+\\
+\new{x}{y} (\comp{\cout{x}{4} \cin{x}{r} P. \PO &}
+                 {\cin{y}{b} \cout{y}{3+b} \PO})
+\reduce
+\\
+\new{x}{y} (\comp{\cin{x}{r} P. \PO &}
+                 {\cout{y}{3+4} \PO})
+\reduce
+\\
+\new{x}{y} (\comp{\subst{P}{3+4}{r}. \PO &}
+                 {\PO})
+\equiv
+\\
+\subst{P}{3&+4}{r}
+\end{align*}
+
+\subsection{Structural congruence}
 
 \begin{mathpar}
 \inferrule
@@ -175,7 +208,7 @@ P,Q ::= \; &\PO                                 & \text{inaction}             \\
 
 \inferrule
     {x,y \not\in fn(Q)}
-    {\comp {\new{x}{y}P} {Q} \equiv \new{x}{y} \comp{P}{Q}}
+    {\comp {(\new{x}{y}P)} {Q} \equiv \new{x}{y} \comp{P}{Q}}
     \quad (\textsc{C-ScopeExp})
 
 \inferrule
@@ -183,6 +216,8 @@ P,Q ::= \; &\PO                                 & \text{inaction}             \\
     {\new{x}{y}P \equiv \new{y}{x}P}
     \quad (\textsc{C-ScopeSwap})
 \end{mathpar}
+
+\subsection{Reduction}
 
 \begin{mathpar}
 \inferrule 
@@ -217,28 +252,30 @@ P,Q ::= \; &\PO                                 & \text{inaction}             \\
 \section{Session types}\label{session-types}
 
 \todo{Can be binary (diadic) or multiparty}
-\todo{Channels as messages}
-\todo{Guarantees}
 \todo{Limit ourselves to channels with session types, no \#T}
 \todo{Limit ourselves to linear types: $\circ$ is union of non intersecting sets}
 
-The two endpoints of a channel must have dual session types: if one end is sending data of type \texttt{T}, the other must be receiving data of type \texttt{T} -- ensuring \textit{communication safety}. Channel endpoints can be passed along as messages, but can never be duplicated: communication must only ever occur between two agents -- ensuring \textit{privacy}. Agents must follow the session types of channel endpoints: channels must be used as per their specification -- ensuring \textit{session fidelity}. As communication occurs and messages are exchanged, the session types of channels advance.  Ensuring that this reduction process respects session types involves proving both \textit{subject reduction} and \textit{type soundness}. \cite{Dardha2016m}
+Session types \cite{Honda1993, Takeuchi1994, Honda1998} are sequences of actions, each representing the type and the direction of the data exchanged.  Processes must use session-typed channels according to their specified protocol.  Instead of being shared and static, session types are linear, private to the communicating processes, and change as communication occurs. A comprehensive introduction to session types can be found in \cite{Vasconcelos2009}, while answers to FAQs are compiled in \cite{Dezani-ciancaglini2010}. The process above introduced as an example of the \picalc{} would have the session-types of its channels evolve through communication as follows (\type{!} denotes sending, \type{?} receiving):
+\begin{align*}
+x : \type{\Send{Int}\Send{Int}\Recv{Int}\End} &,\;
+y : \type{\Recv{Int}\Recv{Int}\Send{Int}\End}
+\reduce
+\\
+x : \type{\Send{Int}\Recv{Int}\End} &,\;
+y : \type{\Recv{Int}\Send{Int}\End}
+\reduce
+\\
+x : \type{\Recv{Int}\End} &,\;
+y : \type{\Send{Int}\End}
+\reduce
+\\
+x : \type{\End} &,\;
+y : \type{\End}
+\end{align*}
 
-\begin{mathpar}
-\inferrule{}{\dual{\Send{T}S} = \Recv{T}\dual{S}}
+\subsection{Typing rules}
 
-\inferrule{}{\dual{\Recv{T}S} = \Send{T}\dual{S}}
-
-\inferrule{}{
-    \dual{\Branch \{l_i : S_i\}_{i \in I}} =
-    \Select \{l_i : \dual{S_i}\}_{i \in I}}
-
-\inferrule{}{
-    \dual{\Select\{l_i : S_i\}_{i \in I}} =
-    \Branch \{l_i : \dual{S_i}\}_{i \in I}}
-
-\inferrule{}{\dual{\End} = \End}
-\end{mathpar}
+Session-typed channels restrict the syntax of the \picalc{}:
 
 \begin{mathpar}
 \inferrule
@@ -285,12 +322,52 @@ The two endpoints of a channel must have dual session types: if one end is sendi
     \quad (\textsc{T-Select})
 \end{mathpar}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{The Coq proof assistant}\label{coq}
+\subsection{Duality}
 
-\todo{Powerful tactics}
-\todo{Not so good with dependent types}
-\todo{Equations package}
+It is worth noting that in the introduced example the session types of $x$ and $y$ must be \emph{dual}: when one channel sends a type \type{T}, the other must receive \type{T}, and then both must continue dually. Duality and linearity (a session type must transition through each of its stages exactly once) are the basis for the properties that session types guarantee.
+
+\begin{mathpar}
+\inferrule{}{\dual{\Send{T}S} = \Recv{T}\dual{S}}
+
+\inferrule{}{\dual{\Recv{T}S} = \Send{T}\dual{S}}
+
+\inferrule{}{
+    \dual{\Branch \{l_i : S_i\}_{i \in I}} =
+    \Select \{l_i : \dual{S_i}\}_{i \in I}}
+
+\inferrule{}{
+    \dual{\Select\{l_i : S_i\}_{i \in I}} =
+    \Branch \{l_i : \dual{S_i}\}_{i \in I}}
+
+\inferrule{}{\dual{\End} = \End}
+\end{mathpar}
+
+\subsection{Properties}\label{session-types-properties}
+
+Session types guarantee:
+
+\begin{description}
+    \item [communication privacy] at any given moment exactly two processes communicate over a channel;
+        
+    \item [session fidelity] processes follow session types sequentially; and 
+        
+    \item [communication safety] processes only send what their counterpart is expecting to receive.
+\end{description}
+        
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Coq proof assistant}\label{coq}
+
+Coq \cite{CoqDeveloperCommunity} is a popular proof assistant and dependently typed functional language based on the calculus of inductive constructions \cite{Coquand1989} (which adds inductive data types to the calculus of constructions \cite{Coquand1985}), a type theory isomorphic to intuitionistic predicate calculus --- a constructive logic with quantified statements.
+
+Since types may contain arbitrary definitions, definitions in Coq must exhibit termination --- recursion must occur on structurally smaller terms. Coq supports inductive and coinductive data types, and features proof irrelevance for proofs (in \type{Prop}) and a cumulative set of universes (in \type{Type}).
+
+Coq allows users to build proofs using \emph{tactics}: programs written in $L_{tac}$ that manipulate hypotheses and transform goals. While these programs might be incorrect, or not terminate, their outcome is ultimately checked by \emph{Gallina}, the specification language of Coq.
+
+In Coq, simultaneously pattern matching on multiple indexed data types can be rather clunky and arduous. The \emph{Equations} package eases this inconvenience by adding equational definitions, pattern matching on the left, and \texttt{with} constructs (\cite{McBride2004}), making Coq as convenient for dependent pattern matching as Agda.
+
+\todo{Example proofs}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Polymorphism}\label{polymorphism}
@@ -300,12 +377,25 @@ The two endpoints of a channel must have dual session types: if one end is sendi
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Dependent types}\label{dependent-types}
 
+Types that depend on programs
 \todo{Indexed datatypes}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Encoding}\label{encoding}
+\chapter{Design}\label{design}
 
-Central to computing session-typed \picalc is the need to handle the state transitions of session types. One approach is \textit{continuation passing}, introduced in \S \ref{continuation-passing}, which destroys channels and creates new ones as part of every action of a process \cite{Dardha2016m}. While there exist other approaches \todo{citation needed}, they all require for every state a session type is in to be used exactly once, i.e. linearity, discussed in \S \ref{linearity}.
+This chapter covers the high-level design of the encoding of the session-typed \picalc{} into Coq. \todo{The main goal is using function abstraction}
+
+Other efforts in formalising session types in Coq have created object languages and handled variable references, typing contexts, and typing judgments by hand \cite{Dilmore2019}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Overview}\label{overview}
+
+
+
+Central to computing session-typed \picalc is the need to handle the state transitions of session types. One approach is \emph{continuation passing}, introduced in \S \ref{continuation-passing}, which destroys channels and creates new ones as part of every action of a process \cite{Dardha2016}. While there exist other approaches \todo{citation needed}, they all require for every state a session type is in to be used exactly once, i.e. linearity, discussed in \S \ref{linearity}.
+
+\todo{mention the prize to pay}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Continuation passing}\label{continuation-passing}
@@ -322,9 +412,11 @@ Assuming linearity, \textbf{processes are correct by construction}: the processe
 \cite{Kobayashi1999}
 \cite{Toninho2011}
 
-One approach to simulating linearity is by doing it \textit{a priori}, at construction time, by keeping track of the linearly available channels through a context by which processes are indexed. This means that channel creation cannot be represented through function abstraction, and that there must be a way of addressing a particular channel within a context -- strings with the Barendregt convention, De Bruijn indices, locally nameless De Bruijn indices, or a parametric HOAS. Since only channels need to be used linearly, message input can still be represented as function abstraction when the message does not contain a channel. \todo{talk about context split}
+One approach to simulating linearity is traversing processes \emph{a posteriori}, after they have been defined, to check that each channel is used exactly once. This can be done by making the type of channels parametric, and then instantiating it to $\mathbb{B}$ and \emph{marking} each channel for inspection. This allows both channel creation and message input to be modelled as function abstraction --- channels of a parametric type cannot be forged.  However, to be able to traverse processes where message passing is modelled as function abstraction, one has to be able to create all types of messages. To elude this problem, message types can be parametrised over a $\mathrm{Type} \rightarrow \mathrm{Type}$ function and then projected to the unit type.
+    
+Unfortunately, the approach in point (i) makes it impossible for processes to use any logic that is external to the calculus and depends on the type of messages. An alternative approach for simulating linearity is by doing it \emph{a priori}, at construction time, by keeping track of the linearly available channels through a context by which processes are indexed.  This means that channel creation cannot be represented through function abstraction, that process composition needs to explicitly split the context, and that there must be a way of addressing a particular channel within a context --- strings with the Barendregt convention \cite{Barendregt1984}, De Bruijn indices \cite{deBruijn1972}, locally nameless De Bruijn indices, or a parametric HOAS \cite{Chlipala2008} --- since only channels need to be used linearly, message input can still be represented as function abstraction whenever the message does not contain a channel. On the bright side, this approach allows processes to use logic that external to the calculus and depends on the types of messages.
 
-Another approach to simulating linearity is traversing processes \textit{a posteriori}, after they have been defined, and check that each channel is used exactly once. This can be done by making the type of channels parametric, and then instantiating it to $\mathbb{B}$ and \textit{marking} each channel for inspection. This allows both channel creation and message input to be modelled as function abstraction, because channels of a parametric type cannot be forged.  However, to be able to traverse processes where message passing is modelled as function abstraction, one has to be able to provide some sort of message by projecting the types of data sent over messages to the unit type -- by parametrising functions over a $\mathrm{Type} \rightarrow \mathrm{Type}$ function. Unfortunately this makes it impossible for processes to use any logic that is external to the calculus and depends on the type of messages. \todo{is this bad?}
+While the latter approach has more appealing properties, its mechanics negatively affect usability: can it be equipped with the usability of the former approach? I intend to create a Coq library that abstracts away the simulation of linearity.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Parametric HOAS}\label{phoas}
@@ -349,7 +441,10 @@ Ensuring that linearity is preserved through reduction is therefore essential:
 \chapter{Implementation}\label{implementation}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Processes}\label{processes}
+\section{Session types}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Messages and processes}\label{processes}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Linearity check}\label{linearity-check}
@@ -358,11 +453,22 @@ Ensuring that linearity is preserved through reduction is therefore essential:
 \section{Linearity preservation}\label{linearity-preservation}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Results}\label{results}
+\section{Examples}\label{examples}
+
+\todo{Type inference}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Related work}\label{related-work}
 
+Linearity is strongly connected to session types: a session type must transition through each of its stages \emph{exactly} once. Session types can be encoded into a \picalc{} with linear types, as shown by \cite{Kobayashi1996,Dardha2012,Dardha2016}. As shown in \cite{Voinea}, in systems where session types are shared, the tokens allowing access to the session-typed channels must still be linear.
+
+The connection between session types and linearity can be drawn even further, at the logical level, where an isomorphism between linear logic and session types can be shown \cite{Caires2010} \cite{Wadler2014}. In \cite{Lindley2015} the operational semantics for a session-typed functional language that builds on Wadler's isomorphism are given. This work is continued in \cite{Lindley}, where the language is extended with polymorphism, row types, subkinding, and non-linear data types. \cite{Gay2010} uses a linear type-system to encode asynchronous session types with buffers --- and then verify properties of those buffers.
+
+In type systems with no linear types the linearity of channels has to be simulated. In these type systems, modelling channels through a parametric higher order abstract syntax \cite{Chlipala2008} is not possible per se: the host language is unable to check whether the channels passed along as arguments are used linearly. This means that typing judgments must happen at the object language, through the use of a context that keeps track of linear resources.  This context is usually tracked at the type level, using inductive \emph{families} \cite{Dybjer1994} indexed by a context of linear resources \cite{Power2000} --- though there are approaches that keep track of context through type-classes and use monadic binding to embed a linear calculus within non-linear hosts \cite{Paykin2017}.
+
+The \picalc{} has been an extensive subject of machine verification: \cite{Henry-Gerard1999} proofs subject reduction for it; \cite{Despeyroux2000} proofs subject reduction as well, but uses a higher order syntax; \cite{Affeldt2008} provides proofs of fairness and confluence; \cite{Honsell2001} formalises the bisimilarity proofs found in \cite{Walker1989}; \cite{Gay2001} provides a framework for formalisation on the \picalc{} with linear channels in Isabelle/HOL.
+
+In \cite{Xi2016} session types are formalised in ATS, providing type preservation and global progress proofs. \cite{Bock2016} uses Celf to represent session types in intuitionistic linear logic.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Conclusion}\label{conclusion}
 
