@@ -1,9 +1,10 @@
 \documentclass{mproj}
-\usepackage{graphicx}
 
+\usepackage[utf8]{inputenc}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage[utf8]{inputenc}
 \usepackage{url}
 \usepackage{fancyvrb}
 \usepackage[final]{pdfpages}
@@ -94,6 +95,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\todo{go over this again}
 \begin{abstract}
     This project formalises the session-typed \picalc{} in Coq using a mix of continuation passing, parametric HOAS, dependent types and ad-hoc linearity checks. Each action a process takes requires a channel capable of that action. The head of that channel's type is then stripped off and its continuation is passed to the next action the process takes. Dependent types guarantee this continuation passing is correct by construction. The type of channels is parametrised over, so that users are unable to skip the proper mechanisms to create channels. The HOAS makes the syntax easy to use for both the end user and the designer: all variables are lifted to Coq, no typing contexts are required. The continuation passing always creates channels that must be used exactly once, but unfortunately Coq has no support for linearity, so this check needs to happen ad-hoc, by traversing processes. Ultimately, the claim is this: if the definition of a process typechecks in Coq, and the process uses channels linearly, then type safety and type preservation through reduction hold.
 \end{abstract}
@@ -121,19 +123,21 @@ During the last decades, while the frequency at which processors run has peaked,
 
 Communicating concurrent processes must satisfy some safety properties, such as following a pre-established communication protocol (where all messages sent by one process are expected by the other and vice versa) or communicating over private channels only known to the involved participants. To make properties like these easier to prove, formal models such as the \emph{\picalc{}} \cite{Walker1989,Milner1989,Milner1991,Sangiorgi2001} abstract real-world systems into suitable mathematical representations. \S \ref{pi-calculus} provides a brief overview of the \picalc.
 
-The properties of a formal system can be verified either \emph{dynamically}, by monitoring processes at runtime, or \emph{statically}, by reasoning on the definition of the processes themselves.  Static guarantees --- while harder to define and sometimes more conservative than dynamic ones --- are \emph{total}, and thus satisfied regardless of the execution path. The basis of static verification is comprised of \emph{types} and \emph{type systems}, which are also the basis of programming languages and tools, making type-based verification techniques transferable to practical applications. An example of this are the plethora of types for communication and process calculi: from standard channel types, as you can find in e.g., Erlang or Go, to \emph{session types} \cite{Honda1993, Takeuchi1994, Honda1998}, a formalism used to specify and verify communication protocols (more in \S \ref{session-types}).
+The properties of a formal system can be verified either \emph{dynamically}, by monitoring processes at runtime, or \emph{statically}, by reasoning on the definition of the processes themselves.  Static guarantees --- while harder to define and sometimes more conservative than dynamic ones --- are \emph{total}, and thus satisfied regardless of the execution path. The basis of static verification is comprised of \emph{types} and \emph{type systems}, which are also the basis of programming languages and tools, making type-based verification techniques transferable to practical applications. An example of this are the plethora of types for communication and process calculi: from standard channel types, as found in e.g., Erlang or Go, to \emph{session types} \cite{Honda1993, Takeuchi1994, Honda1998}, a formalism used to specify and verify communication protocols (more in \S \ref{session-types}).
+
+\todo{move session type definition and properties up here?}
 
 The mechanised formalisation and verification of programming languages and calculi is an ongoing community effort in securing existing work: humans are able to check proofs, but they are very likely to make mistakes; machines can verify proofs mechanically. A remarkable example of a community effort towards machine verification is RustBelt \cite{Dreyer2018}, a project that aims to formalise and machine-check the ownership system of the programming language Rust with the help of separation logic \cite{} and the proof assistant Coq. Not only does mechanisation increase confidence in what is mechanised, but also in all other derived work that is yet unverified: proving the correctness of Rust's type system immediately increases the confidence in all software written in it.
 
-\todo{mention different methods to refer to variables}
-
 \begin{thesis-statement}{THESIS STATEMENT}
-    This project \emph{formalises the session-typed \picalc{}} using function abstraction to lift variable references to the host language. It then \emph{verifies subject reduction} for the resulting object language, which preserves \emph{communication privacy}, \emph{communication safety} and \emph{session fidelity} (refer to \S \ref{session-types-properties}).
+    This project formalises the \emph{session-typed \picalc{}} in such a way that variable references in the object language are lifted into variable references in the host language. The use of channels in the object language is then restricted to be linear, ensuring \emph{communication privacy}, \emph{communication safety} and \emph{session fidelity} (refer to \S \ref{session-types-properties}). Lastly, we machine-verify \emph{subject reduction} for the resulting language.
 \end{thesis-statement}
+
+\todo{mention we have no shared channels and no recursive session types}
 
 We choose Coq \cite{Coquand1989, CoqDeveloperCommunity} to machine-verify the session-typed \picalc{}, mainly due to its widespread use as a proof assistant (refer to \S \ref{coq} for an overview). A first challenge with Coq is that it offers \emph{no} support for \emph{linearity}, which is at the very heart of session types (as communication occurs, a session type must transition through each of its stages exactly once). As a result, extra work is required to simulate the linearity of the terms in the object language.
 
-The present work simulates linearity by defining it as an inductive predicate on processes (\S \ref{linearity}). Once such a predicate establishes that a process uses channels linearly, the use of channels according to their specification is guaranteed by construction. As a consequence of this approach, \textbf{no typing contexts} are required in the host language and \textbf{variable references are lifted to Coq}, making the resulting syntax amicable to the user.
+The present work simulates linearity by defining it as an inductive predicate on processes (\S \ref{linearity}). Once such a predicate establishes that a process uses channels linearly, the use of channels according to their specification is guaranteed by construction. References to both channels and messages are lifted into the host language, making the resulting syntax amicable to the user. As a consequence of this approach the object language requires \emph{no typing contexts} and \emph{no substitution lemmas}.
 
 Other approaches to formalising process calculi are briefly exposed in \S \ref{related-work}. Closing, \S \ref{conclusion} suggests future work that might be of interest, and offers conclusions on what this project has achieved.
 
@@ -342,6 +346,8 @@ It is worth noting that in the introduced example the session types of $x$ and $
 \inferrule{}{\dual{\End} = \End}
 \end{mathpar}
 
+\subsection{Reduction}
+
 \subsection{Properties}\label{session-types-properties}
 
 Session types guarantee:
@@ -366,7 +372,29 @@ Coq allows users to build proofs using \emph{tactics}: programs written in $L_{t
 
 In Coq, simultaneously pattern matching on multiple indexed data types can be rather clunky and arduous. The \emph{Equations} package eases this inconvenience by adding equational definitions, pattern matching on the left, and \texttt{with} constructs (\cite{McBride2004}), making Coq as convenient for dependent pattern matching as Agda.
 
-\todo{Example proofs}
+\todo{explain example}
+\begin{coq}
+Inductive Even : nat -> Prop :=
+| zero : Even 0
+| oddsuc : forall {n : nat}, Odd n -> Even (S n)
+with Odd : nat -> Prop :=
+| evensuc : forall {n : nat}, Even n -> Odd (S n)
+.
+
+Theorem decide_evenness0 (n : nat) : Even n + Odd n.
+Proof.
+  induction n.
+  left; constructor.
+  destruct IHn; [right | left]; constructor; assumption.
+Qed.
+
+From Equations Require Import Equations.
+Equations decide_evenness1 (n : nat) : Even n + Odd n := {
+decide_evenness1 0 := inl zero ;
+decide_evenness1 (S n) with decide_evenness1 n := {
+decide_evenness1 (S n) (inl p) := inr (evensuc p);
+decide_evenness1 (S n) (inr p) := inl (oddsuc p)}}.
+\end{coq}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -456,6 +484,91 @@ Ensuring that linearity is preserved through reduction is therefore essential:
 \section{Examples}\label{examples}
 
 \todo{Type inference}
+\begin{coq}
+Example example1 : PProcess.
+  refine
+  ([v]> (new i <- _, o <- _, _)
+    (i?[m]; ![m]; $\epsilon$) <|> (o![v _ true]; ?[m]; $\epsilon$)).
+  auto.
+Defined.
+Print example1.
+
+Example example2 : PProcess :=
+  ([v]> (new o <- ! B[bool] ; ? B[bool] ; ø, i <- ? B[bool] ; ! B[bool] ; ø, ltac:(auto))
+    (o![v _ true]; ?[m]; $\epsilon$) <|> i?[m]; ![m]; $\epsilon$).
+
+Example congruent_example1 : example1 $\equiv$ example2. auto. Qed.
+
+Example example3 : PProcess :=
+  ([v]> (new o <- ? B[bool] ; ø, i <- ! B[bool] ; ø, ltac:(auto))
+    (o?[m]; $\epsilon$) <|> i![v _ true]; $\epsilon$).
+
+Example reduction_example1 : example2 => example3. auto. Qed.
+
+Example subject_reduction_example1 : example2 => example3 -> Linear example2 -> Linear example3.
+eauto.
+Qed.
+
+Example example4 : PProcess :=
+  ([v]> (new i <- ! B[bool] ; ø, o <- ? B[bool] ; ø, ltac:(auto))
+    (i![v _ true]; $\epsilon$ <|> o?[m]; $\epsilon$)).
+
+Example congruent_example2 : example3 $\equiv$ example4. auto. Qed.
+
+Example example5 : PProcess :=
+  ([v]> (new i <- ø, o <- ø, Ends) ($\epsilon$ i <|> $\epsilon$ o)).
+
+Example reduction_example2 : example4 => example5. auto. Qed.
+
+Example big_step_reduction : example1 =>* example5. auto. Qed.
+
+Example big_step_subject_reduction_example1
+  : example1 =>* example5 -> Linear example1 -> Linear example5.
+eauto.
+Qed.
+
+Example channel_over_channel : PProcess :=
+  [v]>
+    (new i <- ? C[ ! B[bool] ; ø ] ; ø, o <- ! C[ ! B[bool] ; ø ] ; ø, MLeft Ends)
+    (new i' <- ? B[bool] ; ø, o' <- _, MLeft Ends)
+
+    (i?[c]; fun a => $\epsilon$ a <|> c![v _ true]; $\epsilon$)
+    <|>
+    (o![o']; fun a => $\epsilon$ a <|> i'?[_]; $\epsilon$)
+.
+
+Example channel_over_channel1 : PProcess :=
+  [v]>
+    (new i' <- ? B[bool] ; ø, o' <- ! B[bool] ; ø, MLeft Ends)
+    (new i <- ? C[ ! B[bool] ; ø ] ; ø, o <- ! C[ ! B[bool] ; ø ] ; ø, MLeft Ends)
+
+    (i?[c]; fun a => c![v _ true]; $\epsilon$ <|> $\epsilon$ a)
+    <|>
+    (o![o']; fun a => i'?[_]; $\epsilon$ <|> $\epsilon$ a)
+.
+
+Example congruent_example3 : channel_over_channel $\equiv$ channel_over_channel1. auto. Qed.
+
+Example nonlinear_example : PProcess :=
+  [v]> (new i <- ? B[bool] ; ø, o <- ! B[bool] ; ø, MLeft Ends)
+
+    (* Cheat the system by using the channel o twice *)
+    i?[_]; $\epsilon$ <|> o![v _ true]; (fun _ => o![v _ true]; $\epsilon$)
+    .
+
+Example linear_example1 : Linear example1. auto. Qed.
+
+Example linear_channel_over_channel : Linear channel_over_channel. auto. Qed.
+
+Example nonlinear_example1 : ~ (Linear nonlinear_example). auto. Qed.
+
+Example branch_and_select : PProcess :=
+  ([v]> (new
+           i <- &{ (! B[bool] ; ø) :: (? B[bool] ; ø) :: [] },
+           o <- $\oplus${ (? B[bool] ; ø) :: (! B[bool] ; ø) :: [] },
+           ltac:(auto))
+          i$\triangleright${(![v _ true]; $\epsilon$) ; (?[m]; $\epsilon$)} <|> o$\triangleleft$Fin.F1; ?[_]; $\epsilon$).
+\end{coq}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Related work}\label{related-work}

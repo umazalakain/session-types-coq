@@ -36,7 +36,8 @@ morekeywords=[4]{pose, set, move, case, elim, apply, clear, hnf,
   unlock, compute, ring, field, fourier, replace, fold, unfold,
   change, cutrewrite, simpl, have, suff, wlog, suffices, without,
   loss, nat_norm, assert, cut, trivial, revert, bool_congr, nat_congr,
-  symmetry, transitivity, auto, split, left, right, autorewrite},
+  symmetry, transitivity, auto, split, left, right, autorewrite, constructor,
+  assumption},
 %
 % Terminators
 morekeywords=[5]{by, done, exact, reflexivity, tauto, romega, omega,
@@ -81,24 +82,24 @@ identifierstyle={\ttfamily\color{black}},
 % Style for declaration keywords
 keywordstyle=[1]{\ttfamily\color{violet}},
 % Style for gallina keywords
-keywordstyle=[2]{\ttfamily\color{dkgreen}},
+keywordstyle=[2]{\ttfamily\color{OliveGreen}},
 % Style for sorts keywords
-keywordstyle=[3]{\ttfamily\color{ltblue}},
+keywordstyle=[3]{\ttfamily\color{ProcessBlue}},
 % Style for tactics keywords
-keywordstyle=[4]{\ttfamily\color{dkblue}},
+keywordstyle=[4]{\ttfamily\color{blue}},
 % Style for terminators keywords
-keywordstyle=[5]{\ttfamily\color{dkred}},
+keywordstyle=[5]{\ttfamily\color{red}},
 %Style for iterators
-%keywordstyle=[6]{\ttfamily\color{dkpink}},
+%keywordstyle=[6]{\ttfamily\color{darkpink}},
 % Style for strings
 stringstyle=\ttfamily,
 % Style for comments
-commentstyle={\ttfamily\color{dkgreen}},
+commentstyle={\ttfamily\color{OliveGreen}},
 %
 %moredelim=**[is][\ttfamily\color{red}]{/&}{&/},
 literate=
-    {\\forall}{{\color{dkgreen}{$\forall\;$}}}1
-    {\\exists}{{$\exists\;$}}1
+    {forall}{{\color{OliveGreen}{$\forall\;$}}}1
+    {exists}{{$\exists\;$}}1
     {<-}{{$\leftarrow\;$}}1
     {=>}{{$\Rightarrow\;$}}1
     {==}{{\code{==}\;}}1
