@@ -1,25 +1,34 @@
 \documentclass{mproj}
 
 \usepackage[utf8]{inputenc}
+
+% Coq code
 \usepackage[dvipsnames]{xcolor}
-\usepackage{graphicx}
-\usepackage{amsmath}
-\usepackage{amssymb}
-\usepackage{url}
-\usepackage{fancyvrb}
-\usepackage[final]{pdfpages}
-\usepackage{times}
-\usepackage{todonotes}
-\usepackage{titlesec}
-\usepackage{enumitem}
-\setlist{nolistsep}
 \usepackage{listings}
 \input{lstcoq.sty}
+
+% Math
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% Use times font
+\usepackage{times}
+
+% They are all over the place
+\usepackage{todonotes}
+
+% Allows to place figures HERE!
+\usepackage{float}
+
+% Enums
+\usepackage{enumitem}
+\setlist{nolistsep}
 
 % Inference rules
 \usepackage{mathpartir}
 
 % Links and their colors
+\usepackage{url}
 \usepackage[
   colorlinks=true,
   linkcolor=darkgray,
@@ -27,10 +36,11 @@
   urlcolor=darkgray,
   ]{hyperref}
 
+\usepackage{titlesec}
 % Use a single line for chapter headers
-% \titleformat{\chapter}[hang]{\normalfont\huge\bfseries}{\thechapter.}{1em}{} 
+\titleformat{\chapter}[hang]{\normalfont\huge\bfseries}{\thechapter.}{1em}{} 
 % Remove the space before chapter titles
-% \titlespacing*{\chapter}{0pt}{0pt}{40pt}
+\titlespacing*{\chapter}{0pt}{0pt}{40pt}
 
 % Appendices
 \usepackage[header,title,titletoc]{appendix}
@@ -63,17 +73,14 @@
 % Commands for the pi-calculus
 \newcommand{\PO}{\mathbf{0}}
 \newcommand{\comp}[2]{#1 \mid #2}
-\newcommand{\new}[2]{(\boldsymbol{\nu} #1 #2)}
+\newcommand{\new}[2]{(\boldsymbol{\nu} #1 #2) \;}
 \newcommand{\cout}[2]{\overline{#1}\langle#2\rangle.}
 \newcommand{\cin}[2]{#1(#2).}
 \newcommand{\select}[2]{#1\triangleleft#2.}
 \newcommand{\branch}[2]{#1\triangleright#2}
-
 \newcommand{\subst}[3]{#1[#2/#3]}
-
 \newcommand{\picalc}{$\pi$-calculus}
 \newcommand{\Picalc}{$\pi$-Calculus}
-
 \newcommand{\type}{\texttt}
 \newcommand{\End}{\type{End}}
 \newcommand{\Send}[1]{!#1.}
@@ -81,10 +88,10 @@
 \newcommand{\Select}{\oplus}
 \newcommand{\Branch}{\&}
 \newcommand{\dual}{\overline}
-
 \newcommand{\reduce}{\rightarrow}
 \renewcommand{\emptyset}{\varnothing}
 \newcommand{\types}{\vdash}
+
 \begin{document}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -95,8 +102,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\todo{go over this again}
 \begin{abstract}
+\todo{go over this again}
     This project formalises the session-typed \picalc{} in Coq using a mix of continuation passing, parametric HOAS, dependent types and ad-hoc linearity checks. Each action a process takes requires a channel capable of that action. The head of that channel's type is then stripped off and its continuation is passed to the next action the process takes. Dependent types guarantee this continuation passing is correct by construction. The type of channels is parametrised over, so that users are unable to skip the proper mechanisms to create channels. The HOAS makes the syntax easy to use for both the end user and the designer: all variables are lifted to Coq, no typing contexts are required. The continuation passing always creates channels that must be used exactly once, but unfortunately Coq has no support for linearity, so this check needs to happen ad-hoc, by traversing processes. Ultimately, the claim is this: if the definition of a process typechecks in Coq, and the process uses channels linearly, then type safety and type preservation through reduction hold.
 \end{abstract}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -147,117 +154,147 @@ Other approaches to formalising process calculi are briefly exposed in \S \ref{r
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{\picalc}\label{pi-calculus}
 
-The \picalc{} \cite{Walker1989,Milner1989,Milner1991,Sangiorgi2001} is introduced as a way of modelling processes that change their structure by communicating with each other. The \picalc{} features \emph{channel mobility}, which allows communication channels to be sent over communication channels. In the \picalc{} any number of processes can communicate over a channel. While the \picalc{} can be typed, the type of a channel does \emph{not} evolve as communication occurs: it only specifies the type of data sent over it. An overview of the FAQs can be found in \cite{Wing2002}.
+\paragraph{Scope} This section provides an overview of the \picalc{} as introduced in \cite{Sangiorgi2001}. However, it deliberately ignores replication and indeterministic choice, features part of the \picalc{} that are not covered by this project. Additionally, and as preliminary preparation for the introduction of session types, this section defines channel restriction by introducing two channel \emph{endpoints}, instead of the usual single variable used for channels.
 
-\subsection{Syntax}
+The \picalc{} \cite{Walker1989,Milner1989,Milner1991,Sangiorgi2001} models processes that progress and change their structure by using \emph{channels} to communicate with one another. The \picalc{} features \emph{channel mobility}, which allows channels to be sent over channels themselves. In the \picalc{} any number of processes can communicate over a channel. While the \picalc{} can be typed, the type of a channel does \emph{not} evolve as communication occurs: it only specifies the type of data sent over it. An overview of the FAQs can be found in \cite{Wing2002}.
 
-\begin{align*}
-P,Q ::= \; &\PO                                 & \text{inaction}             \\
-           &\new{x}{y}P                         & \text{scope restriction}    \\
-           &\cout{x}{u}P                        & \text{output}               \\
-           &\cin{y}{u}P                         & \text{input}                \\
-           &\select{x}{l_j}P                    & \text{selection}            \\
-           &\branch{x}{\{l_i : P_i\}_{i \in I}} & \text{branching}            \\
-           &\comp{P}{Q}                         & \text{parallel composition}
-\end{align*}
+The syntax of the \picalc{} is given by the grammar in Figure \ref{picalc-syntax}. Inaction denotes the end of a process, and has therefore no continuation. Scope restriction creates a new communication channel between endpoints $x$ and $y$, which are bound in $P$. Output sends $u$ over the channel endpoint $x$, and then continues as $P$. Input waits to receive $u$ on the endpoint $y$; upon reception $u$ is bound in $P$. Selection sends the choice of process $l_j$ over $x$, and then continues as $P$. Branching offers choices over $I$, where the choice $l_i$ selects the continuation process $P_i$. Parallel composition runs processes $P$ and $Q$ in parallel, allowing these processes to communicate over shared channels.
 
-The following example creates two linked channel endpoints $x$ and $y$ and composes two processes in parallel: one that uses $x$ to send integers $3$ and $4$, and then expect a response bound as $r$, do some $P$, then end; another that uses $y$ to receive $a$ and $b$, then send $a+b$, then end. Both processes communicate with one another when composed in parallel, changing their structure. Both channels $x$ and $y$ are of type \type{\#Int}).
-\begin{align*}
-\new{x}{y} (\comp{\cout{x}{3} \cout{x}{4} \cin{x}{r} P. \PO &}
-                 {\cin{y}{a} \cin{y}{b} \cout{y}{a+b} \PO})
-\reduce
-\\
-\new{x}{y} (\comp{\cout{x}{4} \cin{x}{r} P. \PO &}
-                 {\cin{y}{b} \cout{y}{3+b} \PO})
-\reduce
-\\
-\new{x}{y} (\comp{\cin{x}{r} P. \PO &}
-                 {\cout{y}{3+4} \PO})
-\reduce
-\\
-\new{x}{y} (\comp{\subst{P}{3+4}{r}. \PO &}
-                 {\PO})
-\equiv
-\\
-\subst{P}{3&+4}{r}
-\end{align*}
+\begin{figure}[H]
+    \begin{align*}
+    P,Q ::= \; &\PO                      & \text{inaction}             \\
+               &\new{x}{y}P              & \text{scope restriction}    \\
+               &\cout{x}{u}P             & \text{output}               \\
+               &\cin{y}{u}P              & \text{input}                \\
+               &\select{x}{l_j}P         & \text{selection}            \\
+               &\branch{x}
+               {\{l_i : P_i\}_{i \in I}} & \text{branching}            \\
+               &\comp{P}{Q}              & \text{parallel composition}
+    \end{align*}
+    \caption{Grammar describing the syntax of the \picalc{}}
+    \label{picalc-syntax}
+\end{figure}
 
-\subsection{Structural congruence}
+The syntax of the \picalc{} captures undesired syntactical properties of processes (e.g. associativity should not matter when three processes are composed in parallel). Structural congruence is introduced as a way to abstract over these unintended differences in syntax. It is defined by the smallest congruent equivalence relation that satisfies the inference rules in Figure \ref{picalc-congruence} -- a congruent equivalence relation in itself is the smallest relation that is reflexive, symmetric, transitive and congruent. Worth noting is the structural congruence rule for scope expansion: the scope of bound variables can include or exclude a process at will, as long as the bound variables do not appear free in that process. The congruence rule states that if two processes considered equal are placed within a common context, then the resulting contexts are equal as well (a context is a process where some occurrence of $\PO$ is substituted by a \emph{hole} that can then be filled in with a process). Said otherwise, structural congruence \emph{goes under} the syntactic constructs of the \picalc{}.
 
-\begin{mathpar}
-\inferrule
-    { }
-    {\comp{P}{Q} \equiv \comp{Q}{P}}
-    \quad (\textsc{C-CompComm})
+\begin{figure}[H]
+    \begin{mathpar}
+    \inferrule
+        { }
+        {\comp{P}{Q} \equiv \comp{Q}{P}}
+        \quad (\textsc{C-CompComm})
 
-\inferrule
-    { }
-    {\new{x}{y} \new{z}{w} P \equiv \new{z}{w} \new{x}{y} P}
-    \quad (\textsc{C-ScopeComm})
+    \inferrule
+        { }
+        {\new{x}{y} \new{z}{w} P \equiv \new{z}{w} \new{x}{y} P}
+        \quad (\textsc{C-ScopeComm})
 
-\inferrule
-    { }
-    {\comp{P}{\PO} \equiv P}
-    \quad (\textsc{C-Comp0})
+    \inferrule
+        { }
+        {\comp{P}{\PO} \equiv P}
+        \quad (\textsc{C-Comp0})
 
-\inferrule
-    { }
-    {\comp {\comp{P}{Q}} {R} \equiv \comp {P} {\comp{Q}{R}}}
-    \quad (\textsc{C-CompAssoc})
+    \inferrule
+        { }
+        {\comp {(\comp{P}{Q})} {R} \equiv \comp {P} {(\comp{Q}{R})}}
+        \quad (\textsc{C-CompAssoc})
 
-\inferrule
-    { }
-    {\new{x}{y} \PO \equiv \PO}
-    \quad (\textsc{C-Scope0})
+    \inferrule
+        { }
+        {\new{x}{y} \PO \equiv \PO}
+        \quad (\textsc{C-Scope0})
 
-\inferrule
-    {x,y \not\in fn(Q)}
-    {\comp {(\new{x}{y}P)} {Q} \equiv \new{x}{y} \comp{P}{Q}}
-    \quad (\textsc{C-ScopeExp})
+    \inferrule
+        { }
+        {\new{x}{y}P \equiv \new{y}{x}P}
+        \quad (\textsc{C-ScopeSwap})
 
-\inferrule
-    { }
-    {\new{x}{y}P \equiv \new{y}{x}P}
-    \quad (\textsc{C-ScopeSwap})
-\end{mathpar}
+    \inferrule
+        {x,y \not\in fn(Q)}
+        {\comp {(\new{x}{y}P)} {Q} \equiv \new{x}{y} \comp{P}{Q}}
+        \quad (\textsc{C-ScopeExp})
 
-\subsection{Reduction}
+    \end{mathpar}
+    \caption{Structural congruence rules for the \picalc{}}
+    \label{picalc-congruence}
+\end{figure}
 
-\begin{mathpar}
-\inferrule 
-    { }
-    {\new{x}{y}(\comp {\cout{x}{a}P} {\cin{y}{b}Q}) \reduce
-     \new{x}{y}(\comp {P}            {\subst{Q}{a}{b}})}
-    \quad (\textsc{R-Comm})
+Computation for \picalc{} progresses is specified by reduction rules, defined in Figure \ref{picalc-reduction}. Two parallel processes communicating over the same channel (by using opposite endpoints to send and receive a message) get reduced to the parallel composition of their continuations, with the continuation of the receiving process having all the references to the message substituted by the message term itself (\textsc{R-Comm}). Similarly, a process that makes a choice put in parallel with a process that offers a choice gets reduced to the continuation of the choosing process and the chosen continuation of the process offering the choice -- so long as the choice itself is valid (\textsc{R-Case}). Reduction goes under both restriction (\textsc{R-Res}) and parallel composition (\textsc{R-Par}), but not under output, input, selection or branching -- constructs that impose order in the communication. Lastly, reduction is defined up to structural congruence: any amount of syntax rewriting can be performed before and after reduction  (\textsc{R-Struct}).
 
-\inferrule
-    {j \in I}
-    {\new{x}{y}(\comp {\select{x}{l_j}P} {\branch{y}{\{l_i : Q_i\}_{i \in I}}}) \reduce
-     \new{x}{y}(\comp {P}                {Q_j})}
-    \quad (\textsc{R-Case})
+\begin{figure}[H]
+    \begin{mathpar}
+    \inferrule 
+        { }
+        {\new{x}{y}(\comp {\cout{x}{a}P} {\cin{y}{b}Q}) \reduce
+         \new{x}{y}(\comp {P}            {\subst{Q}{a}{b}})}
+        \quad (\textsc{R-Comm})
 
-\inferrule
-    {P \reduce Q}
-    {\new{x}{y}P \reduce \new{x}{y}Q}
-    \quad (\textsc{R-Res})
+    \inferrule
+        {j \in I}
+        {\new{x}{y}(\comp {\select{x}{l_j}P} {\branch{y}{\{l_i : Q_i\}_{i \in I}}}) \reduce
+         \new{x}{y}(\comp {P} {Q_j})}
+        \quad (\textsc{R-Case})
 
-\inferrule
-    {P \reduce Q}
-    {\comp{P}{R} \reduce \comp{Q}{R}}
-    \quad (\textsc{R-Par})
+    \inferrule
+        {P \reduce Q}
+        {\new{x}{y}P \reduce \new{x}{y}Q}
+        \quad (\textsc{R-Res})
 
-\inferrule
-    {P \equiv P' \\ P' \reduce Q' \\ Q' \equiv Q}
-    {P \reduce Q}
-    \quad (\textsc{R-Struct})
-\end{mathpar}
+    \inferrule
+        {P \reduce Q}
+        {\comp{P}{R} \reduce \comp{Q}{R}}
+        \quad (\textsc{R-Par})
+
+    \inferrule
+        {P \equiv P' \\ P' \reduce Q' \\ Q' \equiv Q}
+        {P \reduce Q}
+        \quad (\textsc{R-Struct})
+    \end{mathpar}
+    \caption{Reduction rules for the \picalc{}}
+    \label{picalc-reduction}
+\end{figure}
+
+As an example, Figure \ref{picalc-example} creates two linked channel endpoints $x$ and $y$ and then composes two processes in parallel: one that uses $x$ to send integers $3$ and $4$, and then expect a response bound as $r$, do some $P$, then end; another that uses $y$ to receive $a$ and $b$, then send $a+b$, then end. Both processes communicate with one another when composed in parallel, changing their structure.
+
+\begin{figure}[H]
+    \begin{align*}
+    \new{x}{y} (\comp{\cout{x}{3} \cout{x}{4} \cin{x}{r} P. \PO &}
+                     {\cin{y}{a} \cin{y}{b} \cout{y}{a+b} \PO})
+    \reduce
+    \\
+    \new{x}{y} (\comp{\cout{x}{4} \cin{x}{r} P. \PO &}
+                     {\cin{y}{b} \cout{y}{3+b} \PO})
+    \reduce
+    \\
+    \new{x}{y} (\comp{\cin{x}{r} P. \PO &}
+                     {\cout{y}{3+4} \PO})
+    \reduce
+    \\
+    \new{x}{y} (\comp{\subst{P}{3+4}{r}. \PO &}
+                     {\PO})
+    \equiv
+    \\
+    \subst{P}{3&+4}{r}
+    \end{align*}
+    \caption{Example process in the \picalc{}}
+    \label{picalc-example}
+\end{figure}
+
+The grammar for the \picalc{} allows well-formed processes with no semantic meaning (e.g. $\new{x}{y} \comp {\cout{x}{true}\PO} {\cin{y}{u}(u+3).\PO}$). The syntax rules for the construction of \picalc{} terms can be refined to discard some of these constructs. One such refinement are shared types (Figure \ref{picalc-shared-types}), which ensure that the types of channels and messages match -- in the example in Figure \ref{picalc-example}, channel endpoints $x$ and $y$ would need to be of the shared base type \type{Int} for the processes to be well-typed. The formation of \picalc{} terms can be further restricted with \emph{session types}: types that serve to specify communication protocols.
+
+\begin{figure}[H]
+    \begin{align*}
+    T ::= \; &\type{Chan}[T] & \text{channel type} \\
+             &\ldots         & \text{base type}
+    \end{align*}
+    \caption{Shared types for the \picalc{}}
+    \label{picalc-shared-types}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Session types}\label{session-types}
 
 \todo{Can be binary (diadic) or multiparty}
-\todo{Limit ourselves to channels with session types, no \#T}
-\todo{Limit ourselves to linear types: $\circ$ is union of non intersecting sets}
 
 Session types \cite{Honda1993, Takeuchi1994, Honda1998} are sequences of actions, each representing the type and the direction of the data exchanged.  Processes must use session-typed channels according to their specified protocol.  Instead of being shared and static, session types are linear, private to the communicating processes, and change as communication occurs. A comprehensive introduction to session types can be found in \cite{Vasconcelos2009}, while answers to FAQs are compiled in \cite{Dezani-ciancaglini2010}. The process above introduced as an example of the \picalc{} would have the session-types of its channels evolve through communication as follows (\type{!} denotes sending, \type{?} receiving):
 \begin{align*}
@@ -360,6 +397,9 @@ Session types guarantee:
     \item [communication safety] processes only send what their counterpart is expecting to receive.
 \end{description}
         
+\todo{linearity ensures communication privacy}
+\todo{duality ensures communication safety}
+\todo{subject reduction ensures all three}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Coq proof assistant}\label{coq}
@@ -410,6 +450,9 @@ Types that depend on programs
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Design}\label{design}
+
+\todo{Limit ourselves to channels with session types, no \#T}
+\todo{Limit ourselves to linear types: $\circ$ is union of non intersecting sets}
 
 This chapter covers the high-level design of the encoding of the session-typed \picalc{} into Coq. \todo{The main goal is using function abstraction}
 
