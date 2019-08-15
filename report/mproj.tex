@@ -68,6 +68,10 @@
 % Add bibliography to TOC
 \usepackage[nottoc,numbib]{tocbibind}
 
+% Switch off page numbering for noe
+\pagenumbering{gobble}
+
+
 \newtheorem{theorem}{Theorem}
 
 % Commands for the pi-calculus
@@ -125,6 +129,8 @@ Acknowledgements go here
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Introduction}\label{intro}
+% Start page numbering here
+\pagenumbering{arabic}
 
 During the last decades, while the frequency at which processors run has peaked, the number of available processing units has kept growing. Computing has consequently shifted its focus into making processes safely communicate with one another --- no matter if they run concurrently on different CPU cores or on different hosts. The interest in the formalisation and verification of \emph{communicating concurrent} systems (where processes share no state and change as communication occurs) has grown as a result.
 
@@ -154,7 +160,7 @@ Other approaches to formalising process calculi are briefly exposed in \S \ref{r
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{\picalc}\label{pi-calculus}
 
-\paragraph{Scope} This section provides an overview of the \picalc{} as introduced in \cite{Sangiorgi2001}. However, it deliberately ignores replication and indeterministic choice, features part of the \picalc{} that are not covered by this project. Additionally, and as preliminary preparation for the introduction of session types, this section defines channel restriction by introducing two channel \emph{endpoints}, instead of the usual single variable used for channels.
+\paragraph{Scope} This section provides an overview of the \picalc{} as introduced in \cite{Sangiorgi2001}. However, it deliberately ignores replication and indeterministic choice, features part of the \picalc{} that are not covered by this project. Additionally, and as preliminary preparation for the introduction of session types, this section defines channel restriction by introducing two channel \emph{endpoints}, instead of the usual single variable used for channels. \todo{polarity}
 
 The \picalc{} \cite{Walker1989,Milner1989,Milner1991,Sangiorgi2001} models processes that progress and change their structure by using \emph{channels} to communicate with one another. The \picalc{} features \emph{channel mobility}, which allows channels to be sent over channels themselves. In the \picalc{} any number of processes can communicate over a channel. While the \picalc{} can be typed, the type of a channel does \emph{not} evolve as communication occurs: it only specifies the type of data sent over it. An overview of the FAQs can be found in \cite{Wing2002}.
 
@@ -219,7 +225,7 @@ The syntax of the \picalc{} captures undesired syntactical properties of process
     \label{picalc-congruence}
 \end{figure}
 
-Computation for \picalc{} progresses is specified by reduction rules, defined in Figure \ref{picalc-reduction}. Two parallel processes communicating over the same channel (by using opposite endpoints to send and receive a message) get reduced to the parallel composition of their continuations, with the continuation of the receiving process having all the references to the message substituted by the message term itself (\textsc{R-Comm}). Similarly, a process that makes a choice put in parallel with a process that offers a choice gets reduced to the continuation of the choosing process and the chosen continuation of the process offering the choice -- so long as the choice itself is valid (\textsc{R-Case}). Reduction goes under both restriction (\textsc{R-Res}) and parallel composition (\textsc{R-Par}), but not under output, input, selection or branching -- constructs that impose order in the communication. Lastly, reduction is defined up to structural congruence: any amount of syntax rewriting can be performed before and after reduction  (\textsc{R-Struct}).
+The operational semantics of the \picalc{} is specified by reduction rules, defined in Figure \ref{picalc-reduction}. Two parallel processes communicating over the same channel (by using opposite endpoints to send and receive a message) get reduced to the parallel composition of their continuations, with the continuation of the receiving process having all the references to the message substituted by the message term itself (\textsc{R-Comm}). Similarly, a process that makes a choice put in parallel with a process that offers a choice gets reduced to the continuation of the choosing process and the chosen continuation of the process offering the choice -- so long as the choice itself is valid (\textsc{R-Case}). Reduction goes under both restriction (\textsc{R-Res}) and parallel composition (\textsc{R-Par}), but not under output, input, selection or branching -- constructs that impose order in the communication. Lastly, reduction is defined up to structural congruence: any amount of syntax rewriting can be performed before and after reduction  (\textsc{R-Struct}).
 
 \begin{figure}[H]
     \begin{mathpar}
@@ -294,19 +300,19 @@ The grammar for the \picalc{} allows well-formed processes with no semantic mean
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Session types}\label{session-types}
 
-\paragraph{Scope} This section covers a subset of session types: the diadic (shared by two processes), finate (no replication or recursion), deterministic (no indeterministic choice), and synchronous session types.
+\paragraph{Scope} This section covers a subset of session types: the diadic (shared by two processes), finite (no replication or recursion), deterministic (no indeterministic choice), and synchronous session types.
 
 Session types \cite{Honda1993, Takeuchi1994, Honda1998} encode sequences of actions, each action containing the type and the direction of the data exchanged.  Processes must use session-typed channels according to their specified protocol.  Instead of being shared and static, session types are linear, private to the communicating processes, and changing as communication occurs. A comprehensive introduction to session types can be found in \cite{Vasconcelos2009}, while answers to FAQs are compiled in \cite{Dezani-ciancaglini2010}.
 
-The grammar of session types is listed in the Figure \ref{session-types-grammar}. Channel termination admits no continuation. For sending and receiving, the type of the transmitted data and the session type of the continuation are required. The types transmitted can either be base types or session types. Branching and selection both expect a set of session types which contains the continuation that will be chosen. The example process introduced in Figure \ref{picalc-example} the session type of $x$ is $\type{\Send{Int}\Send{Int}\Recv{Int}\End}$, while the one of $y$ is $\type{\Recv{Int}\Recv{Int}\Send{Int}\End}$
+The grammar of session types is listed in the Figure \ref{session-types-grammar}. Channel termination admits no continuation. For sending and receiving, the type of the transmitted data and the session type of the continuation are required. The types transmitted can either be base types or session types. Branching and selection both expect a set of session types which contains the continuation that will be chosen. In the example process introduced in Figure \ref{picalc-example}, the session type of $x$ is $\type{\Send{Int}\Send{Int}\Recv{Int}\End}$, while the one of $y$ is $\type{\Recv{Int}\Recv{Int}\Send{Int}\End}$
 
 \begin{figure}[H]
     \begin{align*}
         S ::= \; &\type{End}                      & \text{termination} \\
                  &\Send{T}S                       & \text{send} \\
                  &\Recv{T}S                       & \text{receive} \\
-                 &\Branch \{l_i : S_i\}_{i \in I} & \text{branch} \\
                  &\Select \{l_i : S_i\}_{i \in I} & \text{select} \\
+                 &\Branch \{l_i : S_i\}_{i \in I} & \text{branch} \\
                  \\
         T ::= \; &S      & \text{session type}\\
                  &\ldots & \text{base type}
@@ -337,25 +343,27 @@ Note that the session types of $x$ and $y$ must be \emph{dual}: when one channel
     \label{session-types-duality}
 \end{figure}
 
-Session-typed channels impose typing rules on the syntactical constructs of the \picalc{}: a process can perform an action on a channel only if that channel is capable of that action. \todo{introduce rules} \todo{linearity} \todo{explain $\circ$}
+Session-typed channels impose typing rules on the syntactical constructs of the \picalc{}: a process can perform an action on a channel only if that channel is capable of the action. The typing rules for processes using session typed channels are shown in Figure \ref{session-types-typing-rules}. The judgment $\Gamma \types P$ signifies that $P$ is well typed under the context $\Gamma$. Contexts are linear: their elements cannot be duplicated nor discarded. The disjoint union operator $\circ$ represents context split: every element in the context $\Gamma_1 \circ \Gamma_2$ must appear exactly once in one of $\Gamma_1$ or $\Gamma_2$, but not in both.
+
+A process can be terminated if the only channel in context is a channel that is expecting to be terminated --- thus premature termination is avoided. Restriction creates two linked channel endpoints, where these endpoints are dual. Parallel composition splits the linear context in two. Input requires a channel capable of receiving and a continuation process typed under the continuation channel and the received input --- context is split between those two. Output requires a channel capable of sending, a value to be sent, and a continuation process typed under the continuation channel --- context is split between those three. Selection requires a channel capable of selecting, a process typed under the internally selected continuation channel, and a valid selection —-- context is split between the first two. Branching requires a channel capable of branching, and for every possible external choice, a process typed under the externally chosen continuation channel --- context is split between the two.
 
 \begin{figure}[H]
     \begin{mathpar}
     \inferrule
-        {\Gamma \types x : \End}
-        {\Gamma \types \PO}
+        { }
+        {x : \type{End} \types \PO}
         \quad (\textsc{T-Inact})
+
+    \inferrule
+        {\Gamma,x:T,y:\dual{T} \types P}
+        {\Gamma \types \new{x}{y}P}
+        \quad (\textsc{T-Res})
 
     \inferrule
         {\Gamma_1 \types P \\
          \Gamma_2 \types Q}
         {\Gamma_1 \circ \Gamma_2 \types \comp{P}{Q}}
         \quad (\textsc{T-Par})
-
-    \inferrule
-        {\Gamma,x:T,y:\dual{T} \types P}
-        {\Gamma \types \new{x}{y}P}
-        \quad (\textsc{T-Res})
 
     \inferrule
         {\Gamma_1 \types x:\Recv{T}S \\
@@ -371,41 +379,45 @@ Session-typed channels impose typing rules on the syntactical constructs of the 
         \quad (\textsc{T-Out})
 
     \inferrule
-        {\Gamma_1 \types x:\Branch{\{l_i : S_i\}_{i \in I}} \\
-         \Gamma_2,x:S_i \types P_i \\
-         \forall i \in I}
-        {\Gamma_1 \circ \Gamma_2 \types x \branch{\{l_i : P_i\}_{i \in I}}}
-        \quad (\textsc{T-Branch})
-
-    \inferrule
         {\Gamma_1 \types x:\Select{\{l_i : S_i\}_{i \in I}} \\
          \Gamma_2,x:S_i \types P_i \\
          \exists j \in I}
-        {\Gamma_1 \circ \Gamma_2 \types x \select{l_j}P}
+        {\Gamma_1 \circ \Gamma_2 \types \select{x}{l_j}P}
         \quad (\textsc{T-Select})
+
+    \inferrule
+        {\Gamma_1 \types x:\Branch{\{l_i : S_i\}_{i \in I}} \\
+         \Gamma_2,x:S_i \types P_i \\
+         \forall i \in I}
+        {\Gamma_1 \circ \Gamma_2 \types \branch{x}{\{l_i : P_i\}_{i \in I}}}
+        \quad (\textsc{T-Branch})
+
     \end{mathpar}
     \caption{Typing rules for processes using session typed channels}
     \label{session-types-typing-rules}
 \end{figure}
 
+The reduction of session types is a byproduct of these rules, and follows the operational semantics of the \picalc{} listed in Figure \ref{picalc-reduction}: when two processes either communicate (\textsc{R-Comm}) or make a choice (\textsc{R-Case}) over linked dual channel endpoints, the \emph{head} of those channel endpoints (their first action) is consumed.
 
-\subsection{Reduction}
-
-\subsection{Properties}\label{session-types-properties}
-
-Session types guarantee:
-
+As a result of this setup, session types guarantee three properties:
 \begin{description}
-    \item [communication privacy] at any given moment exactly two processes communicate over a channel;
+    \item [Communication privacy] Every channel endpoint is used exactly by one process. This applies to channels created by message input as well as by scope restriction. This property is a byproduct of the \textbf{linearity} of contexts: parallel composition splits the linear context into two disjoint unions, effectively deciding which process gets to use the endpoint.
         
-    \item [session fidelity] processes follow session types sequentially; and 
-        
-    \item [communication safety] processes only send what their counterpart is expecting to receive.
+    \item [Communication safety] Values sent by one process are expected by the process on the other side of the channel. This property arises as a result of \textbf{duality}: only processes that communicate over channel endpoints linked through restriction can be reduced, and restriction requires channel endpoints to have dual session types.
+
+    \item [Session fidelity] Processes follow session types sequentially. This property is a consequence of linearity and the way in which the typing rules in Figure \ref{session-types-typing-rules} deconstruct session types by taking their continuations apart.
 \end{description}
-        
-\todo{linearity ensures communication privacy}
-\todo{duality ensures communication safety}
-\todo{subject reduction ensures all three}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Dependent types}\label{dependent-types}
+
+Types that depend on programs
+\todo{Indexed datatypes}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Polymorphism}\label{polymorphism}
+
+\cite{Wadler1989}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Coq proof assistant}\label{coq}
@@ -441,18 +453,6 @@ decide_evenness1 (S n) with decide_evenness1 n := {
 decide_evenness1 (S n) (inl p) := inr (evensuc p);
 decide_evenness1 (S n) (inr p) := inl (oddsuc p)}}.
 \end{coq}
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Polymorphism}\label{polymorphism}
-
-\cite{Wadler1989}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Dependent types}\label{dependent-types}
-
-Types that depend on programs
-\todo{Indexed datatypes}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Design}\label{design}
