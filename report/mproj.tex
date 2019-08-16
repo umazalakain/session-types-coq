@@ -409,50 +409,78 @@ As a result of this setup, session types guarantee three properties:
 \end{description}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Dependent types}\label{dependent-types}
+\section{Coq proof assistant}\label{coq}
 
-Types that depend on programs
-\todo{Indexed datatypes}
+Coq \cite{CoqDeveloperCommunity} is a popular proof assistant and dependently typed functional language based on the calculus of inductive constructions \cite{Coquand1989} (which adds inductive data types to the calculus of constructions \cite{Coquand1985}), a type theory isomorphic to intuitionistic predicate calculus --- a constructive logic with quantified statements.  Coq features proof irrelevance for proofs (in \type{Prop}) and a cumulative set of universes (in \type{Type}).
+
+The following example introduces some of the basic building blocks of dependent type programming. The type $\type{Zero}$ (also known as $\bot$) has no constructors: there exist no programs that inhabit it. The proposition $\type{P} \rightarrow \type{Zero}$ represents negation, that $\type{P}$ is provably false. Conversely, from a proof of falsity one might conclude anything: $\type{Zero} \rightarrow \type{P}$, for any $\type{P}$. The dual of $\bot$ is $\top$, here represented as $\type{One}$: the trivial type that contains no information. Sigma is the existential type, or dependent tuple: for some $A$ and some predicate $P$, the first element of the tuple is an $A$; the second element of the tuple is a proof that $P$ holds for that particular $A$.
+
+\begin{coq}
+    Inductive Zero : Type :=.
+    Definition neg (P : Type) : Type := P -> Zero.
+    Inductive One : Type := tt.
+
+    Inductive Sig (A : Type) (P : A -> Type) : Type :=
+      sig : forall (a : A), P a -> Sig A P.
+    Arguments sig {A P}.
+\end{coq}
+
+Coq is dependently typed: types can depend on --- or even contain --- programs. Since that is the case, programs in Coq must exhibit termination --- recursion must occur on structurally smaller terms. The example bellow introduces the recursive function $\type{Even}$, which given a natural number returns a type --- that is to say, it relates each natural number with a proposition, in these case capturing their evenness. Below it, a proof that uses sigma types to show that there is at least one natural number that is even.
+
+\begin{coq}
+    Fixpoint Even (n : nat) : Type :=
+      match n with
+      | Z => One
+      | (S Z) => Zero
+      | (S (S n)) => Even n
+      end.
+
+    Example _ : Sig nat Even := sig 42 tt.
+\end{coq}
+
+Coq allows users to build proofs using \emph{tactics}: programs written in $L_{tac}$ that manipulate hypotheses and transform goals. While these programs might be incorrect, or not terminate, their outcome is ultimately checked by \emph{Gallina}, the specification language of Coq. The next example proves for every natural number $n$ that if $n$ is even, then $n+1$ is not. It does so by induction on $n$: the proof obligation in the base case reduces to $\neg \type{Even (S Z)}$, which by definition of $\text{Even}$ reduces to $\neg \type{Zero}$, that is, $\type{Zero} \rightarrow \type{Zero}$, the identity function. The inductive step is provable thanks to the fact that $\type{Even (S (S n))}$ reduces to $\type{Even n}$.
+
+\begin{coq}
+    Lemma SEven0 (n : nat) : Even n -> neg (Even (S n)).
+    Proof.
+      intros En ESn.
+      induction n.
+      contradiction.
+      apply (IHn ESn En).
+    Qed.
+\end{coq}
+
+In Coq, simultaneously pattern matching on multiple indexed data types can be extremely clunky and arduous. The \emph{Equations} package eases this inconvenience by enabling an equational definition style, pattern matching on the left, and \texttt{with} constructs (\cite{McBride2004}), making Coq as convenient for dependent pattern matching as Agda. The theorem $\type{SEven0}$ is proven again here, this time using dependent pattern matching. Coq is able to use tactics to solve the base case automatically, as $\type{ESn}$ is uninhabited.
+
+\begin{coq}
+    From Equations Require Import Equations.
+
+    Equations SEven1 (n : nat) : Even n -> neg (Even (S n)) := {
+    SEven1 Z En ESn := _ ;
+    SEven1 (S n) En ESn := SEven1 n ESn En}.
+\end{coq}
+
+Coq supports inductive and coinductive data types,
+\todo{indexed families of types}
+
+\begin{coq}
+    Inductive lte : nat -> nat -> Type :=
+    | zlte : forall {n}, lte Z n
+    | slte : forall {n m}, lte n m -> lte (S n) (S m)
+    .
+
+    Inductive Vec (A : Type) : nat -> Type :=
+    | nil : Vec A Z
+    | cons : forall {n}, A -> Vec A n -> Vec A (S n)
+    .
+\end{coq}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Polymorphism}\label{polymorphism}
 
-\cite{Wadler1989}
+Polymorphism allows programs to depend on types. If those types are unconstrained --- if the universe of types is infinite --- then programs are unable pattern match on them (as they cannot possibly produce infinitely many cases) and unable to create terms inhabiting them. Such unconstrained polymorphic types are said to be \emph{opaque}. Programs depending on opaque types exhibit common general properties that are highlighted in \cite{Wadler1989}. This project makes use of polymorphism to prevent the creation and inspection of terms of a polymorphic type.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Coq proof assistant}\label{coq}
-
-Coq \cite{CoqDeveloperCommunity} is a popular proof assistant and dependently typed functional language based on the calculus of inductive constructions \cite{Coquand1989} (which adds inductive data types to the calculus of constructions \cite{Coquand1985}), a type theory isomorphic to intuitionistic predicate calculus --- a constructive logic with quantified statements.
-
-Since types may contain arbitrary definitions, definitions in Coq must exhibit termination --- recursion must occur on structurally smaller terms. Coq supports inductive and coinductive data types, and features proof irrelevance for proofs (in \type{Prop}) and a cumulative set of universes (in \type{Type}).
-
-Coq allows users to build proofs using \emph{tactics}: programs written in $L_{tac}$ that manipulate hypotheses and transform goals. While these programs might be incorrect, or not terminate, their outcome is ultimately checked by \emph{Gallina}, the specification language of Coq.
-
-In Coq, simultaneously pattern matching on multiple indexed data types can be rather clunky and arduous. The \emph{Equations} package eases this inconvenience by adding equational definitions, pattern matching on the left, and \texttt{with} constructs (\cite{McBride2004}), making Coq as convenient for dependent pattern matching as Agda.
-
-\todo{explain example}
-\begin{coq}
-Inductive Even : nat -> Prop :=
-| zero : Even 0
-| oddsuc : forall {n : nat}, Odd n -> Even (S n)
-with Odd : nat -> Prop :=
-| evensuc : forall {n : nat}, Even n -> Odd (S n)
-.
-
-Theorem decide_evenness0 (n : nat) : Even n + Odd n.
-Proof.
-  induction n.
-  left; constructor.
-  destruct IHn; [right | left]; constructor; assumption.
-Qed.
-
-From Equations Require Import Equations.
-Equations decide_evenness1 (n : nat) : Even n + Odd n := {
-decide_evenness1 0 := inl zero ;
-decide_evenness1 (S n) with decide_evenness1 n := {
-decide_evenness1 (S n) (inl p) := inr (evensuc p);
-decide_evenness1 (S n) (inr p) := inl (oddsuc p)}}.
-\end{coq}
+\todo{more? should we move it into design?}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Design}\label{design}
@@ -481,7 +509,7 @@ Central to computing session-typed \picalc is the need to handle the state trans
 \todo{We merge pi calculus and session types into one}
 
 
-Assuming linearity, \textbf{processes are correct by construction}: the processes that can be constructed depend on the session types of the channels in the environment of the host language; an action strips off the outer layer of a channel's session type -- modelling \textbf{continuation passing}.
+Assuming linearity, \textbf{processes are correct by construction}: the processes that can be constructed depend on the session types of the channels in the environment of the host language; an action strips off the outer layer of a channel's session type --- modelling \textbf{continuation passing}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Linearity}\label{linearity}
