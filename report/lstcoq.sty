@@ -36,8 +36,7 @@ morekeywords=[4]{pose, set, move, case, elim, apply, clear, hnf,
   unlock, compute, ring, field, fourier, replace, fold, unfold,
   change, cutrewrite, simpl, have, suff, wlog, suffices, without,
   loss, nat_norm, assert, cut, trivial, revert, bool_congr, nat_congr,
-  symmetry, transitivity, auto, split, left, right, autorewrite, constructor,
-  assumption, contradiction},
+  symmetry, transitivity, auto, split, left, right, autorewrite, constructor},
 %
 % Terminators
 morekeywords=[5]{by, done, exact, reflexivity, tauto, romega, omega,
@@ -50,14 +49,14 @@ morekeywords=[6]{do, last, first, try, idtac, repeat},
 morecomment=[s]{(*}{*)},
 %
 % Spaces are not displayed as a special character
-showstringspaces=false,
+showstringspaces=true,
 %
 % String delimiters
 morestring=[b]",
 morestring=[d],
 %
 % Size of tabulations
-tabsize=3,
+tabsize=4,
 %
 % Enables ASCII chars 128 to 255
 extendedchars=false,
@@ -75,7 +74,7 @@ basicstyle=\small,
 captionpos=b,
 %
 % flexible columns
-columns=[l]flexible,
+columns=fixed,
 %
 % Style for (listings') identifiers
 identifierstyle={\ttfamily\color{black}},
@@ -98,7 +97,7 @@ commentstyle={\ttfamily\color{OliveGreen}},
 %
 %moredelim=**[is][\ttfamily\color{red}]{/&}{&/},
 literate=
-    {forall}{{\color{OliveGreen}{$\forall\;$}}}1
+    {forall}{{\color{OliveGreen}{$\forall\;$}\color{black}}}1
     {exists}{{$\exists\;$}}1
     {<-}{{$\leftarrow\;$}}1
     {=>}{{$\Rightarrow\;$}}1

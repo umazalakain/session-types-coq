@@ -142,6 +142,7 @@ The properties of a formal system can be verified either \emph{dynamically}, by 
 
 The mechanised formalisation and verification of programming languages and calculi is an ongoing community effort in securing existing work: humans are able to check proofs, but they are very likely to make mistakes; machines can verify proofs mechanically. A remarkable example of a community effort towards machine verification is RustBelt \cite{Dreyer2018}, a project that aims to formalise and machine-check the ownership system of the programming language Rust with the help of separation logic \cite{} and the proof assistant Coq. Not only does mechanisation increase confidence in what is mechanised, but also in all other derived work that is yet unverified: proving the correctness of Rust's type system immediately increases the confidence in all software written in it.
 
+\todo{make this short, take it out of the box, just centered and in italics}
 \begin{thesis-statement}{THESIS STATEMENT}
     This project formalises the \emph{session-typed \picalc{}} in such a way that variable references in the object language are lifted into variable references in the host language. The use of channels in the object language is then restricted to be linear, ensuring \emph{communication privacy}, \emph{communication safety} and \emph{session fidelity} (refer to \S \ref{session-types-properties}). Lastly, we machine-verify \emph{subject reduction} for the resulting language.
 \end{thesis-statement}
@@ -411,9 +412,9 @@ As a result of this setup, session types guarantee three properties:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Coq proof assistant}\label{coq}
 
-Coq \cite{CoqDeveloperCommunity} is a popular proof assistant and dependently typed functional language based on the calculus of inductive constructions \cite{Coquand1989} (which adds inductive data types to the calculus of constructions \cite{Coquand1985}), a type theory isomorphic to intuitionistic predicate calculus --- a constructive logic with quantified statements.  Coq features proof irrelevance for proofs (in \type{Prop}) and a cumulative set of universes (in \type{Type}).
+Coq \cite{CoqDeveloperCommunity} is a popular proof assistant and dependently typed functional language based on the calculus of inductive constructions \cite{Coquand1989} (which adds inductive data types to the calculus of constructions \cite{Coquand1985}), a type theory isomorphic to intuitionistic predicate calculus --- a constructive logic with quantified statements.  Coq features proof irrelevance for proofs (in \coqe{Prop}) and a cumulative set of universes (in \coqe{Type}).
 
-The following example introduces some of the basic building blocks of dependent type programming. The type $\type{Zero}$ (also known as $\bot$) has no constructors: there exist no programs that inhabit it. The proposition $\type{P} \rightarrow \type{Zero}$ represents negation, that $\type{P}$ is provably false. Conversely, from a proof of falsity one might conclude anything: $\type{Zero} \rightarrow \type{P}$, for any $\type{P}$. The dual of $\bot$ is $\top$, here represented as $\type{One}$: the trivial type that contains no information. Sigma is the existential type, or dependent tuple: for some $A$ and some predicate $P$, the first element of the tuple is an $A$; the second element of the tuple is a proof that $P$ holds for that particular $A$.
+The following example introduces some of the basic building blocks of dependent type programming. The type \coqe{Zero} (also known as $\bot$) has no constructors: there exist no programs that inhabit it. The proposition \coqe{P -> Zero} represents negation, that \coqe{P} is provably false. Conversely, from a proof of falsity one might conclude anything: \coqe{Zero -> P}, for any \coqe{P}. The dual of $\bot$ is $\top$, here represented as \coqe{One}: the trivial type that contains no information. Sigma is the existential type, or dependent tuple: for some $A$ and some predicate $P$, the first element of the tuple is an $A$; the second element of the tuple is a proof that $P$ holds for that particular $A$.
 
 \begin{coq}
     Inductive Zero : Type :=.
@@ -425,20 +426,20 @@ The following example introduces some of the basic building blocks of dependent 
     Arguments sig {A P}.
 \end{coq}
 
-Coq is dependently typed: types can depend on --- or even contain --- programs. Since that is the case, programs in Coq must exhibit termination --- recursion must occur on structurally smaller terms. The example bellow introduces the recursive function $\type{Even}$, which given a natural number returns a type --- that is to say, it relates each natural number with a proposition, in these case capturing their evenness. Below it, a proof that uses sigma types to show that there is at least one natural number that is even.
+Coq is dependently typed: types can depend on --- or even contain --- programs. Since that is the case, programs in Coq must exhibit termination --- recursion must occur on structurally smaller terms. The example bellow introduces the recursive function \coqe{Even}, which given a natural number returns a type --- that is to say, it relates each natural number with a proposition, in these case capturing their evenness. Below it, a proof that uses sigma types to show that there is at least one natural number that is even.
 
 \begin{coq}
     Fixpoint Even (n : nat) : Type :=
       match n with
-      | Z => One
-      | (S Z) => Zero
+      | Z         => One
+      | (S Z)     => Zero
       | (S (S n)) => Even n
       end.
 
     Example _ : Sig nat Even := sig 42 tt.
 \end{coq}
 
-Coq allows users to build proofs using \emph{tactics}: programs written in $L_{tac}$ that manipulate hypotheses and transform goals. While these programs might be incorrect, or not terminate, their outcome is ultimately checked by \emph{Gallina}, the specification language of Coq. The next example proves for every natural number $n$ that if $n$ is even, then $n+1$ is not. It does so by induction on $n$: the proof obligation in the base case reduces to $\neg \type{Even (S Z)}$, which by definition of $\text{Even}$ reduces to $\neg \type{Zero}$, that is, $\type{Zero} \rightarrow \type{Zero}$, the identity function. The inductive step is provable thanks to the fact that $\type{Even (S (S n))}$ reduces to $\type{Even n}$.
+Coq allows users to build proofs using \emph{tactics}: programs written in $L_{tac}$ that manipulate hypotheses and transform goals. While these programs might be incorrect, or not terminate, their outcome is ultimately checked by \emph{Gallina}, the specification language of Coq. The next example proves for every natural number $n$ that if $n$ is even, then $n+1$ is not. It does so by induction on $n$: the proof obligation in the base case reduces to \coqe{neg (Even (S Z))}, which by definition of \coqe{Even} reduces to \coqe{neg Zero}, that is, \coqe{Zero -> Zero}, the identity function. The inductive step is provable thanks to the fact that \coqe{Even (S (S n))} reduces to \coqe{Even n}.
 
 \begin{coq}
     Lemma SEven0 (n : nat) : Even n -> neg (Even (S n)).
@@ -450,13 +451,13 @@ Coq allows users to build proofs using \emph{tactics}: programs written in $L_{t
     Qed.
 \end{coq}
 
-In Coq, simultaneously pattern matching on multiple indexed data types can be extremely clunky and arduous. The \emph{Equations} package eases this inconvenience by enabling an equational definition style, pattern matching on the left, and \texttt{with} constructs (\cite{McBride2004}), making Coq as convenient for dependent pattern matching as Agda. The theorem $\type{SEven0}$ is proven again here, this time using dependent pattern matching. Coq is able to use tactics to solve the base case automatically, as $\type{ESn}$ is uninhabited.
+In Coq, simultaneously pattern matching on multiple indexed data types can be extremely clunky and arduous. The \emph{Equations} package eases this inconvenience by enabling an equational definition style, pattern matching on the left, and \texttt{with} constructs (\cite{McBride2004}), making Coq as convenient for dependent pattern matching as Agda. The theorem \coqe{SEven0} is proven again here, this time using dependent pattern matching. Coq is able to use tactics to solve the base case automatically, as \coqe{ESn} is uninhabited.
 
 \begin{coq}
     From Equations Require Import Equations.
 
     Equations SEven1 (n : nat) : Even n -> neg (Even (S n)) := {
-    SEven1 Z En ESn := _ ;
+    SEven1 Z     En ESn := _ ;
     SEven1 (S n) En ESn := SEven1 n ESn En}.
 \end{coq}
 
@@ -470,37 +471,35 @@ Coq supports inductive and coinductive data types,
     .
 
     Inductive Vec (A : Type) : nat -> Type :=
-    | nil : Vec A Z
+    | nil  : Vec A Z
     | cons : forall {n}, A -> Vec A n -> Vec A (S n)
     .
 \end{coq}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Polymorphism}\label{polymorphism}
-
-Polymorphism allows programs to depend on types. If those types are unconstrained --- if the universe of types is infinite --- then programs are unable pattern match on them (as they cannot possibly produce infinitely many cases) and unable to create terms inhabiting them. Such unconstrained polymorphic types are said to be \emph{opaque}. Programs depending on opaque types exhibit common general properties that are highlighted in \cite{Wadler1989}. This project makes use of polymorphism to prevent the creation and inspection of terms of a polymorphic type.
-
-\todo{more? should we move it into design?}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Design}\label{design}
 
-\todo{Limit ourselves to channels with session types, no \#T}
-\todo{Limit ourselves to linear types: $\circ$ is union of non intersecting sets}
-
-This chapter covers the high-level design of the encoding of the session-typed \picalc{} into Coq. \todo{The main goal is using function abstraction}
-
-Other efforts in formalising session types in Coq have created object languages and handled variable references, typing contexts, and typing judgments by hand \cite{Dilmore2019}.
-
+This chapter describes how we encode the session-typed \picalc{} into Coq. Our encoding only handles session-typed channels, specifically channels with finite (non-replicating, non-recursive) session types. The encoding has no intermediary models --- for instance, the polarised linear \picalc{}. The main characteristic of our design is the use of function abstraction to pass around both messages and channels (see \S \ref{overview}); alternative approaches are listed in \S \ref{alternative-encodings}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Overview}\label{overview}
 
+The main idea behind our design is \emph{continuation passing}, where channels are destroyed and created with every action taken by a process. This approach has its origin in the encoding of session types into the polarised linear \picalc{} \cite{Dardha2016, otherwork}: session-typed channels are transformed into single-use polarised channels, each containing the type of data being transmitted and the encoding of the channel's continuation. For instance, the session type $\Send{A} \Recv{B} \End$ is encoded as $\ell_o [A,\ell_i [B,\ell_\emptyset []]]$ where $\ell_i [A, Cont]$ signifies input $A$, then continue as $Cont$ --- and similarly for output. When a process uses a channel with such a type to communicate, that channel gets destroyed, the \emph{head} of the channel's type is consumed, and the \emph{tail} of the channel's type ($\ell_i [B, \ell_\emptyset []]$) is then used as the type of the newly created channel.
 
 
-Central to computing session-typed \picalc is the need to handle the state transitions of session types. One approach is \emph{continuation passing}, introduced in \S \ref{continuation-passing}, which destroys channels and creates new ones as part of every action of a process \cite{Dardha2016}. While there exist other approaches \todo{citation needed}, they all require for every state a session type is in to be used exactly once, i.e. linearity, discussed in \S \ref{linearity}.
+
+channels are passed as arguments
+parametric channels as a way of avoiding cheating
+linearity to check that all channels are used exactly once
 
 \todo{mention the prize to pay}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Alternative encodings}\label{alternative-encodings}
+
+\paragraph{Using de Bruijn indices}
+
+\paragraph{Adding shared channels}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Continuation passing}\label{continuation-passing}
@@ -510,6 +509,20 @@ Central to computing session-typed \picalc is the need to handle the state trans
 
 
 Assuming linearity, \textbf{processes are correct by construction}: the processes that can be constructed depend on the session types of the channels in the environment of the host language; an action strips off the outer layer of a channel's session type --- modelling \textbf{continuation passing}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Parametric HOAS}\label{phoas}
+
+\cite{Wadler1989}
+\cite{Chlipala2008}
+\todo{We use polymorphism to make channels opaque}
+\todo{We do not do open processes}
+\todo{We use polymorphism on messages to make processes traversable}
+
+The introduction of both channels and received messages is modelled as function abstraction in Coq, therefore \textbf{variables are handled transparently} -- no substitution related lemmas are required. Channel types are parametrised to make them opaque -- they cannot be illicitly created or inspected by the user.
+
+Polymorphism allows programs to depend on types. If those types are unconstrained --- if the universe of types is infinite --- then programs are unable pattern match on them (as they cannot possibly produce infinitely many cases) and unable to create terms inhabiting them. Such unconstrained polymorphic types are said to be \emph{opaque}. Programs depending on opaque types exhibit common general properties that are highlighted in \cite{Wadler1989}. This project makes use of polymorphism to prevent the creation and inspection of terms of a polymorphic type.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Linearity}\label{linearity}
@@ -522,17 +535,6 @@ One approach to simulating linearity is traversing processes \emph{a posteriori}
 Unfortunately, the approach in point (i) makes it impossible for processes to use any logic that is external to the calculus and depends on the type of messages. An alternative approach for simulating linearity is by doing it \emph{a priori}, at construction time, by keeping track of the linearly available channels through a context by which processes are indexed.  This means that channel creation cannot be represented through function abstraction, that process composition needs to explicitly split the context, and that there must be a way of addressing a particular channel within a context --- strings with the Barendregt convention \cite{Barendregt1984}, De Bruijn indices \cite{deBruijn1972}, locally nameless De Bruijn indices, or a parametric HOAS \cite{Chlipala2008} --- since only channels need to be used linearly, message input can still be represented as function abstraction whenever the message does not contain a channel. On the bright side, this approach allows processes to use logic that external to the calculus and depends on the types of messages.
 
 While the latter approach has more appealing properties, its mechanics negatively affect usability: can it be equipped with the usability of the former approach? I intend to create a Coq library that abstracts away the simulation of linearity.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Parametric HOAS}\label{phoas}
-
-\cite{Wadler1989}
-\cite{Chlipala2008}
-\todo{We use polymorphism to make channels opaque}
-\todo{We do not do open processes}
-\todo{We use polymorphism on messages to make processes traversable}
-
-The introduction of both channels and received messages is modelled as function abstraction in Coq, therefore \textbf{variables are handled transparently} -- no substitution related lemmas are required. Channel types are parametrised to make them opaque -- they cannot be illicitly created or inspected by the user.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Subject reduction}\label{subject-reduction}
@@ -649,6 +651,9 @@ Example branch_and_select : PProcess :=
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Related work}\label{related-work}
+
+\todo{fixme}
+Other efforts in formalising session types in Coq have created object languages and handled variable references, typing contexts, and typing judgments by hand \cite{Dilmore2019}.
 
 Linearity is strongly connected to session types: a session type must transition through each of its stages \emph{exactly} once. Session types can be encoded into a \picalc{} with linear types, as shown by \cite{Kobayashi1996,Dardha2012,Dardha2016}. As shown in \cite{Voinea}, in systems where session types are shared, the tokens allowing access to the session-typed channels must still be linear.
 
