@@ -21,7 +21,7 @@
 \usepackage{float}
 
 % Enums
-\usepackage{enumitem}
+\usepackage[inline]{enumitem}
 \setlist{nolistsep}
 
 % Inference rules
@@ -439,14 +439,35 @@ Coq is dependently typed: types can depend on --- or even contain --- programs. 
     Example _ : Sig nat Even := sig 42 tt.
 \end{coq}
 
-Coq allows users to build proofs using \emph{tactics}: programs written in $L_{tac}$ that manipulate hypotheses and transform goals. While these programs might be incorrect, or not terminate, their outcome is ultimately checked by \emph{Gallina}, the specification language of Coq. The next example proves for every natural number $n$ that if $n$ is even, then $n+1$ is not. It does so by induction on $n$: the proof obligation in the base case reduces to \coqe{neg (Even (S Z))}, which by definition of \coqe{Even} reduces to \coqe{neg Zero}, that is, \coqe{Zero -> Zero}, the identity function. The inductive step is provable thanks to the fact that \coqe{Even (S (S n))} reduces to \coqe{Even n}.
+Coq allows users to build proofs using \emph{tactics}: programs written in $L_{tac}$ that manipulate hypotheses and transform goals. While these programs might be incorrect, or not terminate, their outcome is ultimately checked by \emph{Gallina}, the specification language of Coq. The example below proves for every natural number $n$ that if $n$ is even, then $n+1$ is not. It does so through the sequential application of tactics. Each tactic manipulates the goal and context of the proof (see annotations in comments). The proof proceeds by induction on $n$: the proof obligation in the base case reduces to \coqe{neg (Even (S Z))}, which by definition of \coqe{Even} reduces to \coqe{neg Zero}, that is, \coqe{Zero -> Zero}, the identity function. The inductive step is provable thanks to the fact that \coqe{Even (S (S n))} reduces to \coqe{Even n}.
 
 \begin{coq}
     Lemma SEven0 (n : nat) : Even n -> neg (Even (S n)).
     Proof.
+      (* n : nat
+         --------------------
+         Even n -> neg (Even (S n)) *)
       intros En ESn.
+
+      (* n : nat 
+         En : Even n
+         ESn : Even (S n)
+         --------------------
+         Zero *)
       induction n.
+
+      (* En : Even 0
+         ESn : Even 1
+         --------------------
+         Zero *)
       contradiction.
+
+      (* n : nat
+         En : Even (S (S n))
+         ESn : Even (S (S n))
+         IHn : Even n -> Even (S n) -> Zero
+         --------------------
+         Zero *)
       apply (IHn ESn En).
     Qed.
 \end{coq}
@@ -484,29 +505,69 @@ This chapter describes how we encode the session-typed \picalc{} into Coq. Our e
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Overview}\label{overview}
 
-The main idea behind our design is \emph{continuation passing}, where channels are destroyed and created with every action taken by a process. This approach has its origin in the encoding of session types into the polarised linear \picalc{} \cite{Dardha2016, otherwork}: session-typed channels are transformed into single-use polarised channels, each containing the type of data being transmitted and the encoding of the channel's continuation. For instance, the session type $\Send{A} \Recv{B} \End$ is encoded as $\ell_o [A,\ell_i [B,\ell_\emptyset []]]$ where $\ell_i [A, Cont]$ signifies input $A$, then continue as $Cont$ --- and similarly for output. When a process uses a channel with such a type to communicate, that channel gets destroyed, the \emph{head} of the channel's type is consumed, and the \emph{tail} of the channel's type ($\ell_i [B, \ell_\emptyset []]$) is then used as the type of the newly created channel.
+Our design is based on \emph{continuation passing}, where channels are \textbf{used exactly once}: channels get destroyed and created with every action taken by a process. This approach has its origin in the encoding of session types into the polarised linear \picalc{} \cite{Dardha2016, otherwork}: session-typed channels are transformed into single-use polarised channels, each containing the type of data being transmitted and the encoding of the channel's continuation. For instance, the session type $\Send{A} \Recv{B} \End$ is encoded as $\ell_o [A,\ell_i [B,\ell_\emptyset []]]$ where $\ell_i [A, Cont]$ is a single-use channel signifying input $A$, then continue as $Cont$ --- and similarly for output. When a process uses a channel with such a type to communicate, that channel gets destroyed, the \emph{head} of the channel's type is consumed, and a new channel with the \emph{tail} of the type ($\ell_i [B, \ell_\emptyset []]$) is created.
 
+The main characteristic of our design is the use of function abstraction as a way of passing around references to both messages and channels. That is, references are not modeled in the object language, but rather in the host language, in Coq.
 
+\subsection{Advantages}
 
-channels are passed as arguments
-parametric channels as a way of avoiding cheating
-linearity to check that all channels are used exactly once
+\begin{itemize}
+    \item The user can refer to both messages and channels naturally. 
+
+        Example
+
+    \item There is no need for machinery that avoids variable capture.
+
+        Explanation
+
+    \item There is no need for substitution lemmas.
+
+        Explanation
+
+\end{itemize}
+
+\subsection{Drawbacks}
+
+This approach comes with several problems that need to be solved:
+
+\begin{itemize}
+    \item Information about the session types of channels must be kept in the channels themselves.
+
+        Explanation
+
+        Solution \S \ref{dependent-types}
+
+    \item Channels can be manufactured without following the procedures in the calculus.
+
+        Explanation
+
+        Solution \S \ref{phoas}
+
+    \item Channels can be used more than once, or not used at all.
+
+        Explanation
+
+        Solution \S \ref{linearity}
+\end{itemize}
+
 
 \todo{mention the prize to pay}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Alternative encodings}\label{alternative-encodings}
 
+Unfortunately, the approach in point (i) makes it impossible for processes to use any logic that is external to the calculus and depends on the type of messages. An alternative approach for simulating linearity is by doing it \emph{a priori}, at construction time, by keeping track of the linearly available channels through a context by which processes are indexed.  This means that channel creation cannot be represented through function abstraction, that process composition needs to explicitly split the context, and that there must be a way of addressing a particular channel within a context --- strings with the Barendregt convention \cite{Barendregt1984}, De Bruijn indices \cite{deBruijn1972}, locally nameless De Bruijn indices, or a parametric HOAS \cite{Chlipala2008} --- since only channels need to be used linearly, message input can still be represented as function abstraction whenever the message does not contain a channel. On the bright side, this approach allows processes to use logic that external to the calculus and depends on the types of messages.
+
+While the latter approach has more appealing properties, its mechanics negatively affect usability: can it be equipped with the usability of the former approach? I intend to create a Coq library that abstracts away the simulation of linearity.
+
 \paragraph{Using de Bruijn indices}
 
 \paragraph{Adding shared channels}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Continuation passing}\label{continuation-passing}
+\section{Dependent types}\label{dependent-types}
 
 \cite{Vasconcelos2010}
-\todo{We merge pi calculus and session types into one}
-
 
 Assuming linearity, \textbf{processes are correct by construction}: the processes that can be constructed depend on the session types of the channels in the environment of the host language; an action strips off the outer layer of a channel's session type --- modelling \textbf{continuation passing}.
 
@@ -519,22 +580,19 @@ Assuming linearity, \textbf{processes are correct by construction}: the processe
 \todo{We do not do open processes}
 \todo{We use polymorphism on messages to make processes traversable}
 
-The introduction of both channels and received messages is modelled as function abstraction in Coq, therefore \textbf{variables are handled transparently} -- no substitution related lemmas are required. Channel types are parametrised to make them opaque -- they cannot be illicitly created or inspected by the user.
-
 Polymorphism allows programs to depend on types. If those types are unconstrained --- if the universe of types is infinite --- then programs are unable pattern match on them (as they cannot possibly produce infinitely many cases) and unable to create terms inhabiting them. Such unconstrained polymorphic types are said to be \emph{opaque}. Programs depending on opaque types exhibit common general properties that are highlighted in \cite{Wadler1989}. This project makes use of polymorphism to prevent the creation and inspection of terms of a polymorphic type.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Linearity}\label{linearity}
 
+One approach to simulating linearity is traversing processes \emph{a posteriori}, after they have been defined, to check that each channel is used exactly once. This can be done by making the type of channels parametric, and then instantiating it to $\mathbb{B}$ and \emph{marking} each channel for inspection. This allows both channel creation and message input to be modelled as function abstraction --- channels of a parametric type cannot be forged.  However, to be able to traverse processes where message passing is modelled as function abstraction, one has to be able to create all types of messages. To elude this problem, message types can be parametrised over a $\mathrm{Type} \rightarrow \mathrm{Type}$ function and then projected to the unit type.
+
 \cite{Kobayashi1999}
 \cite{Toninho2011}
 
-One approach to simulating linearity is traversing processes \emph{a posteriori}, after they have been defined, to check that each channel is used exactly once. This can be done by making the type of channels parametric, and then instantiating it to $\mathbb{B}$ and \emph{marking} each channel for inspection. This allows both channel creation and message input to be modelled as function abstraction --- channels of a parametric type cannot be forged.  However, to be able to traverse processes where message passing is modelled as function abstraction, one has to be able to create all types of messages. To elude this problem, message types can be parametrised over a $\mathrm{Type} \rightarrow \mathrm{Type}$ function and then projected to the unit type.
     
-Unfortunately, the approach in point (i) makes it impossible for processes to use any logic that is external to the calculus and depends on the type of messages. An alternative approach for simulating linearity is by doing it \emph{a priori}, at construction time, by keeping track of the linearly available channels through a context by which processes are indexed.  This means that channel creation cannot be represented through function abstraction, that process composition needs to explicitly split the context, and that there must be a way of addressing a particular channel within a context --- strings with the Barendregt convention \cite{Barendregt1984}, De Bruijn indices \cite{deBruijn1972}, locally nameless De Bruijn indices, or a parametric HOAS \cite{Chlipala2008} --- since only channels need to be used linearly, message input can still be represented as function abstraction whenever the message does not contain a channel. On the bright side, this approach allows processes to use logic that external to the calculus and depends on the types of messages.
 
-While the latter approach has more appealing properties, its mechanics negatively affect usability: can it be equipped with the usability of the former approach? I intend to create a Coq library that abstracts away the simulation of linearity.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Subject reduction}\label{subject-reduction}
