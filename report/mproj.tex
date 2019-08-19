@@ -36,11 +36,16 @@
   urlcolor=darkgray,
   ]{hyperref}
 
+% Number subsubsections too
+\setcounter{secnumdepth}{4}
+
 \usepackage{titlesec}
 % Use a single line for chapter headers
 \titleformat{\chapter}[hang]{\normalfont\huge\bfseries}{\thechapter.}{1em}{} 
 % Remove the space before chapter titles
 \titlespacing*{\chapter}{0pt}{0pt}{40pt}
+% Use italics for subsubsections
+\titleformat{\subsubsection}{}{\thesubsubsection}{1em}{\itshape}
 
 % Appendices
 \usepackage[header,title,titletoc]{appendix}
@@ -500,79 +505,67 @@ Coq supports inductive and coinductive data types,
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Design}\label{design}
 
-This chapter describes how we encode the session-typed \picalc{} into Coq. Our encoding only handles session-typed channels, specifically channels with finite (non-replicating, non-recursive) session types. The encoding has no intermediary models --- for instance, the polarised linear \picalc{}. The main characteristic of our design is the use of function abstraction to pass around both messages and channels (see \S \ref{overview}); alternative approaches are listed in \S \ref{alternative-encodings}.
+This chapter describes how we encode the session-typed \picalc{} into Coq. Our encoding only handles session-typed channels, specifically channels with finite (non-replicating, non-recursive) session types. The encoding has no intermediary models --- for instance, the polarised linear \picalc{}. The main characteristic of our design is the use of function abstraction to pass around both messages and channels (see \S \ref{overview}); alternative approaches are listed in \S \ref{alternative-encodings}. \todo{fixme}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Overview}\label{overview}
 
 Our design is based on \emph{continuation passing}, where channels are \textbf{used exactly once}: channels get destroyed and created with every action taken by a process. This approach has its origin in the encoding of session types into the polarised linear \picalc{} \cite{Dardha2016, otherwork}: session-typed channels are transformed into single-use polarised channels, each containing the type of data being transmitted and the encoding of the channel's continuation. For instance, the session type $\Send{A} \Recv{B} \End$ is encoded as $\ell_o [A,\ell_i [B,\ell_\emptyset []]]$ where $\ell_i [A, Cont]$ is a single-use channel signifying input $A$, then continue as $Cont$ --- and similarly for output. When a process uses a channel with such a type to communicate, that channel gets destroyed, the \emph{head} of the channel's type is consumed, and a new channel with the \emph{tail} of the type ($\ell_i [B, \ell_\emptyset []]$) is created.
 
-The main characteristic of our design is the use of function abstraction as a way of passing around references to both messages and channels. That is, references are not modeled in the object language, but rather in the host language, in Coq.
+The main characteristic of our design is the use of a higher order abstract syntax as a way of passing around references to both messages and channels. That is, references are not modeled in the object language, but rather in the host language, in Coq.
 
-\subsection{Advantages}
+\todo{introduce advantages}
 
-\begin{itemize}
-    \item The user can refer to both messages and channels naturally. 
+\begin{enumerate}
+    \item \emph{The user can refer naturally to both messages and channels}
 
-        Example
+    Our approach lifts all variable references into Coq. The example session-typed \picalc{} process bellow has two branches: one that outputs \coqe{true} and receives some \coqe{m}; the other that receives some \coqe{m} and outputs that same \coqe{m}. Note that \coqe{m} gets bound as a variable in Coq. Alternative approaches that encode variable references in the object language itself need to use de Bruijn indices \cite{deBruijn1972} or similar techniques, resulting in a processing overhead for users.
+        
+    \begin{coq}
+    Example example2 : PProcess := ([v]>
+        (new o <- ! B[bool] ; ? B[bool] ; ø,
+             i <- ? B[bool] ; ! B[bool] ; ø,
+             ltac:(auto))
+        (o![v _ true]; ?[m]; $\epsilon$) <|> i?[m]; ![m]; $\epsilon$).
+    \end{coq}
 
-    \item There is no need for machinery that avoids variable capture.
+    \item \emph{There is no need for machinery that avoids variable capture}
 
-        Explanation
+    Explanation
 
-    \item There is no need for substitution lemmas.
+    \item \emph{There is no need for substitution lemmas}
 
-        Explanation
+    Explanation
+\end{enumerate}
 
-\end{itemize}
+\todo{introduce drawbacks}
 
-\subsection{Drawbacks}
+This approach comes with several problems that need to be addressed:
 
-This approach comes with several problems that need to be solved:
+\begin{enumerate}
+    \item \emph{Channels can be manufactured outside the calculus}
 
-\begin{itemize}
-    \item Information about the session types of channels must be kept in the channels themselves.
+    The \picalc{} provides two ways to obtain a channel: by using scope restriction, and by receiving a message that contains a channel. The user must be restricted to use these constructs. If the type of channels is defined inductively, the user is not prevented from forging channels. Our solution to this problem is to parametrise processes with an unknown channel type, and to define our calculus and its theorems parametrised by this unknown type. \S \ref{polymorphism} covers our solution in depth.
 
-        Explanation
+    \item \emph{The type of messages must be tracked}
 
-        Solution \S \ref{dependent-types}
+    The \picalc{} allows messages to contain both terms of a given base type, and channels of a given session type. Messages must track information about the type of their content. Moreover, this information must be kept at the type level, so that the typechecker is able to verify that processes make correct use of messages. Dependent types allow session types to be defined as an inductive type, and to then index the type of messages by the type of value they contain --- whether this is a session type or a base type. See \S \ref{messages} and \S \ref{processes} for more details.
 
-    \item Channels can be manufactured without following the procedures in the calculus.
+    \item \emph{Channels can be used more than once, or not used at all}
 
-        Explanation
+    Our approach encodes session-typed channels as single-use channels that are created and destroyed with every action taken by a process. To invoke these actions, an appropriate session-typed channel has to provided. The action then use function abstraction to provide an environment in which a channel with the tail of the original session type is received as an argument. This channel passed as an argument must be used exactly once. Unfortunately, Coq has no support for linearity, and thus this property has to be checked ad-hoc. How to do this is covered in \S \ref{linearity}.
 
-        Solution \S \ref{phoas}
-
-    \item Channels can be used more than once, or not used at all.
-
-        Explanation
-
-        Solution \S \ref{linearity}
-\end{itemize}
-
-
-\todo{mention the prize to pay}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Alternative encodings}\label{alternative-encodings}
-
-Unfortunately, the approach in point (i) makes it impossible for processes to use any logic that is external to the calculus and depends on the type of messages. An alternative approach for simulating linearity is by doing it \emph{a priori}, at construction time, by keeping track of the linearly available channels through a context by which processes are indexed.  This means that channel creation cannot be represented through function abstraction, that process composition needs to explicitly split the context, and that there must be a way of addressing a particular channel within a context --- strings with the Barendregt convention \cite{Barendregt1984}, De Bruijn indices \cite{deBruijn1972}, locally nameless De Bruijn indices, or a parametric HOAS \cite{Chlipala2008} --- since only channels need to be used linearly, message input can still be represented as function abstraction whenever the message does not contain a channel. On the bright side, this approach allows processes to use logic that external to the calculus and depends on the types of messages.
-
-While the latter approach has more appealing properties, its mechanics negatively affect usability: can it be equipped with the usability of the former approach? I intend to create a Coq library that abstracts away the simulation of linearity.
-
-\paragraph{Using de Bruijn indices}
-
-\paragraph{Adding shared channels}
+    \item \todo{introduce congruence and reduction}
+\end{enumerate}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Dependent types}\label{dependent-types}
-
-\cite{Vasconcelos2010}
-
-Assuming linearity, \textbf{processes are correct by construction}: the processes that can be constructed depend on the session types of the channels in the environment of the host language; an action strips off the outer layer of a channel's session type --- modelling \textbf{continuation passing}.
+\section{Encoding}\label{encoding}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Parametric HOAS}\label{phoas}
+\subsection{Types}\label{types}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Polymorphism}\label{polymorphism}
 
 \cite{Wadler1989}
 \cite{Chlipala2008}
@@ -580,19 +573,31 @@ Assuming linearity, \textbf{processes are correct by construction}: the processe
 \todo{We do not do open processes}
 \todo{We use polymorphism on messages to make processes traversable}
 
-Polymorphism allows programs to depend on types. If those types are unconstrained --- if the universe of types is infinite --- then programs are unable pattern match on them (as they cannot possibly produce infinitely many cases) and unable to create terms inhabiting them. Such unconstrained polymorphic types are said to be \emph{opaque}. Programs depending on opaque types exhibit common general properties that are highlighted in \cite{Wadler1989}. This project makes use of polymorphism to prevent the creation and inspection of terms of a polymorphic type.
-
+Polymorphism allows programs to depend on types. If those types are unconstrained --- if the universe of types is infinite --- then programs are unable pattern match on them (as they cannot possibly produce infinitely many cases) and unable to create terms inhabiting them. Such unconstrained polymorphic types are said to be \emph{opaque}. Programs depending on opaque types exhibit common general properties that are highlighted in \cite{Wadler1989}. This project makes use of polymorphism to prevent the creation and inspection of channels of a polymorphic type.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Linearity}\label{linearity}
+\subsection{Messages}\label{messages}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Processes}\label{processes}
+
+\cite{Vasconcelos2010}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Structural congruence}\label{structural-congruence}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Reduction}\label{reduction}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Linearity}\label{linearity}
 
 One approach to simulating linearity is traversing processes \emph{a posteriori}, after they have been defined, to check that each channel is used exactly once. This can be done by making the type of channels parametric, and then instantiating it to $\mathbb{B}$ and \emph{marking} each channel for inspection. This allows both channel creation and message input to be modelled as function abstraction --- channels of a parametric type cannot be forged.  However, to be able to traverse processes where message passing is modelled as function abstraction, one has to be able to create all types of messages. To elude this problem, message types can be parametrised over a $\mathrm{Type} \rightarrow \mathrm{Type}$ function and then projected to the unit type.
 
+\todo{mention the prize to pay}
+
 \cite{Kobayashi1999}
 \cite{Toninho2011}
-
-    
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Subject reduction}\label{subject-reduction}
@@ -601,21 +606,6 @@ Ensuring that linearity is preserved through reduction is therefore essential:
 \begin{theorem}
     $lin(P) \Rightarrow P \rightarrow Q \Rightarrow lin(Q).$
 \end{theorem}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Implementation}\label{implementation}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Session types}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Messages and processes}\label{processes}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Linearity check}\label{linearity-check}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Linearity preservation}\label{linearity-preservation}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Examples}\label{examples}
@@ -708,8 +698,19 @@ Example branch_and_select : PProcess :=
 \end{coq}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Related work}\label{related-work}
+\chapter{Results}\label{results}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Alternative approaches and related work}\label{related-work}
+
+
+Unfortunately, the approach in point (i) makes it impossible for processes to use any logic that is external to the calculus and depends on the type of messages. An alternative approach for simulating linearity is by doing it \emph{a priori}, at construction time, by keeping track of the linearly available channels through a context by which processes are indexed.  This means that channel creation cannot be represented through function abstraction, that process composition needs to explicitly split the context, and that there must be a way of addressing a particular channel within a context --- strings with the Barendregt convention \cite{Barendregt1984}, De Bruijn indices \cite{deBruijn1972}, locally nameless De Bruijn indices, or a parametric HOAS \cite{Chlipala2008} --- since only channels need to be used linearly, message input can still be represented as function abstraction whenever the message does not contain a channel. On the bright side, this approach allows processes to use logic that external to the calculus and depends on the types of messages.
+
+While the latter approach has more appealing properties, its mechanics negatively affect usability: can it be equipped with the usability of the former approach? I intend to create a Coq library that abstracts away the simulation of linearity.
+
+\paragraph{Using de Bruijn indices}
+
+\paragraph{Adding shared channels}
 \todo{fixme}
 Other efforts in formalising session types in Coq have created object languages and handled variable references, typing contexts, and typing judgments by hand \cite{Dilmore2019}.
 
