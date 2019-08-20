@@ -7,6 +7,7 @@ Require Import Processes.
 Require Import Linearity.
 Require Import Generalisation.
 Require Import Tactics.
+Require Import SubjectReduction.
 
 Example example1 : PProcess.
   refine
@@ -14,7 +15,6 @@ Example example1 : PProcess.
     (i?[m]; ![m]; ε) <|> (o![υ _ true]; ?[m]; ε)).
   auto.
 Defined.
-Print example1.
 
 Example example2 : PProcess :=
   ([υ]> (new o <- ! B[bool] ; ? B[bool] ; ø, i <- ? B[bool] ; ! B[bool] ; ø, ltac:(auto))
@@ -27,10 +27,6 @@ Example example3 : PProcess :=
     (o?[m]; ε) <|> i![υ _ true]; ε).
 
 Example reduction_example1 : example2 ⇒ example3. auto. Qed.
-
-Example subject_reduction_example1 : example2 ⇒ example3 -> Linear example2 -> Linear example3.
-eauto.
-Qed.
 
 Example example4 : PProcess :=
   ([υ]> (new i <- ! B[bool] ; ø, o <- ? B[bool] ; ø, ltac:(auto))
@@ -47,7 +43,8 @@ Example big_step_reduction : example1 ⇒* example5. auto. Qed.
 
 Example big_step_subject_reduction_example1
   : example1 ⇒* example5 -> Linear example1 -> Linear example5.
-eauto.
+Proof.
+  eapply big_step_subject_reduction.
 Qed.
 
 Example channel_over_channel : PProcess :=
@@ -91,3 +88,21 @@ Example branch_and_select : PProcess :=
            o <- ⊕{ (? B[bool] ; ø) :: (! B[bool] ; ø) :: [] },
            ltac:(auto))
           i▹{(![υ _ true]; ε) ; (?[m]; ε)} <|> o◃Fin.F1; ?[_]; ε).
+
+Example foo : PProcess :=
+  [υ]>
+  (new a <- ø, b <- ø, Ends )
+  (new c <- ø, d <- ø, Ends )
+  ε a <|> (ε b <|> ε c <|> ε d).
+
+Example bar : PProcess :=
+  [υ]>
+  (new a <- ø, b <- ø, Ends )
+    ε a <|> ((new c <- ø, d <- ø, Ends ) (ε b <|> ε c <|> ε d)).
+
+	    (*
+Example fuz : bar ≡ foo.
+Proof.
+  intros.
+  apply CNewCongruent.
+  *)

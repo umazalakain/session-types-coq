@@ -1,4 +1,10 @@
 -R src SessionTypes
 
+src/Examples.v
 src/Forall.v
-src/SessionTypes.v
+src/Generalisation.v
+src/Linearity.v
+src/Processes.v
+src/SubjectReduction.v
+src/Tactics.v
+src/Types.v

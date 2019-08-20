@@ -75,7 +75,7 @@ Section Processes.
 
   | CNewTypesCommutative {s r sDr P Q} :
       (forall (a : Message C[s]) (b : Message C[r]), P a b ≡ Q a b) ->
-      PNew s r sDr (fun a b => P a b) ≡ PNew r s (inverse_duality sDr) (fun b a => Q a b)
+      PNew s r sDr (fun a b => P a b) ≡ PNew r s (duality_comm sDr) (fun b a => Q a b)
 
   | CNewCongruent {s r sDr P Q} :
       (forall (a : Message C[s]) (b : Message C[r]), P a b ≡  Q a b) ->

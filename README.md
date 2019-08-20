@@ -19,6 +19,7 @@ coq_makefile -f _CoqProject -o makefile
 make
 ```
 
-Alternatively, to step through the definitions and proofs, you can run `coqide
-src/SessionTypes.v` and press `F6` or select `Compile -> Make`. You can then
-interactively walk through the proofs with `Ctrl-Down` and `Ctrl-Up`.
+Alternatively, to step through the definitions and proofs, you can run
+`coqide`, load the files in `src`, and press `F6` or select `Compile -> Make`.
+You can then interactively walk through the proofs with `Ctrl-Down` and
+`Ctrl-Up`.

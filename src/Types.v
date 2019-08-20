@@ -30,19 +30,19 @@ Inductive Duality : SType -> SType -> Prop :=
     Forall2 Duality xs ys -> Duality (Branch xs) (Select ys)
 .
 
-Fixpoint inverse_duality {s r : SType} (d : Duality s r) : Duality r s :=
+Fixpoint duality_comm {s r : SType} (d : Duality s r) : Duality r s :=
   (* Coq's termination checker complains if this is generalised *)
   let fix flipForall2 {n} {xs ys : Vector.t SType n}
           (ps : Forall2 Duality xs ys) : Forall2 Duality ys xs :=
       match ps with
       | Forall2_nil _ => Forall2_nil _
       | Forall2_cons _ _ _ _ _ p ps =>
-        Forall2_cons _ _ _ _ _ (inverse_duality p) (flipForall2 ps)
+        Forall2_cons _ _ _ _ _ (duality_comm p) (flipForall2 ps)
       end
   in match d with
   | Ends => Ends
-  | MRight d' => MLeft (inverse_duality d')
-  | MLeft d' => MRight (inverse_duality d')
+  | MRight d' => MLeft (duality_comm d')
+  | MLeft d' => MRight (duality_comm d')
   | SRight d' => SLeft (flipForall2 d')
   | SLeft d' => SRight (flipForall2 d')
   end

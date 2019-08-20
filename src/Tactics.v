@@ -15,9 +15,9 @@ Ltac reduction_step :=
   intros; compute;
   repeat match goal with
   | [ |- Reduction _ _ (PNew (? _; _) (! _; _) ?D ?P) _ ] =>
-    apply RStruct with (PNew _ _ (inverse_duality D) (fun a b => P b a))
+    apply RStruct with (PNew _ _ (duality_comm D) (fun a b => P b a))
   | [ |- Reduction _ _ (PNew (&{_}) (⊕{_}) ?D ?P) _ ] =>
-    apply RStruct with (PNew _ _ (inverse_duality D) (fun a b => P b a))
+    apply RStruct with (PNew _ _ (duality_comm D) (fun a b => P b a))
   | [ |- Reduction _ _ (PNew _ _ ?D (fun a b => b?[m]; ?PB <|> a![?M]; ?PA)) _ ] =>
     apply RStruct with (PNew _ _ D (fun a b => a![M]; PA <|> b?[m]; PB))
   | [ |- Reduction _ _ (PNew _ _ ?D (fun a b => PBranch ?BB b ?PB <|> a◃?M; ?PA)) _ ] =>
