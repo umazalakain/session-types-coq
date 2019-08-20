@@ -22,8 +22,8 @@ Notation "⊕{ ss }" := (Select ss) (at level 90, right associativity).
 
 Inductive Duality : SType -> SType -> Prop :=
 | Ends : Duality ø ø
-| MRight : forall {m c₁ c₂}, Duality c₁ c₂ -> Duality (Send m c₁) (Receive m c₂)
-| MLeft : forall {m c₁ c₂}, Duality c₁ c₂ -> Duality (Receive m c₁) (Send m c₂)
+| MRight : forall {m x y}, Duality x y -> Duality (Send m x) (Receive m y)
+| MLeft : forall {m x y}, Duality x y -> Duality (Receive m x) (Send m y)
 | SRight : forall {n} {xs ys : Vector.t SType n},
     Forall2 Duality xs ys -> Duality (Select xs) (Branch ys)
 | SLeft : forall {n} {xs ys : Vector.t SType n},

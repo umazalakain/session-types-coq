@@ -1,4 +1,5 @@
 % lstlisting coq style (inspired from a file of Assia Mahboubi)
+
 %
 \lstdefinelanguage{Coq}{ 
 %
@@ -49,7 +50,7 @@ morekeywords=[6]{do, last, first, try, idtac, repeat},
 morecomment=[s]{(*}{*)},
 %
 % Spaces are not displayed as a special character
-showstringspaces=true,
+showstringspaces=false,
 %
 % String delimiters
 morestring=[b]",
@@ -60,6 +61,8 @@ tabsize=4,
 %
 % Enables ASCII chars 128 to 255
 extendedchars=false,
+% Support UTF8
+inputencoding=utf8,
 %
 % Case sensitivity
 sensitive=true,
@@ -119,6 +122,14 @@ literate=
     {\\hline}{{\rule{\linewidth}{0.5pt}}}1
     {nat}{{$\mathbb{N}\;$}}1
     {neg}{{$\neg\;$}}1
+    {ø}{{$\emptyset\;$}}1
+    {⊕}{{$\oplus\;$}}1
+    {υ}{{$\varepsilon\;$}}1
+    {ε}{{$\epsilon\;$}}1
+    {≡}{{$\equiv\;$}}1
+    {⇒}{{$\Rightarrow\;$}}1
+    {▹}{{$\triangleright\;$}}1
+    {◃}{{$\triangleleft\;$}}1
 %
 }[keywords,comments,strings]
 
@@ -128,6 +139,8 @@ literate=
 \def\coqe{\lstinline[language=Coq, basicstyle=\small]}
 % pour inliner dans les tableaux / displaymath...
 \def\coqes{\lstinline[language=Coq, basicstyle=\scriptsize]}
+% to include from other files
+\def\coqi{\lstinputlisting[language=Coq, basicstyle=\small]}
 
 %%% Local Variables: 
 %%% mode: latex

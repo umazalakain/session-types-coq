@@ -4,7 +4,7 @@
 
 % Coq code
 \usepackage[dvipsnames]{xcolor}
-\usepackage{listings}
+\usepackage{listingsutf8}
 \input{lstcoq.sty}
 
 % Math
@@ -36,16 +36,11 @@
   urlcolor=darkgray,
   ]{hyperref}
 
-% Number subsubsections too
-\setcounter{secnumdepth}{4}
-
 \usepackage{titlesec}
 % Use a single line for chapter headers
 \titleformat{\chapter}[hang]{\normalfont\huge\bfseries}{\thechapter.}{1em}{} 
 % Remove the space before chapter titles
 \titlespacing*{\chapter}{0pt}{0pt}{40pt}
-% Use italics for subsubsections
-\titleformat{\subsubsection}{}{\thesubsubsection}{1em}{\itshape}
 
 % Appendices
 \usepackage[header,title,titletoc]{appendix}
@@ -512,10 +507,9 @@ This chapter describes how we encode the session-typed \picalc{} into Coq. Our e
 
 Our design is based on \emph{continuation passing}, where channels are \textbf{used exactly once}: channels get destroyed and created with every action taken by a process. This approach has its origin in the encoding of session types into the polarised linear \picalc{} \cite{Dardha2016, otherwork}: session-typed channels are transformed into single-use polarised channels, each containing the type of data being transmitted and the encoding of the channel's continuation. For instance, the session type $\Send{A} \Recv{B} \End$ is encoded as $\ell_o [A,\ell_i [B,\ell_\emptyset []]]$ where $\ell_i [A, Cont]$ is a single-use channel signifying input $A$, then continue as $Cont$ --- and similarly for output. When a process uses a channel with such a type to communicate, that channel gets destroyed, the \emph{head} of the channel's type is consumed, and a new channel with the \emph{tail} of the type ($\ell_i [B, \ell_\emptyset []]$) is created.
 
-The main characteristic of our design is the use of a higher order abstract syntax as a way of passing around references to both messages and channels. That is, references are not modeled in the object language, but rather in the host language, in Coq.
+The main characteristic of our design is the use of a higher order abstract syntax as a way of passing around references to both messages and channels. That is, references are not modeled in the object language, but in the host language, in Coq. This approach offers several advantages, but it also creates several challenges that must be addressed:
 
-\todo{introduce advantages}
-
+\paragraph{Advantages}
 \begin{enumerate}
     \item \emph{The user can refer naturally to both messages and channels}
 
@@ -538,10 +532,7 @@ The main characteristic of our design is the use of a higher order abstract synt
     Explanation
 \end{enumerate}
 
-\todo{introduce drawbacks}
-
-This approach comes with several problems that need to be addressed:
-
+\paragraph{Problems}
 \begin{enumerate}
     \item \emph{Channels can be manufactured outside the calculus}
 
@@ -563,6 +554,8 @@ This approach comes with several problems that need to be addressed:
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Types}\label{types}
+
+\coqi{../src/Types.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Polymorphism}\label{polymorphism}
@@ -602,6 +595,8 @@ One approach to simulating linearity is traversing processes \emph{a posteriori}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Subject reduction}\label{subject-reduction}
 
+\todo{Provide better example code, the things we do do not use the theorems}
+
 Ensuring that linearity is preserved through reduction is therefore essential:
 \begin{theorem}
     $lin(P) \Rightarrow P \rightarrow Q \Rightarrow lin(Q).$
@@ -611,91 +606,7 @@ Ensuring that linearity is preserved through reduction is therefore essential:
 \section{Examples}\label{examples}
 
 \todo{Type inference}
-\begin{coq}
-Example example1 : PProcess.
-  refine
-  ([v]> (new i <- _, o <- _, _)
-    (i?[m]; ![m]; $\epsilon$) <|> (o![v _ true]; ?[m]; $\epsilon$)).
-  auto.
-Defined.
-Print example1.
-
-Example example2 : PProcess :=
-  ([v]> (new o <- ! B[bool] ; ? B[bool] ; ø, i <- ? B[bool] ; ! B[bool] ; ø, ltac:(auto))
-    (o![v _ true]; ?[m]; $\epsilon$) <|> i?[m]; ![m]; $\epsilon$).
-
-Example congruent_example1 : example1 $\equiv$ example2. auto. Qed.
-
-Example example3 : PProcess :=
-  ([v]> (new o <- ? B[bool] ; ø, i <- ! B[bool] ; ø, ltac:(auto))
-    (o?[m]; $\epsilon$) <|> i![v _ true]; $\epsilon$).
-
-Example reduction_example1 : example2 => example3. auto. Qed.
-
-Example subject_reduction_example1 : example2 => example3 -> Linear example2 -> Linear example3.
-eauto.
-Qed.
-
-Example example4 : PProcess :=
-  ([v]> (new i <- ! B[bool] ; ø, o <- ? B[bool] ; ø, ltac:(auto))
-    (i![v _ true]; $\epsilon$ <|> o?[m]; $\epsilon$)).
-
-Example congruent_example2 : example3 $\equiv$ example4. auto. Qed.
-
-Example example5 : PProcess :=
-  ([v]> (new i <- ø, o <- ø, Ends) ($\epsilon$ i <|> $\epsilon$ o)).
-
-Example reduction_example2 : example4 => example5. auto. Qed.
-
-Example big_step_reduction : example1 =>* example5. auto. Qed.
-
-Example big_step_subject_reduction_example1
-  : example1 =>* example5 -> Linear example1 -> Linear example5.
-eauto.
-Qed.
-
-Example channel_over_channel : PProcess :=
-  [v]>
-    (new i <- ? C[ ! B[bool] ; ø ] ; ø, o <- ! C[ ! B[bool] ; ø ] ; ø, MLeft Ends)
-    (new i' <- ? B[bool] ; ø, o' <- _, MLeft Ends)
-
-    (i?[c]; fun a => $\epsilon$ a <|> c![v _ true]; $\epsilon$)
-    <|>
-    (o![o']; fun a => $\epsilon$ a <|> i'?[_]; $\epsilon$)
-.
-
-Example channel_over_channel1 : PProcess :=
-  [v]>
-    (new i' <- ? B[bool] ; ø, o' <- ! B[bool] ; ø, MLeft Ends)
-    (new i <- ? C[ ! B[bool] ; ø ] ; ø, o <- ! C[ ! B[bool] ; ø ] ; ø, MLeft Ends)
-
-    (i?[c]; fun a => c![v _ true]; $\epsilon$ <|> $\epsilon$ a)
-    <|>
-    (o![o']; fun a => i'?[_]; $\epsilon$ <|> $\epsilon$ a)
-.
-
-Example congruent_example3 : channel_over_channel $\equiv$ channel_over_channel1. auto. Qed.
-
-Example nonlinear_example : PProcess :=
-  [v]> (new i <- ? B[bool] ; ø, o <- ! B[bool] ; ø, MLeft Ends)
-
-    (* Cheat the system by using the channel o twice *)
-    i?[_]; $\epsilon$ <|> o![v _ true]; (fun _ => o![v _ true]; $\epsilon$)
-    .
-
-Example linear_example1 : Linear example1. auto. Qed.
-
-Example linear_channel_over_channel : Linear channel_over_channel. auto. Qed.
-
-Example nonlinear_example1 : ~ (Linear nonlinear_example). auto. Qed.
-
-Example branch_and_select : PProcess :=
-  ([v]> (new
-           i <- &{ (! B[bool] ; ø) :: (? B[bool] ; ø) :: [] },
-           o <- $\oplus${ (? B[bool] ; ø) :: (! B[bool] ; ø) :: [] },
-           ltac:(auto))
-          i$\triangleright${(![v _ true]; $\epsilon$) ; (?[m]; $\epsilon$)} <|> o$\triangleleft$Fin.F1; ?[_]; $\epsilon$).
-\end{coq}
+\coqi{../src/Examples.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Results}\label{results}
