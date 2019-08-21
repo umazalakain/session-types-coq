@@ -130,17 +130,18 @@ literate=
     {⇒}{{$\Rightarrow\;$}}1
     {▹}{{$\triangleright\;$}}1
     {◃}{{$\triangleleft\;$}}1
+    {fun}{{$\lambda\;$}}1
 %
 }[keywords,comments,strings]
 
 \lstnewenvironment{coq}{\lstset{language=Coq}}{}
 
 % pour inliner dans le texte
-\def\coqe{\lstinline[language=Coq, basicstyle=\small]}
+\def\coqe{\lstinline[language=Coq, breaklines=true, basicstyle=\small]}
 % pour inliner dans les tableaux / displaymath...
-\def\coqes{\lstinline[language=Coq, basicstyle=\scriptsize]}
+\def\coqes{\lstinline[language=Coq, breaklines=true, basicstyle=\scriptsize]}
 % to include from other files
-\def\coqi{\lstinputlisting[language=Coq, basicstyle=\small]}
+\def\coqi[#1]{\lstinputlisting[language=Coq, basicstyle=\small, linerange=#1]}
 
 %%% Local Variables: 
 %%% mode: latex

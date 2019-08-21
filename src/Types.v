@@ -17,17 +17,17 @@ Notation "B[ s ]" := (Base s).
 Notation "C[ s ]" := (Channel s).
 Notation "! m ; s" := (Send m s) (at level 90, right associativity).
 Notation "? m ; s" := (Receive m s) (at level 90, right associativity).
-Notation "&{ ss }" := (Branch ss) (at level 90, right associativity).
-Notation "⊕{ ss }" := (Select ss) (at level 90, right associativity).
+Notation "&{ ss }" := (Branch ss) (at level 5, right associativity).
+Notation "⊕{ ss }" := (Select ss) (at level 5, right associativity).
 
 Inductive Duality : SType -> SType -> Prop :=
 | Ends : Duality ø ø
-| MRight : forall {m x y}, Duality x y -> Duality (Send m x) (Receive m y)
-| MLeft : forall {m x y}, Duality x y -> Duality (Receive m x) (Send m y)
+| MRight : forall {m x y}, Duality x y -> Duality (! m; x) (? m; y)
+| MLeft : forall {m x y}, Duality x y -> Duality (? m; x) (! m; y)
 | SRight : forall {n} {xs ys : Vector.t SType n},
-    Forall2 Duality xs ys -> Duality (Select xs) (Branch ys)
+    Forall2 Duality xs ys -> Duality ⊕{xs} &{ys}
 | SLeft : forall {n} {xs ys : Vector.t SType n},
-    Forall2 Duality xs ys -> Duality (Branch xs) (Select ys)
+    Forall2 Duality xs ys -> Duality &{xs} ⊕{ys}
 .
 
 Fixpoint duality_comm {s r : SType} (d : Duality s r) : Duality r s :=

@@ -309,14 +309,14 @@ The grammar of session types is listed in the Figure \ref{session-types-grammar}
 
 \begin{figure}[H]
     \begin{align*}
+        M ::= \; &S      & \text{session type}\\
+                 &\ldots & \text{base type}
+                 \\
         S ::= \; &\type{End}                      & \text{termination} \\
-                 &\Send{T}S                       & \text{send} \\
-                 &\Recv{T}S                       & \text{receive} \\
+                 &\Send{M}S                       & \text{send} \\
+                 &\Recv{M}S                       & \text{receive} \\
                  &\Select \{l_i : S_i\}_{i \in I} & \text{select} \\
                  &\Branch \{l_i : S_i\}_{i \in I} & \text{branch} \\
-                 \\
-        T ::= \; &S      & \text{session type}\\
-                 &\ldots & \text{base type}
     \end{align*}
     \caption{Grammar for session types}
     \label{session-types-grammar}
@@ -414,7 +414,7 @@ As a result of this setup, session types guarantee three properties:
 
 Coq \cite{CoqDeveloperCommunity} is a popular proof assistant and dependently typed functional language based on the calculus of inductive constructions \cite{Coquand1989} (which adds inductive data types to the calculus of constructions \cite{Coquand1985}), a type theory isomorphic to intuitionistic predicate calculus --- a constructive logic with quantified statements.  Coq features proof irrelevance for proofs (in \coqe{Prop}) and a cumulative set of universes (in \coqe{Type}).
 
-The following example introduces some of the basic building blocks of dependent type programming. The type \coqe{Zero} (also known as $\bot$) has no constructors: there exist no programs that inhabit it. The proposition \coqe{P -> Zero} represents negation, that \coqe{P} is provably false. Conversely, from a proof of falsity one might conclude anything: \coqe{Zero -> P}, for any \coqe{P}. The dual of $\bot$ is $\top$, here represented as \coqe{One}: the trivial type that contains no information. Sigma is the existential type, or dependent tuple: for some $A$ and some predicate $P$, the first element of the tuple is an $A$; the second element of the tuple is a proof that $P$ holds for that particular $A$.
+The following example introduces some of the basic building blocks of dependent type programming. The type \coqe{Zero} (also known as $\bot$) has no constructors: there exist no programs that inhabit it. The proposition \coqe{P -> Zero} represents negation, that \coqe{P} is provably false. Conversely, from a proof of falsity one might conclude anything: \coqe{Zero -> P}, for any \coqe{P}. The dual of $\bot$ is $\top$, here represented as \coqe{One}: the trivial type that contains no information, also known as the unit type. Sigma is the existential type, or dependent tuple: for some $A$ and some predicate $P$, the first element of the tuple is an $A$; the second element of the tuple is a proof that $P$ holds for that particular $A$.
 
 \begin{coq}
     Inductive Zero : Type :=.
@@ -509,6 +509,8 @@ Our design is based on \emph{continuation passing}, where channels are \textbf{u
 
 The main characteristic of our design is the use of a higher order abstract syntax as a way of passing around references to both messages and channels. That is, references are not modeled in the object language, but in the host language, in Coq. This approach offers several advantages, but it also creates several challenges that must be addressed:
 
+\todo{We do not do open processes}
+
 \paragraph{Advantages}
 \begin{enumerate}
     \item \emph{The user can refer naturally to both messages and channels}
@@ -525,11 +527,11 @@ The main characteristic of our design is the use of a higher order abstract synt
 
     \item \emph{There is no need for machinery that avoids variable capture}
 
-    Explanation
+        \todo{Explanation}
 
     \item \emph{There is no need for substitution lemmas}
 
-    Explanation
+        \todo{Explanation}
 \end{enumerate}
 
 \paragraph{Problems}
@@ -552,29 +554,50 @@ The main characteristic of our design is the use of a higher order abstract synt
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Encoding}\label{encoding}
 
+This section covers the different components that make up our encoding. We start with type definitions and defining the notion of duality of session types (\S \ref{types}). We then encode messages and processes (\S \ref{processes}), for which we define a linearity predicate (\S \ref{linearity}) to ensure that they are well-typed. Finally, we define structural congruence (\S \ref{structural-congruence}) and reduction (\S \ref{reduction}), and we then prove that reduction preserves linearity, and hence well-typedness.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Types}\label{types}
 
-\coqi{../src/Types.v}
+We start by defining \coqe{MType} (the type of messages) and \coqe{SType} (the types of channels) by mutual induction, as messages can contain channels and channels can send and receive messages. This definition encodes type type grammar in Figure \ref{session-types-grammar}. We admit every Coq \coqe{Type} as a base type: anything can be sent over a channel. We use vectors for branching and selection so that we can keep track in the types of the number of options available.
+
+\coqi[3-14]{../src/Types.v}
+
+Coq does not directly admit misfix notation like Agda does, and so we need to introduce convenient notation separately:
+
+\coqi[16-21]{../src/Types.v}
+
+We then introduce the notion of duality of session types, modelling the definition in Figure \ref{session-types-duality} through an inductive proposition. The constructor suffixes \coqe{Right} and \coqe{Left} signify the direction of information flow. For branching and selection, we require both option vectors to be of the same length, and for every ith selection option and every ith branching option to be dual --- \coqe{Forall2 Duality xs ys} encodes evidence that that is the case. 
+
+\coqi[23-31]{../src/Types.v}
+
+Finally, we prove that duality is commutative by providing a recursive program of the type \coqe|duality_comm {s r : SType} (d : Duality s r) : Duality r s|.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Polymorphism}\label{polymorphism}
+\subsection{Polymorphic messages}\label{polymorphism}
+
+Parametric polymorphism allows programs to depend on unconstrained types. Terms inhabiting these types cannot possibly be constructed nor eliminated by pattern matching, and are therefore said to be \emph{opaque}. In a purely functional language like Coq, programs of an unconstrained polymorphic type follow important theorems that stem just from the polymorphism of the type \cite{Wadler1989}.
+
+In our project, we parametrise several inductive definitions with polymorphic types. We do so by using the \coqe{Section Processes.} directive, instructing Coq to parametrise with parameters \coqe{ST} and \coqe{MT} all the definitions within the section. These variables are only used by the inductive type \coqe{Message}, which is then used by the other several definitions within the section. The type \coqe{Message} captures the values sent between processes, and is indexed by the type of the value that is sent. The two constructors \coqe{V} and \coqe{C} construct values of a given base type and channels of a given session type, respectively.
+
+\coqi[6-13]{../src/Processes.v}
+
+To prevent channels from being constructed outside of the operations provided by the calculus, the channel constructor expects a token of the unknown type \coqe{ST}. That is, channels cannot be constructed as long as the type \coqe{ST} is not made concrete.
+
+The linearity predicate introduced in \S \ref{linearity} is defined recursively on processes. Processes contain functions that take messages as arguments and give back processes; to be able to traverse processes where messages passing is modelled as function abstraction, one has to be able to provide messages of any given type. For messages containing channels, \coqe{ST} can be set to the unit type, or to any other inhabited type. For messages containing base types however, values of these base types need to be provided. To circumvent this, we wrap base types with a function on types \coqe{MT}: to produce a message with a value of the base type \coqe{M}, we require a value of the type \coqe{MT M}. If \coqe{MT} is set to \coqe{id}, then a value of the original type must be provided. If, however, \coqe{MT} is set to \coqe{fun t => unit}, then no matter what the original type is, a value of the unit type will be required. 
+
+\todo{mention the prize to pay}
 
 \cite{Wadler1989}
 \cite{Chlipala2008}
-\todo{We use polymorphism to make channels opaque}
-\todo{We do not do open processes}
-\todo{We use polymorphism on messages to make processes traversable}
 
-Polymorphism allows programs to depend on types. If those types are unconstrained --- if the universe of types is infinite --- then programs are unable pattern match on them (as they cannot possibly produce infinitely many cases) and unable to create terms inhabiting them. Such unconstrained polymorphic types are said to be \emph{opaque}. Programs depending on opaque types exhibit common general properties that are highlighted in \cite{Wadler1989}. This project makes use of polymorphism to prevent the creation and inspection of channels of a polymorphic type.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Messages}\label{messages}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Processes}\label{processes}
 
+
 \cite{Vasconcelos2010}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Structural congruence}\label{structural-congruence}
@@ -585,9 +608,8 @@ Polymorphism allows programs to depend on types. If those types are unconstraine
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Linearity}\label{linearity}
 
-One approach to simulating linearity is traversing processes \emph{a posteriori}, after they have been defined, to check that each channel is used exactly once. This can be done by making the type of channels parametric, and then instantiating it to $\mathbb{B}$ and \emph{marking} each channel for inspection. This allows both channel creation and message input to be modelled as function abstraction --- channels of a parametric type cannot be forged.  However, to be able to traverse processes where message passing is modelled as function abstraction, one has to be able to create all types of messages. To elude this problem, message types can be parametrised over a $\mathrm{Type} \rightarrow \mathrm{Type}$ function and then projected to the unit type.
+One approach to simulating linearity is traversing processes \emph{a posteriori}, after they have been defined, to check that each channel is used exactly once. This can be done by making the type of channels parametric, and then instantiating it to $\mathbb{B}$ and \emph{marking} each channel for inspection. This allows both channel creation and message input to be modelled as function abstraction --- channels of a parametric type cannot be forged.
 
-\todo{mention the prize to pay}
 
 \cite{Kobayashi1999}
 \cite{Toninho2011}
@@ -606,7 +628,7 @@ Ensuring that linearity is preserved through reduction is therefore essential:
 \section{Examples}\label{examples}
 
 \todo{Type inference}
-\coqi{../src/Examples.v}
+\coqi[1-100]{../src/Examples.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Results}\label{results}
