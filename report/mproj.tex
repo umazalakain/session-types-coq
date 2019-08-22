@@ -576,25 +576,39 @@ Finally, we prove that duality is commutative by providing a recursive program o
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Polymorphic messages}\label{polymorphism}
 
-Parametric polymorphism allows programs to depend on unconstrained types. Terms inhabiting these types cannot possibly be constructed nor eliminated by pattern matching, and are therefore said to be \emph{opaque}. In a purely functional language like Coq, programs of an unconstrained polymorphic type follow important theorems that stem just from the polymorphism of the type \cite{Wadler1989}.
+Programs that depend on unconstrained types are said to be parametrically polymorphic. Terms inhabiting those types cannot possibly be constructed or eliminated by pattern matching, and are therefore said to be \emph{opaque}. In a purely functional language like Coq, programs of an unconstrained polymorphic type give rise to important theorems that stem purely from the polymorphism of the type \cite{Wadler1989}.
 
-In our project, we parametrise several inductive definitions with polymorphic types. We do so by using the \coqe{Section Processes.} directive, instructing Coq to parametrise with parameters \coqe{ST} and \coqe{MT} all the definitions within the section. These variables are only used by the inductive type \coqe{Message}, which is then used by the other several definitions within the section. The type \coqe{Message} captures the values sent between processes, and is indexed by the type of the value that is sent. The two constructors \coqe{V} and \coqe{C} construct values of a given base type and channels of a given session type, respectively.
+In our project, we parametrise several inductive definitions with polymorphic types. We do so by using the \coqe{Section Processes.} directive, instructing Coq to parametrise with parameters \coqe{ST} and \coqe{MT} all the definitions within the section. These variables are then only used by the inductive type \coqe{Message}, which is in turn used by other several definitions within the section. The type \coqe{Message} captures the values sent between processes, and is indexed by the type of the value being sent. The two constructors \coqe{V} and \coqe{C} construct values of a given base type and channels of a given session type, respectively.
 
 \coqi[6-13]{../src/Processes.v}
 
-To prevent channels from being constructed outside of the operations provided by the calculus, the channel constructor expects a token of the unknown type \coqe{ST}. That is, channels cannot be constructed as long as the type \coqe{ST} is not made concrete.
+The linearity predicate introduced in \S \ref{linearity} is defined recursively on processes. Processes (\S \ref{processes}) contain functions that take messages as arguments and return processes; to be able to traverse processes where message passing is modelled as function abstraction, one has to be able to provide messages of any given type:
+\begin{description}
+    \item [Messages containing channels] The \coqe{C} constructor expects a token of the undefined type \coqe{ST}. Channels cannot be constructed as long as the type \coqe{ST} is made concrete. This prevents channels from being built outside of the operations provided by the calculus. To traverse a process, it is enough to set \coqe{ST} to the unit type, or any other type that can be constructed.
+        
+    \item [Messages containing base types] The \coqe{V} constructor expects a value of the undefined type \coqe{MT M}: \coqe{M} represents the type of the value sent as a message; \coqe{MT} serves as a projection function from types to types. If \coqe{MT} is set to \coqe{id}, then a value of type \coqe{M} must be provided; if \coqe{MT} is set to the projection \coqe{fun t => unit}, then a value of the unit type will be demanded instead. This makes messages always constructable, and therefore processes always traversable. 
+\end{description}
 
-The linearity predicate introduced in \S \ref{linearity} is defined recursively on processes. Processes contain functions that take messages as arguments and give back processes; to be able to traverse processes where messages passing is modelled as function abstraction, one has to be able to provide messages of any given type. For messages containing channels, \coqe{ST} can be set to the unit type, or to any other inhabited type. For messages containing base types however, values of these base types need to be provided. To circumvent this, we wrap base types with a function on types \coqe{MT}: to produce a message with a value of the base type \coqe{M}, we require a value of the type \coqe{MT M}. If \coqe{MT} is set to \coqe{id}, then a value of the original type must be provided. If, however, \coqe{MT} is set to \coqe{fun t => unit}, then no matter what the original type is, a value of the unit type will be required. 
+The users define processes without knowledge of the concrete instantiation of \coqe{ST} and \coqe{MT}. As a result, they have no information about the type \coqe{MT M} required to build messages of type \coqe{B[M]}. To remedy this, process definitions are provided the assumption \coqe{mt}: for any type \coqe{S}, no matter what \coqe{MT} is, a message of base type \coqe{S} can be constructed. Processes can use this assumption to create messages out of Coq terms. \todo{introduce notation}
 
-\todo{mention the prize to pay}
+\coqi[9-12]{../src/Generalisation.v}
 
-\cite{Wadler1989}
 \cite{Chlipala2008}
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Processes}\label{processes}
 
+\todo{argue 1:1 correspondence with typing rules}
+
+\coqi[20-24]{../src/Processes.v}
+\coqi[26-30]{../src/Processes.v}
+\coqi[32-37]{../src/Processes.v}
+\coqi[39-43]{../src/Processes.v}
+\coqi[45-49]{../src/Processes.v}
+\coqi[51-51]{../src/Processes.v}
+\coqi[53-53]{../src/Processes.v}
+
+\coqi[140-152]{../src/Processes.v}
 
 \cite{Vasconcelos2010}
 
@@ -628,7 +642,7 @@ Ensuring that linearity is preserved through reduction is therefore essential:
 \section{Examples}\label{examples}
 
 \todo{Type inference}
-\coqi[1-100]{../src/Examples.v}
+% \coqi[1-100]{../src/Examples.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Results}\label{results}
