@@ -3,7 +3,6 @@ From Equations Require Import Equations.
 Require Import Types.
 Require Import Processes.
 Require Import Linearity.
-Require Import Generalisation.
 
 Ltac constructors :=
   repeat (intros; compute; constructor)
@@ -33,7 +32,7 @@ Ltac big_step_reduction :=
 Hint Extern 1 (_ ⇒* _) => big_step_reduction.
 
 Ltac linearity :=
-  unfold Linear; simp linear in *; tauto
+  unfold Linear; simp lin in *; tauto
 .
 Hint Extern 1 (Linear _) => linearity.
 Hint Extern 1 (~ (Linear _)) => linearity.

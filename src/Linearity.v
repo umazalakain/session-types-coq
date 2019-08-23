@@ -8,113 +8,88 @@ Require Import Processes.
 Definition TMT : Type -> Type := fun _ => unit.
 Definition fMT : forall (S: Type), S -> Message bool TMT B[S] := fun _ _ => V tt.
 
-Definition marked : forall s, Message bool TMT C[s] := fun s => C true.
-Definition unmarked : forall s, Message bool TMT C[s] := fun s => C false.
-Arguments marked [s].
-Arguments unmarked [s].
-
-(* Always recurse by passing unmarked arguments.
-   If the constructor accepts a channel as an argument, it has been used.
-   If a channel is sent as output, it has been used.
-   Channels received as input are considered fresh.
-*)
+Definition x : forall s, Message bool TMT C[s] := fun s => C true.
+Definition o : forall s, Message bool TMT C[s] := fun s => C false.
+Arguments x [s].
+Arguments o [s].
 
 Derive NoConfusion for MType.
 Derive Signature for Message.
 
-Equations linear (P : Process bool TMT) : Prop := {
-linear (PNew _ _ _ P) =>
-  single_marked (P marked unmarked) /\
-  single_marked (P unmarked marked) /\
-  linear (P unmarked unmarked) ;
-linear (@PInput m _ P c) with c => {
-| (C true) => False ;
-| (C false) with m => {
-  | B[_] =>
-    single_marked (P (V tt) marked) /\
-    linear (P (V tt) unmarked) ;
-  | C[_] =>
-    single_marked (P marked unmarked) /\
-    single_marked (P unmarked marked) /\
-    linear (P unmarked unmarked)}};
-linear (POutput m P c) with c => {
-| (C true) => False ;
-| (C false) with m => {
-  | (C true) => False ;
-  | _ =>
-    single_marked (P marked) /\
-    linear (P unmarked)}};
-linear (PComp P Q) => linear P /\ linear Q ;
-linear (PEnd c) with c => {
-| (C true) => False ;
-| (C false) => True};
-linear (PSelect _ c P) with c => {
-| (C true) => False ;
-| (C false) =>
-  single_marked (P marked) /\
-  linear (P unmarked)};
-linear (PBranch Ps c) with c => {
-| (C true) => False ;
-| (C false) =>
-  let fix branches {n} {ss : Vector.t _ n} (Ps : Forall (fun s => _ -> _) ss) :=
-      match Ps with
-      | Forall_nil _ => True
-      | Forall_cons _ P Ps' =>
-        linear (P unmarked) /\
-        single_marked (P marked) /\
-        branches Ps'
-      end
-  in branches Ps}
+Equations lin (P : Process bool TMT) : Prop := {
+lin (PEnd (C true))  := False;
+lin (PEnd (C false)) := True;
 
-} where single_marked (p : Process bool TMT) : Prop := {
+lin (PNew _ _ _ P) => single_x (P x o) /\ single_x (P o x) /\ lin (P o o) ;
 
-single_marked (PNew _ _ _ P) => single_marked (P unmarked unmarked) ;
-single_marked (@PInput m _ P c) with c => {
-| (C true) with m => {
-  | B[_] =>
-    linear (P (V tt) unmarked) /\
-    single_marked (P (V tt) marked);
-  | C[_] =>
-    linear (P unmarked unmarked) /\
-    single_marked (P marked unmarked) /\
-    single_marked (P unmarked marked)};
-| (C false) with m => {
-  | B[_] => single_marked (P (V tt) unmarked) ;
-  | C[_] => single_marked (P unmarked unmarked)}};
-single_marked (POutput m P c) with c => {
-| (C true) with m => {
-  | (C true) => False ;
-  | _ => linear (P unmarked) /\ single_marked (P marked)};
-| (C false) with m => {
-  | (C true) => linear (P unmarked) /\ single_marked (P marked) ;
-  | _ => single_marked (P unmarked)}};
-single_marked (PComp P Q) =>
-  (linear P /\ single_marked Q) \/
-  (single_marked P /\ linear Q) ;
-single_marked (PEnd c) with c => {
-| (C true) => True;
-| (C false) => False};
-single_marked (PSelect i c P) with c => {
-| (C true) => linear (P unmarked) /\ single_marked (P marked) ;
-| (C false) => single_marked (P unmarked)};
-single_marked (PBranch Ps c) with c => {
-| (C true) =>
+lin (PComp P Q) => lin P /\ lin Q ;
+
+lin (@PInput _    _ P (C true))  := False;
+lin (@PInput B[_] _ P (C false)) := single_x (P (V tt) x) /\ lin (P (V tt) o);
+lin (@PInput C[_] _ P (C false)) := single_x (P x o) /\ single_x (P o x) /\ lin (P o o);
+
+lin (POutput _        P (C true))  := False;
+lin (POutput (C true) P (C false)) := False;
+lin (POutput _        P (C false)) := single_x (P x) /\ lin (P o);
+
+lin (PSelect _ c P) with c := {
+| (C true) => False ;
+| (C false) => single_x (P x) /\ lin (P o)};
+
+lin (PBranch Ps (C true))  := False;
+lin (PBranch Ps (C false)) :=
   let fix branches {n} {ss : Vector.t _ n} (Ps : Forall (fun s => _ -> _) ss) :=
       match Ps with
       | Forall_nil _ => True
       | Forall_cons _ P Ps' =>
-        linear (P unmarked) /\
-        single_marked (P marked) /\
-        branches Ps'
-      end
-  in branches Ps ;
-| (C false) =>
-  let fix branches {n} {ss : Vector.t _ n} (Ps : Forall (fun s => _ -> _) ss) :=
-      match Ps with
-      | Forall_nil _ => True
-      | Forall_cons _ P Ps' =>
-        single_marked (P unmarked) /\
+        lin (P o) /\
+        single_x (P x) /\
         branches Ps'
       end
   in branches Ps
-}}.
+
+} where single_x (p : Process bool TMT) : Prop := {
+
+single_x (PEnd (C true)) := True;
+single_x (PEnd (C false)) := False;
+
+single_x (PNew _ _ _ P) => single_x (P o o) ;
+
+single_x (PComp P Q) := (lin P /\ single_x Q) \/ (single_x P /\ lin Q) ;
+
+single_x (@PInput B[_] _ P (C true))  := lin (P (V tt) o) /\ single_x (P (V tt) x);
+single_x (@PInput C[_] _ P (C true))  := lin (P o o) /\ single_x (P x o) /\ single_x (P o x);
+single_x (@PInput B[_] _ P (C false)) := single_x (P (V tt) o) ;
+single_x (@PInput C[_] _ P (C false)) := single_x (P o o);
+
+single_x (POutput (C true) P (C true))  := False;
+single_x (POutput _        P (C true))  := lin (P o) /\ single_x (P x);
+single_x (POutput (C true) P (C false)) := lin (P o) /\ single_x (P x) ;
+single_x (POutput _        P (C false)) := single_x (P o);
+
+single_x (PSelect i c P) with c => {
+| (C true) => lin (P o) /\ single_x (P x) ;
+| (C false) => single_x (P o)};
+
+single_x (PBranch Ps (C true))  :=
+  let fix branches {n} {ss : Vector.t _ n} (Ps : Forall (fun s => _ -> _) ss) :=
+      match Ps with
+      | Forall_nil _ => True
+      | Forall_cons _ P Ps' =>
+        lin (P o) /\
+        single_x (P x) /\
+        branches Ps'
+      end
+  in branches Ps ;
+single_x (PBranch Ps (C false)) :=
+  let fix branches {n} {ss : Vector.t _ n} (Ps : Forall (fun s => _ -> _) ss) :=
+      match Ps with
+      | Forall_nil _ => True
+      | Forall_cons _ P Ps' =>
+        single_x (P o) /\
+        branches Ps'
+      end
+  in branches Ps
+}.
+
+Definition Linear (p : PProcess) : Prop := lin (p bool TMT fMT).

@@ -2,7 +2,6 @@
 
 src/Examples.v
 src/Forall.v
-src/Generalisation.v
 src/Linearity.v
 src/Processes.v
 src/SubjectReduction.v

@@ -5,7 +5,6 @@ Require Import Forall.
 Require Import Types.
 Require Import Processes.
 Require Import Linearity.
-Require Import Generalisation.
 Require Import Tactics.
 Require Import SubjectReduction.
 

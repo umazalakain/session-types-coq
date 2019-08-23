@@ -7,77 +7,76 @@ Require Import Forall.
 Require Import Types.
 Require Import Processes.
 Require Import Linearity.
-Require Import Generalisation.
 
-Ltac linearity_hypotheses :=
+Ltac lin_IH :=
   match goal with
   | [ s : SType, r : SType , s' : SType, r' : SType |- _ ] =>
     match goal with
     | [ H : Message bool TMT C[s] -> Message bool TMT C[r] ->
             Message bool TMT C[s'] -> Message bool TMT C[r'] ->
             _ |- _ ] =>
-      destruct (H unmarked unmarked unmarked unmarked);
-      destruct (H marked unmarked unmarked unmarked);
-      destruct (H unmarked marked unmarked unmarked);
-      destruct (H unmarked unmarked marked unmarked);
-      destruct (H unmarked unmarked unmarked marked)
+      destruct (H o o o o);
+      destruct (H x o o o);
+      destruct (H o x o o);
+      destruct (H o o x o);
+      destruct (H o o o x)
     end
   | [ s : SType, r : SType |- _ ] =>
     match goal with
     | [ H : forall (a : Message bool TMT C[s]) (b : Message bool TMT C[r]), _ |- _ ] =>
-      destruct (H unmarked unmarked);
-      destruct (H unmarked marked);
-      destruct (H marked unmarked)
+      destruct (H o o);
+      destruct (H o x);
+      destruct (H x o)
     end
   | [ T : Type, s : SType |- _ ] =>
     match goal with
     | [ H : forall (a : Message bool TMT B[T]) (b : Message bool TMT C[s]), _ |- _ ] =>
-      destruct (H (V tt) unmarked);
-      destruct (H (V tt) marked)
+      destruct (H (V tt) o);
+      destruct (H (V tt) x)
     end
   | [ s : SType |- _ ] =>
     match goal with
     | [ H : forall (a : Message bool TMT C[s]), _ |- _ ] =>
-      destruct (H unmarked);
-      destruct (H marked)
+      destruct (H o);
+      destruct (H x)
     end
   end
 .
 
 Theorem congruence_linear {P Q} : Congruence _ _ P Q ->
-  (single_marked P -> single_marked Q) /\ (linear P -> linear Q).
+  (single_x P -> single_x Q) /\ (lin P -> lin Q).
 Proof.
   intros PcQ.
-  induction PcQ; split; simp linear in *; try linearity_hypotheses; try tauto.
-  - dependent destruction c; destruct b; destruct m; simp linear in *.
+  induction PcQ; split; simp lin in *; try lin_IH; try tauto.
+  - dependent destruction c; destruct b; destruct m; simp lin in *.
     + tauto.
-    + destruct b; simp linear; tauto.
-    + destruct b; simp linear; tauto.
-  - dependent destruction c; destruct b; destruct m; simp linear in *.
+    + destruct b; simp lin; tauto.
+    + destruct b; simp lin; tauto.
+  - dependent destruction c; destruct b; destruct m; simp lin in *.
     + tauto.
-    + destruct b; simp linear; tauto.
+    + destruct b; simp lin; tauto.
   - dependent destruction c;
       destruct b;
       destruct mt;
-      simp linear in *;
-      linearity_hypotheses;
+      simp lin in *;
+      lin_IH;
       tauto.
   - dependent destruction c;
       destruct b;
       destruct mt;
-      simp linear in *;
-      linearity_hypotheses;
+      simp lin in *;
+      lin_IH;
       tauto.
 Qed.
 Hint Resolve congruence_linear.
 
 Lemma branches_linear {n} (i : Fin.t n) {xs : Vector.t SType n}
       {Ps : Forall (fun s => Message _ _ C[s] -> Process _ _) xs} :
-  (single_marked (PBranch Ps (C false)) -> single_marked (nthForall Ps i (C false))) /\
-  (linear (PBranch Ps (C false)) -> single_marked (nthForall Ps i (C true))) /\
-  (linear (PBranch Ps (C false)) -> linear (nthForall Ps i (C false))).
+  (single_x (PBranch Ps (C false)) -> single_x (nthForall Ps i (C false))) /\
+  (lin (PBranch Ps (C false)) -> single_x (nthForall Ps i (C true))) /\
+  (lin (PBranch Ps (C false)) -> lin (nthForall Ps i (C false))).
 Proof.
-  induction i; dependent induction Ps; repeat split; intro H; simp linear in *.
+  induction i; dependent induction Ps; repeat split; intro H; simp lin in *.
   - destruct H.
     assumption.
   - destruct H.
@@ -101,26 +100,26 @@ Qed.
 Hint Resolve branches_linear.
 
 Theorem reduction_linear {P Q} : Reduction _ _ P Q ->
-  (single_marked P -> single_marked Q) /\ (linear P -> linear Q).
+  (single_x P -> single_x Q) /\ (lin P -> lin Q).
 Proof.
   intro PrQ.
-  induction PrQ; split; simp linear in *.
+  induction PrQ; split; simp lin in *.
   - intro A; destruct A; (destruct m;
-      [ destruct t; simp linear in *; tauto
-      | destruct b; simp linear in *; tauto ]).
+      [ destruct t; simp lin in *; tauto
+      | destruct b; simp lin in *; tauto ]).
   - intro A.
     decompose [and or] A; try contradiction.
     destruct m;
-      [ destruct t; simp linear in *; tauto
-      | destruct b; simp linear in *; tauto ].
+      [ destruct t; simp lin in *; tauto
+      | destruct b; simp lin in *; tauto ].
   - destruct (@branches_linear _ i rs Qs).
     intro A.
     decompose [and or] A; tauto.
   - decompose [and] (@branches_linear _ i rs Qs).
     intro A.
     decompose [and or] A; tauto.
-  - linearity_hypotheses; tauto.
-  - linearity_hypotheses; tauto.
+  - lin_IH; tauto.
+  - lin_IH; tauto.
   - tauto.
   - tauto.
   - destruct (congruence_linear H).
@@ -135,7 +134,7 @@ Proof.
   intros PrQ lP.
   refine (
       (match (P bool TMT fMT) as P'
-             return linear P' -> Reduction _ _ P' (Q bool TMT fMT) -> linear (Q bool TMT fMT)
+             return lin P' -> Reduction _ _ P' (Q bool TMT fMT) -> lin (Q bool TMT fMT)
        with
        | _ => _
        end) lP (PrQ bool TMT fMT)).
@@ -150,7 +149,7 @@ Proof.
   intros PrQ lP.
   refine (
       (match (P bool TMT fMT) as P'
-             return linear P' -> RTReduction _ _ P' (Q bool TMT fMT) -> linear (Q bool TMT fMT)
+             return lin P' -> RTReduction _ _ P' (Q bool TMT fMT) -> lin (Q bool TMT fMT)
        with
        | _ => _
        end) lP (PrQ bool TMT fMT)).
