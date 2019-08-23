@@ -5,6 +5,8 @@ Require Vectors.Fin.
 Import Vector.VectorNotations.
 From Equations Require Import Equations.
 
+Derive Signature NoConfusionHom for Vector.t.
+
 Inductive Forall {A} (P: A -> Type): forall {n} (v: Vector.t A n), Type :=
  |Forall_nil: Forall P []
  |Forall_cons {n x} {v: Vector.t A n}: P x -> Forall P v -> Forall P (x::v).
@@ -15,10 +17,7 @@ Inductive Forall2 {A B} (P:A->B->Type): forall {n}, Vector.t A n -> Vector.t B n
  |Forall2_cons {m} x1 x2 (v1:Vector.t A m) v2: P x1 x2 -> Forall2 P v1 v2 ->
     Forall2 P (x1::v1) (x2::v2).
 
-Derive NoConfusionHom for Vector.t.
-Derive Signature for Vector.t.
-Derive Signature for Forall.
-Derive Signature for Forall2.
+Derive Signature for Forall Forall2.
 
 Equations nthForall {A P n} {xs : Vector.t A n}
           (ps : Forall P xs) (i : Fin.t n) : P xs[@i] :=
