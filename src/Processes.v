@@ -16,41 +16,40 @@ Section Processes.
   Arguments C [S].
 
   Inductive Process : Type :=
+  | PEnd : Message C[ø] -> Process
 
   | PNew
-    : forall (s r : SType)
-    , Duality s r
-    -> (Message C[s] -> Message C[r] -> Process)
-    -> Process
-
-  | PInput
-    : forall {m : MType} {s : SType}
-    , (Message m -> Message C[s] -> Process)
-    -> Message C[? m ; s]
-    -> Process
-
-  | POutput
-    : forall {m : MType} {s : SType}
-    , Message m
-    -> (Message C[s] -> Process)
-    -> Message C[! m ; s]
-    -> Process
-
-  | PBranch
-    : forall {n : nat} {ss : Vector.t SType n}
-    , Forall (fun s => Message C[s] -> Process) ss
-    -> Message C[&{ss}]
-    -> Process
-
-  | PSelect
-    : forall {n : nat} {ss : Vector.t SType n} (i : Fin.t n)
-    , Message C[⊕{ss}]
-    -> (Message C[ss[@i]] -> Process)
+    : forall (T dT : SType)
+    , Duality T dT
+    -> (Message C[T] -> Message C[dT] -> Process)
     -> Process
 
   | PComp : Process -> Process -> Process
 
-  | PEnd : Message C[ø] -> Process
+  | PInput
+    : forall {T : MType} {S : SType}
+    , (Message T -> Message C[S] -> Process)
+    -> Message C[? T; S]
+    -> Process
+
+  | POutput
+    : forall {T : MType} {S : SType}
+    , Message T
+    -> (Message C[S] -> Process)
+    -> Message C[! T; S]
+    -> Process
+
+  | PBranch
+    : forall {n : nat} {S : Vector.t SType n}
+    , Forall (fun Si => Message C[Si] -> Process) S
+    -> Message C[&{S}]
+    -> Process
+
+  | PSelect
+    : forall {n : nat} {S : Vector.t SType n} (j : Fin.t n)
+    , Message C[⊕{S}]
+    -> (Message C[S[@j]] -> Process)
+    -> Process
   .
 
   Reserved Notation "P ≡ Q" (no associativity, at level 80).
@@ -137,7 +136,8 @@ End Processes.
 (*        NICETIES        *)
 (**************************)
 
-Notation "'(new' s <- S , r <- R , SdR ) p" := (PNew _ _ S R SdR (fun s r => p))(at level 90).
+Notation "'(new' s <- S , r <- R , SdR ) p" :=
+  (PNew _ _ S R SdR (fun s r => p))(at level 90).
 Notation "P <|> Q" := (PComp _ _ P Q)(at level 80).
 Notation "![ m ]; p" := (POutput _ _ m p)(at level 80).
 Notation "c ![ m ]; p" := (POutput _ _ m p c)(at level 79).
@@ -146,17 +146,19 @@ Notation "c ?[ m ]; p" := (PInput _ _ (fun m => p) c)(at level 79).
 Notation "◃ i ; p" := (fun c => PSelect _ _ i c p)(at level 80).
 Notation "c ◃ i ; p" := (PSelect _ _ i c p)(at level 79).
 Notation "▹{ x ; .. ; y }" :=
-  (PBranch _ _ (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..))(at level 80).
+  (PBranch _ _ (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..))
+  (at level 80).
 Notation "c ▹{ x ; .. ; y }" :=
-  (PBranch _ _ (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..) c)(at level 79).
-Definition ε {ST : Type} {MT: Type -> Type} : Message ST MT C[ø] -> Process ST MT:= PEnd ST MT.
+  (PBranch _ _ (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..) c)
+  (at level 79).
+Definition ε {ST : Type} {MT: Type -> Type} := PEnd ST MT.
 
 Arguments V [ST MT M].
 Arguments C [ST MT S].
 Arguments PNew [ST MT].
-Arguments PInput [ST MT m s].
-Arguments POutput [ST MT m s].
-Arguments PSelect [ST MT n ss].
-Arguments PBranch [ST MT n ss].
+Arguments PInput [ST MT T S].
+Arguments POutput [ST MT T S].
+Arguments PSelect [ST MT n S].
+Arguments PBranch [ST MT n S].
 Arguments PComp [ST MT].
 Arguments PEnd [ST MT].

@@ -173,9 +173,9 @@ The syntax of the \picalc{} is given by the grammar in Figure \ref{picalc-syntax
                &\new{x}{y}P              & \text{scope restriction}    \\
                &\cout{x}{u}P             & \text{output}               \\
                &\cin{y}{u}P              & \text{input}                \\
-               &\select{x}{l_j}P         & \text{selection}            \\
                &\branch{x}
                {\{l_i : P_i\}_{i \in I}} & \text{branching}            \\
+               &\select{x}{l_j}P         & \text{selection}            \\
                &\comp{P}{Q}              & \text{parallel composition}
     \end{align*}
     \caption{Grammar describing the syntax of the \picalc{}}
@@ -315,8 +315,8 @@ The grammar of session types is listed in the Figure \ref{session-types-grammar}
         S ::= \; &\type{End}                      & \text{termination} \\
                  &\Send{M}S                       & \text{send} \\
                  &\Recv{M}S                       & \text{receive} \\
-                 &\Select \{l_i : S_i\}_{i \in I} & \text{select} \\
                  &\Branch \{l_i : S_i\}_{i \in I} & \text{branch} \\
+                 &\Select \{l_i : S_i\}_{i \in I} & \text{select} \\
     \end{align*}
     \caption{Grammar for session types}
     \label{session-types-grammar}
@@ -380,18 +380,18 @@ A process can be terminated if the only channel in context is a channel that is 
         \quad (\textsc{T-Out})
 
     \inferrule
-        {\Gamma_1 \types x:\Select{\{l_i : S_i\}_{i \in I}} \\
-         \Gamma_2,x:S_i \types P_i \\
-         \exists j \in I}
-        {\Gamma_1 \circ \Gamma_2 \types \select{x}{l_j}P}
-        \quad (\textsc{T-Select})
-
-    \inferrule
         {\Gamma_1 \types x:\Branch{\{l_i : S_i\}_{i \in I}} \\
          \Gamma_2,x:S_i \types P_i \\
          \forall i \in I}
         {\Gamma_1 \circ \Gamma_2 \types \branch{x}{\{l_i : P_i\}_{i \in I}}}
         \quad (\textsc{T-Branch})
+
+    \inferrule
+        {\Gamma_1 \types x:\Select{\{l_i : S_i\}_{i \in I}} \\
+         \Gamma_2,x:S_j \types P_j \\
+         \exists j \in I}
+        {\Gamma_1 \circ \Gamma_2 \types \select{x}{l_j}P}
+        \quad (\textsc{T-Select})
 
     \end{mathpar}
     \caption{Typing rules for processes using session typed channels}
@@ -472,7 +472,7 @@ Coq allows users to build proofs using \emph{tactics}: programs written in $L_{t
     Qed.
 \end{coq}
 
-In Coq, simultaneously pattern matching on multiple indexed data types can be extremely clunky and arduous. The \emph{Equations} package eases this inconvenience by enabling an equational definition style, pattern matching on the left, and \texttt{with} constructs (\cite{McBride2004}), making Coq as convenient for dependent pattern matching as Agda. The theorem \coqe{SEven0} is proven again here, this time using dependent pattern matching. Coq is able to use tactics to solve the base case automatically, as \coqe{ESn} is uninhabited.
+In Coq, simultaneously pattern matching on multiple indexed data types can be extremely clunky and arduous. The \emph{Equations} package eases this inconvenience by enabling an equational definition style, pattern matching on the left, and \texttt{with} constructs (\cite{McBride2004}), making Coq as convenient for dependent pattern matching as Agda. The theorem \coqe{SEven0} is proven again below, this time using dependent pattern matching. Coq is able to use tactics to solve the base case automatically, as \coqe{ESn} is uninhabited.
 
 \begin{coq}
     From Equations Require Import Equations.
@@ -589,29 +589,46 @@ The linearity predicate introduced in \S \ref{linearity} is defined recursively 
     \item [Messages containing base types] The \coqe{V} constructor expects a value of the undefined type \coqe{MT M}: \coqe{M} represents the type of the value sent as a message; \coqe{MT} serves as a projection function from types to types. If \coqe{MT} is set to \coqe{id}, then a value of type \coqe{M} must be provided; if \coqe{MT} is set to the projection \coqe{fun t => unit}, then a value of the unit type will be demanded instead. This makes messages always constructable, and therefore processes always traversable. 
 \end{description}
 
-The users define processes without knowledge of the concrete instantiation of \coqe{ST} and \coqe{MT}. As a result, they have no information about the type \coqe{MT M} required to build messages of type \coqe{B[M]}. To remedy this, process definitions are provided the assumption \coqe{mt}: for any type \coqe{S}, no matter what \coqe{MT} is, a message of base type \coqe{S} can be constructed. Processes can use this assumption to create messages out of Coq terms. \todo{introduce notation}
+The users define processes without knowledge of the concrete instantiation of \coqe{ST} and \coqe{MT}. As a result, they have no information about the type \coqe{MT M} required to build messages of type \coqe{B[M]}. To remedy this, \coqe{PProcess} is provided the assumption \coqe{mt}: for any type \coqe{S}, no matter what \coqe{MT} is, a message of base type \coqe{S} can be constructed. Processes can use this assumption to create messages out of Coq terms. For convenience, we introduce a shortcut that ignores \coqe{ST} and \coqe{MT}:
 
 \coqi[9-12]{../src/Generalisation.v}
-
-\cite{Chlipala2008}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Processes}\label{processes}
 
-\todo{argue 1:1 correspondence with typing rules}
+We encode processes into a higher order abstract syntax where messages are parametric. Higher order abstract syntaxes use binders in the host language to encode binding in the object language \cite{Chlipala2008}. Here, we use it both to bind incoming messages, and to bind channels generated as a result of continuation passing. The constructors of the \coqe{Process} type are in one to one correspondence with typing rules for session types found in Figure \ref{session-types-typing-rules}. In this section we will argue that, \textbf{provided all channels are used exactly once, these constructors allow only correct processes to be built}. The assumption that all channels are used exactly one is later discharged on the linearity predicate defined on processes (\S \ref{linearity}).
 
-\coqi[20-24]{../src/Processes.v}
-\coqi[26-30]{../src/Processes.v}
-\coqi[32-37]{../src/Processes.v}
-\coqi[39-43]{../src/Processes.v}
-\coqi[45-49]{../src/Processes.v}
-\coqi[51-51]{../src/Processes.v}
-\coqi[53-53]{../src/Processes.v}
+We start defining process termination (\textsc{T-Inact}), which requires exactly one channel to be in context, and for that channel to have the session type \End. The constructor \coqe{PEnd} requires a single argument: a channel with session type \End. The linearity predicate guarantees that all other channels in Coq's context are used.
 
-\coqi[140-152]{../src/Processes.v}
+\coqi[18-19]{../src/Processes.v}
 
-\cite{Vasconcelos2010}
+Scope restriction (\textsc{T-Res}) adds two channels of dual types to the context. The constructor \coqe{PNew} expects two session types, a proof of their duality, and a function that uses channels of those two session types to type a process. The linearity predicate needs to ensure that these channels are used.
 
+\coqi[21-25]{../src/Processes.v}
+
+Parallel composition (\textsc{T-Par}) expects two subprocesses. The linearity predicate needs to ensure that the context is split between these two processes.
+
+\coqi[27-27]{../src/Processes.v}
+
+Input (\textsc{T-In}) requires a channel of type $\Recv{T}S$, and a process where the continuation channel $x$ of type $S$ and the input $y$ of type $T$ are put in context. The \coqe{PInput} constructor uses function abstraction to model the addition of $x$ and $y$ to the context. The linearity predicate needs to ensure that context is split between these two premises, and that the consumed channel cannot be used again.
+
+\coqi[29-33]{../src/Processes.v}
+
+Similarly, output (\textsc{T-Out}) requires a channel of type $\Send{T}S$, a message of type $T$, and a process where the continuation channel $x$ of type $S$ is put in context. The \coqe{POutput} constructor uses function abstraction to model the addition of $x$ to the context. The linearity predicate needs to ensure that context is split between these three premises, and that the consumed channel cannot be used again.
+
+\coqi[35-40]{../src/Processes.v}
+
+Branching (\textsc{T-Branch}) requires a channel of type $\Branch \{l_i : S_i\}_{i \in I}$, and for each continuation channel $x : S_i$, a process where $x$ is put in context. The \coqe{PBranch} constructor requires a channel capable of branching on a vector of session types. For each of those session types, a process where a channel of the given session type is put in context is demanded --- again, this is modelled through function abstraction. The linearity predicate needs to ensure that context is split between the two premises, and that the consumed channel cannot be used again.
+
+\coqi[42-46]{../src/Processes.v}
+
+Selection (\textsc{T-Select}) requires a channel of type $Select \{l_i : S_i\}_{i \in I}$, a choice $j$, and a process where the continuation channel $x : S_j$ is put in context. The \coqe{PSelect} constructor uses finite sets to ensure that the choice is a valid one, and function abstraction to model the addition of a channel of the chosen session type to the context. The linearity predicate needs to ensure that context is split between the two premises, and that the consumed channel cannot be used again.
+
+\coqi[48-52]{../src/Processes.v}
+
+To make things easier for the end user, we provide convenient notations for process constructors.
+
+\coqi[139-154]{../src/Processes.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Structural congruence}\label{structural-congruence}
