@@ -57,18 +57,6 @@
     version={3.0},
 ]{doclicense}
 
-\usepackage[many]{tcolorbox}
-\newtcolorbox{thesis-statement}[1]{%
-    tikznode boxed title,
-    enhanced,
-    arc=0mm,
-    interior style={white},
-    attach boxed title to top center= {yshift=-\tcboxedtitleheight/2},
-    fonttitle=\bfseries,
-    colbacktitle=white,coltitle=black,
-    boxed title style={size=normal,colframe=white,boxrule=0pt},
-    title={#1}}
-
 % Add bibliography to TOC
 \usepackage[nottoc,numbib]{tocbibind}
 
@@ -142,25 +130,20 @@ Communicating concurrent processes must satisfy some safety properties, such as 
 
 The properties of a formal system can be verified either \emph{dynamically}, by monitoring processes at runtime, or \emph{statically}, by reasoning on the definition of the processes themselves.  Static guarantees --- while harder to define and sometimes more conservative than dynamic ones --- are \emph{total}, and thus satisfied regardless of the execution path. The basis of static verification is comprised of \emph{types} and \emph{type systems}, which are also the basis of programming languages and tools, making type-based verification techniques transferable to practical applications. An example of this are the plethora of types for communication and process calculi: from standard channel types, as found in e.g., Erlang or Go, to \emph{session types} \cite{Honda1993, Takeuchi1994, Honda1998}, a formalism used to specify and verify communication protocols (more in \S \ref{session-types}).
 
-\todo{move session type definition and properties up here?}
-
 The mechanised formalisation and verification of programming languages and calculi is an ongoing community effort in securing existing work: humans are able to check proofs, but they are very likely to make mistakes; machines can verify proofs mechanically. A remarkable example of a community effort towards machine verification is RustBelt \cite{Dreyer2018}, a project that aims to formalise and machine-check the ownership system of the programming language Rust with the help of separation logic \cite{} and the proof assistant Coq. Not only does mechanisation increase confidence in what is mechanised, but also in all other derived work that is yet unverified: proving the correctness of Rust's type system immediately increases the confidence in all software written in it.
 
-\todo{make this short, take it out of the box, just centered and in italics}
-\begin{thesis-statement}{THESIS STATEMENT}
-    This project formalises the \emph{session-typed \picalc{}} in such a way that variable references in the object language are lifted into variable references in the host language. The use of channels in the object language is then restricted to be linear, ensuring \emph{communication privacy}, \emph{communication safety} and \emph{session fidelity} (refer to \S \ref{session-types-properties}). Lastly, we machine-verify \emph{subject reduction} for the resulting language.
-\end{thesis-statement}
-
-\todo{mention we have no shared channels and no recursive session types}
+\begin{center}
+    \emph{This project formalises and verifies a subset of the session-typed \picalc{}.}
+\end{center}
 
 We choose Coq \cite{Coquand1989, CoqDeveloperCommunity} to machine-verify the session-typed \picalc{}, mainly due to its widespread use as a proof assistant (refer to \S \ref{coq} for an overview). A first challenge with Coq is that it offers \emph{no} support for \emph{linearity}, which is at the very heart of session types (as communication occurs, a session type must transition through each of its stages exactly once). As a result, extra work is required to simulate the linearity of the terms in the object language.
 
-The present work simulates linearity by defining it as an inductive predicate on processes (\S \ref{linearity}). Once such a predicate establishes that a process uses channels linearly, the use of channels according to their specification is guaranteed by construction. References to both channels and messages are lifted into the host language, making the resulting syntax amicable to the user. As a consequence of this approach the object language requires \emph{no typing contexts} and \emph{no substitution lemmas}.
+We use a higher order abstract syntax to lift bindings (of both channels and messages) in the object language into bindings in Coq. As a result, the object language requires \emph{no typing contexts} and \emph{no substitution lemmas}. Linearity is simulated through an inductive predicate on processes (\S \ref{linearity}). Dependent types ensure that processes are correct by construction up to linearity: processes satisfying the linearity predicate are guaranteed to use session-typed channels according to their specification.
 
-Other approaches to formalising process calculi are briefly exposed in \S \ref{related-work}. Closing, \S \ref{conclusion} suggests future work that might be of interest, and offers conclusions on what this project has achieved.
+We provide basic background on the \picalc{}, session types and Coq in \S \ref{background}. We then introduce our design in \S \ref{design} and comment on the results in \S \ref{results}. Alternative approaches are introduced in \S \ref{related-work}. Closing, \S \ref{conclusion} suggests future work of interest, and offers conclusions on what this project has achieved.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Background}
+\chapter{Background}\label{background}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{\picalc}\label{pi-calculus}
@@ -647,11 +630,11 @@ The process constructors introduced in \S \ref{processes} rely on a linearity pr
 
 \coqi[8-9,95-95]{../src/Linearity.v}
 
-The predicate \coqe{lin} is defined by mutual recursion with \coqe{single_x}:
+The predicate \coqe{lin} is defined by mutual recursion with \coqe{single_x}. Both predicates use the Equations package to dependently pattern match on channel types.
 \begin{itemize}
     \item \coqe{lin (P: Process bool TMT) : Prop} recursively checks that if all newly created channels are unmarked, no marked channels are found. For every newly created channel, it also checks that marking the channel while leaving the rest unmarked results in \coqe{single_x} finding a single marked channel.  
 
-    \item \coqe{single_x (P : Process bool TMT) : Prop} recursively checks that if newly created channels are unmarked, a single marked channel is found. Once that channel is found, it uses \coqe{lin} to check that continuing down recursively finds no marked channels.
+    \item \coqe{single_x (P : Process bool TMT) : Prop} recursively checks that if newly created channels are unmarked, a single marked channel is found. Once that channel is found, it uses \coqe{lin} to check that continuing down recursively finds no marked channels. Worth nothing is the case of parallel composition, where \coqe{single_x} checks that \coqe{(lin P /\ single_x Q) \/ (single_x P /\ lin Q)}, that is, the marked channel must be in either \coqe{P} or \coqe{Q}, but not in both.
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
