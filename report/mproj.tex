@@ -138,7 +138,7 @@ The mechanised formalisation and verification of programming languages and calcu
 
 We choose Coq \cite{Coquand1989, CoqDeveloperCommunity} to machine-verify the session-typed \picalc{}, mainly due to its widespread use as a proof assistant (refer to \S \ref{coq} for an overview). A first challenge with Coq is that it offers \emph{no} support for \emph{linearity}, which is at the very heart of session types (as communication occurs, a session type must transition through each of its stages exactly once). As a result, extra work is required to simulate the linearity of the terms in the object language.
 
-We use a higher order abstract syntax to lift bindings (of both channels and messages) in the object language into bindings in Coq. As a result, the object language requires \emph{no typing contexts} and \emph{no substitution lemmas}. Linearity is simulated through an inductive predicate on processes (\S \ref{linearity}). Dependent types ensure that processes are correct by construction up to linearity: processes satisfying the linearity predicate are guaranteed to use session-typed channels according to their specification.
+We use a higher order abstract syntax \cite{Chlipala2008} to lift bindings (of both channels and messages) in the object language into bindings in Coq. As a result, the object language requires \emph{no typing contexts} and \emph{no substitution lemmas}. Linearity is simulated through an inductive predicate on processes (\S \ref{linearity}). Dependent types ensure that processes are correct by construction up to linearity: processes satisfying the linearity predicate are guaranteed to use session-typed channels according to their specification.
 
 We provide basic background on the \picalc{}, session types and Coq in \S \ref{background}. We then introduce our design in \S \ref{design} and comment on the results in \S \ref{results}. Alternative approaches are introduced in \S \ref{related-work}. Closing, \S \ref{conclusion} suggests future work of interest, and offers conclusions on what this project has achieved.
 
@@ -469,18 +469,23 @@ In Coq, simultaneously pattern matching on multiple indexed data types can be ex
     SEven1 (S n) En ESn := SEven1 n ESn En}.
 \end{coq}
 
-Coq supports inductive and coinductive data types,
-\todo{indexed families of types}
+Coq supports inductive and coinductive data types. The constructors of an inductive data type can contain recursive references to the data type --- as long as they are strictly positive \todo{cite}. The type of an inductive data type can accept both parameters and indices as arguments. Parameters appear on the left hand side of the colon, indices appear on the right hand side; parameters are fixed throughout the constructors, indices may change.
+
+The example below defines vectors: lists that keep track of their length on the type level. The parameter \coqe{A} refers to the type of elements within the list, and therefore stays fixed through the induction. However, the index (of type \coqe{nat}) changes through induction: \coqe{nil} initialises it to 0; \coqe{cons} is provided with a term of type \coqe{A} and a vector of length \coqe{n}, and results in a vector of length \coqe{n + 1}.
 
 \begin{coq}
-    Inductive lte : nat -> nat -> Type :=
-    | zlte : forall {n}, lte Z n
-    | slte : forall {n m}, lte n m -> lte (S n) (S m)
-    .
-
     Inductive Vec (A : Type) : nat -> Type :=
     | nil  : Vec A Z
     | cons : forall {n}, A -> Vec A n -> Vec A (S n)
+    .
+\end{coq}
+
+The next example encodes proofs of a natural number $n$ being less than or equal to a natural number $m$. These two naturals are kept as indices in \coqe{lte}. The constructor \coqe{zlte} initialises $n$ to 0 and $m$ to any number --- 0 is less than or equal to any natural. The constructor \coqe{slte} increments both $n$ and $m$. Every proof of $n \leq m$ can thus be encoded into exactly one recursive combination of the contructors \coqe{zlte} and \coqe{slte}.
+
+\begin{coq}
+    Inductive lte : nat -> nat -> Type :=
+    | zlte : forall {m}, lte Z m
+    | slte : forall {n m}, lte n m -> lte (S n) (S m)
     .
 \end{coq}
 
