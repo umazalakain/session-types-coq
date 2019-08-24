@@ -100,7 +100,7 @@ commentstyle={\ttfamily\color{OliveGreen}},
 %
 %moredelim=**[is][\ttfamily\color{red}]{/&}{&/},
 literate=
-    {forall}{{\color{OliveGreen}{$\forall\;$}\color{black}}}1
+    {forall}{{{\color{OliveGreen}$\forall\;$}}}1
     {exists}{{$\exists\;$}}1
     {<-}{{$\leftarrow\;$}}1
     {=>}{{$\Rightarrow\;$}}1
@@ -121,6 +121,8 @@ literate=
     {\\mapsto}{{$\mapsto\;$}}1
     {\\hline}{{\rule{\linewidth}{0.5pt}}}1
     {nat}{{$\mathbb{N}\;$}}1
+    {bool}{{$\mathbb{B}\;$}}1
+    {Prop}{{{\color{ProcessBlue}$\mathbb{P}\;$}}}1
     {neg}{{$\neg\;$}}1
     {ø}{{$\emptyset\;$}}1
     {⊕}{{$\oplus\;$}}1
@@ -142,7 +144,7 @@ literate=
 % pour inliner dans les tableaux / displaymath...
 \def\coqes{\lstinline[language=Coq, breaklines=true, basicstyle=\scriptsize]}
 % to include from other files
-\def\coqi[#1]{\lstinputlisting[language=Coq, basicstyle=\small, linerange=#1]}
+\def\coqi[#1]{\lstinputlisting[language=Coq, basicstyle=\small, linerange={#1}]}
 
 %%% Local Variables: 
 %%% mode: latex

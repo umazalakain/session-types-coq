@@ -7,6 +7,10 @@
 \usepackage{listingsutf8}
 \input{lstcoq.sty}
 
+% Multiple colunms
+\usepackage{multicol}
+\setlength{\columnseprule}{1pt}
+
 % Math
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -505,9 +509,9 @@ This chapter describes how we encode the session-typed \picalc{} into Coq. Our e
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Overview}\label{overview}
 
-Our design is based on \emph{continuation passing}, where channels are \textbf{used exactly once}: channels get destroyed and created with every action taken by a process. This approach has its origin in the encoding of session types into the polarised linear \picalc{} \cite{Dardha2016, otherwork}: session-typed channels are transformed into single-use polarised channels, each containing the type of data being transmitted and the encoding of the channel's continuation. For instance, the session type $\Send{A} \Recv{B} \End$ is encoded as $\ell_o [A,\ell_i [B,\ell_\emptyset []]]$ where $\ell_i [A, Cont]$ is a single-use channel signifying input $A$, then continue as $Cont$ --- and similarly for output. When a process uses a channel with such a type to communicate, that channel gets destroyed, the \emph{head} of the channel's type is consumed, and a new channel with the \emph{tail} of the type ($\ell_i [B, \ell_\emptyset []]$) is created.
+Our design is based on \emph{continuation passing}, where channels are \textbf{used exactly once}: channels get destroyed and created with every action taken by a process. This approach has its origin in the encoding of session types into the polarised linear \picalc{} \cite{Kobayashi1999, Dardha2012, Dardha2016}: session-typed channels are transformed into single-use polarised channels, each containing the type of data being transmitted and the encoding of the channel's continuation. For instance, the session type $\Send{A} \Recv{B} \End$ is encoded as $\ell_o [A,\ell_i [B,\ell_\emptyset []]]$ where $\ell_i [A, Cont]$ is a single-use channel signifying input $A$, then continue as $Cont$ --- and similarly for output. When a process uses a channel with such a type to communicate, that channel gets destroyed, the \emph{head} of the channel's type is consumed, and a new channel with the \emph{tail} of the type ($\ell_i [B, \ell_\emptyset []]$) is created.
 
-The main characteristic of our design is the use of a higher order abstract syntax as a way of passing around references to both messages and channels. That is, references are not modeled in the object language, but in the host language, in Coq. This approach offers several advantages, but it also creates several challenges that must be addressed:
+The main characteristic of our design is the use of a higher order abstract syntax to lift binding of channels and messages in the object language into bindings in the host language. This approach offers several advantages, but it also creates several challenges that must be addressed:
 
 \todo{We do not do open processes}
 
@@ -591,7 +595,7 @@ The linearity predicate introduced in \S \ref{linearity} is defined recursively 
 
 The users define processes without knowledge of the concrete instantiation of \coqe{ST} and \coqe{MT}. As a result, they have no information about the type \coqe{MT M} required to build messages of type \coqe{B[M]}. To remedy this, \coqe{PProcess} is provided the assumption \coqe{mt}: for any type \coqe{S}, no matter what \coqe{MT} is, a message of base type \coqe{S} can be constructed. Processes can use this assumption to create messages out of Coq terms. For convenience, we introduce a shortcut that ignores \coqe{ST} and \coqe{MT}:
 
-\coqi[9-12]{../src/Generalisation.v}
+\coqi[139-142]{../src/Processes.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Processes}\label{processes}
@@ -628,7 +632,7 @@ Selection (\textsc{T-Select}) requires a channel of type $Select \{l_i : S_i\}_{
 
 To make things easier for the end user, we provide convenient notations for process constructors.
 
-\coqi[139-154]{../src/Processes.v}
+\coqi[147-162]{../src/Processes.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Structural congruence}\label{structural-congruence}
@@ -639,11 +643,16 @@ To make things easier for the end user, we provide convenient notations for proc
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Linearity}\label{linearity}
 
-One approach to simulating linearity is traversing processes \emph{a posteriori}, after they have been defined, to check that each channel is used exactly once. This can be done by making the type of channels parametric, and then instantiating it to $\mathbb{B}$ and \emph{marking} each channel for inspection. This allows both channel creation and message input to be modelled as function abstraction --- channels of a parametric type cannot be forged.
+The process constructors introduced in \S \ref{processes} rely on a linearity predicate that makes sure that every created channel is used exactly once. We define this proposition by induction on processes, in particular processes where the type for channels (\coqe{ST}) is a boolean, and the function on message types (\coqe{MT}) is a projection to the unit type. The idea is to mark each newly created channel in turn (by setting it to \coqe{true}), and to then check that exactly one marked channel is found in the subprocesses.
 
+\coqi[8-9,95-95]{../src/Linearity.v}
 
-\cite{Kobayashi1999}
-\cite{Toninho2011}
+The predicate \coqe{lin} is defined by mutual recursion with \coqe{single_x}:
+\begin{itemize}
+    \item \coqe{lin (P: Process bool TMT) : Prop} recursively checks that if all newly created channels are unmarked, no marked channels are found. For every newly created channel, it also checks that marking the channel while leaving the rest unmarked results in \coqe{single_x} finding a single marked channel.  
+
+    \item \coqe{single_x (P : Process bool TMT) : Prop} recursively checks that if newly created channels are unmarked, a single marked channel is found. Once that channel is found, it uses \coqe{lin} to check that continuing down recursively finds no marked channels.
+\end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Subject reduction}\label{subject-reduction}
