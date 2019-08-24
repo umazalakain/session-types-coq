@@ -10,36 +10,24 @@ Require Import Linearity.
 
 Ltac lin_IH :=
   match goal with
-  | [ s : SType, r : SType , s' : SType, r' : SType |- _ ] =>
-    match goal with
-    | [ H : Message bool TMT C[s] -> Message bool TMT C[r] ->
-            Message bool TMT C[s'] -> Message bool TMT C[r'] ->
-            _ |- _ ] =>
-      destruct (H o o o o);
-      destruct (H x o o o);
-      destruct (H o x o o);
-      destruct (H o o x o);
-      destruct (H o o o x)
-    end
-  | [ s : SType, r : SType |- _ ] =>
-    match goal with
-    | [ H : forall (a : Message bool TMT C[s]) (b : Message bool TMT C[r]), _ |- _ ] =>
-      destruct (H o o);
-      destruct (H o x);
-      destruct (H x o)
-    end
-  | [ T : Type, s : SType |- _ ] =>
-    match goal with
-    | [ H : forall (a : Message bool TMT B[T]) (b : Message bool TMT C[s]), _ |- _ ] =>
-      destruct (H (V tt) o);
-      destruct (H (V tt) x)
-    end
-  | [ s : SType |- _ ] =>
-    match goal with
-    | [ H : forall (a : Message bool TMT C[s]), _ |- _ ] =>
-      destruct (H o);
-      destruct (H x)
-    end
+  | [ H : Message bool TMT C[_] -> Message bool TMT C[_] ->
+          Message bool TMT C[_] -> Message bool TMT C[_] ->
+          _ |- _ ] =>
+    destruct
+      (H o o o o),
+      (H x o o o),
+      (H o x o o),
+      (H o o x o),
+      (H o o o x)
+  | [ H : Message bool TMT C[_] -> Message bool TMT C[_] -> _ |- _ ] =>
+    destruct
+      (H o o),
+      (H x o),
+      (H o x)
+  | [ H : Message bool TMT B[_] -> Message bool TMT C[_] -> _ |- _ ] =>
+    destruct (H (V tt) o), (H (V tt) x)
+  | [ H : Message bool TMT C[_] -> _ |- _ ] =>
+    destruct (H o), (H x)
   end
 .
 
@@ -47,26 +35,13 @@ Theorem congruence_linear {P Q} : Congruence _ _ P Q ->
   (single_x P -> single_x Q) /\ (lin P -> lin Q).
 Proof.
   intros PcQ.
-  induction PcQ; split; simp lin in *; try lin_IH; try tauto.
-  - dependent destruction c; destruct b; destruct m; simp lin in *.
+  induction PcQ; simp lin; try lin_IH; try tauto.
+  - dependent destruction c; destruct b; destruct m; simp lin.
     + tauto.
     + destruct b; simp lin; tauto.
-    + destruct b; simp lin; tauto.
-  - dependent destruction c; destruct b; destruct m; simp lin in *.
     + tauto.
     + destruct b; simp lin; tauto.
-  - dependent destruction c;
-      destruct b;
-      destruct mt;
-      simp lin in *;
-      lin_IH;
-      tauto.
-  - dependent destruction c;
-      destruct b;
-      destruct mt;
-      simp lin in *;
-      lin_IH;
-      tauto.
+  - dependent destruction c; destruct b; destruct mt; lin_IH; simp lin; tauto.
 Qed.
 Hint Resolve congruence_linear.
 
@@ -76,26 +51,13 @@ Lemma branches_linear {n} (i : Fin.t n) {xs : Vector.t SType n}
   (lin (PBranch Ps (C false)) -> single_x (nthForall Ps i (C true))) /\
   (lin (PBranch Ps (C false)) -> lin (nthForall Ps i (C false))).
 Proof.
-  induction i; dependent induction Ps; repeat split; intro H; simp lin in *.
-  - destruct H.
-    assumption.
-  - destruct H.
-    destruct H0.
-    assumption.
-  - destruct H.
-    destruct H0.
-    assumption.
-  - destruct H.
-    decompose [and] (IHi v Ps).
-    auto.
-  - destruct H.
-    destruct H0.
-    decompose [and] (IHi v Ps).
-    auto.
-  - destruct H.
-    destruct H0.
-    decompose [and] (IHi v Ps).
-    auto.
+  induction i; dependent induction Ps; repeat split; intro H; destruct H.
+  - auto.
+  - destruct H0; auto.
+  - auto.
+  - decompose [and] (IHi v Ps); auto.
+  - destruct H0; decompose [and] (IHi v Ps); auto.
+  - destruct H0; decompose [and] (IHi v Ps); auto.
 Qed.
 Hint Resolve branches_linear.
 
@@ -103,27 +65,13 @@ Theorem reduction_linear {P Q} : Reduction _ _ P Q ->
   (single_x P -> single_x Q) /\ (lin P -> lin Q).
 Proof.
   intro PrQ.
-  induction PrQ; split; simp lin in *.
-  - intro A; destruct A; (destruct m;
+  induction PrQ; simp lin.
+  - split; intro A; decompose [and or] A; (destruct m;
       [ destruct t; simp lin in *; tauto
       | destruct b; simp lin in *; tauto ]).
-  - intro A.
-    decompose [and or] A; try contradiction.
-    destruct m;
-      [ destruct t; simp lin in *; tauto
-      | destruct b; simp lin in *; tauto ].
-  - destruct (@branches_linear _ i rs Qs).
-    intro A.
-    decompose [and or] A; tauto.
-  - decompose [and] (@branches_linear _ i rs Qs).
-    intro A.
-    decompose [and or] A; tauto.
-  - lin_IH; tauto.
+  - destruct (@branches_linear _ i rs Qs); split; intro A; decompose [and or] A; tauto.
   - lin_IH; tauto.
   - tauto.
-  - tauto.
-  - destruct (congruence_linear H).
-    tauto.
   - destruct (congruence_linear H).
     tauto.
 Qed.
