@@ -148,7 +148,7 @@ We provide basic background on the \picalc{}, session types and Coq in \S \ref{b
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{\picalc}\label{pi-calculus}
 
-\paragraph{Scope} This section provides an overview of the \picalc{} as introduced in \cite{Sangiorgi2001}. However, it deliberately ignores replication and indeterministic choice, features part of the \picalc{} that are not covered by this project. Additionally, and as preliminary preparation for the introduction of session types, this section defines channel restriction by introducing two channel \emph{endpoints}, instead of the usual single variable used for channels. \todo{polarity}
+\paragraph{Scope} This section provides an overview of the \picalc{} as introduced in \cite{Sangiorgi2001}. However, it deliberately ignores replication and indeterministic choice, part of the \picalc{} but not covered by this project. Additionally, and as preliminary preparation for the introduction of session types, this section presents channel restriction by introducing two channel \emph{endpoints}, instead of the usual single variable used for channels.
 
 The \picalc{} \cite{Walker1989,Milner1989,Milner1991,Sangiorgi2001} models processes that progress and change their structure by using \emph{channels} to communicate with one another. The \picalc{} features \emph{channel mobility}, which allows channels to be sent over channels themselves. In the \picalc{} any number of processes can communicate over a channel. While the \picalc{} can be typed, the type of a channel does \emph{not} evolve as communication occurs: it only specifies the type of data sent over it. An overview of the FAQs can be found in \cite{Wing2002}.
 
@@ -213,7 +213,7 @@ The syntax of the \picalc{} captures undesired syntactical properties of process
     \label{picalc-congruence}
 \end{figure}
 
-The operational semantics of the \picalc{} is specified by reduction rules, defined in Figure \ref{picalc-reduction}. Two parallel processes communicating over the same channel (by using opposite endpoints to send and receive a message) get reduced to the parallel composition of their continuations, with the continuation of the receiving process having all the references to the message substituted by the message term itself (\textsc{R-Comm}). Similarly, a process that makes a choice put in parallel with a process that offers a choice gets reduced to the continuation of the choosing process and the chosen continuation of the process offering the choice -- so long as the choice itself is valid (\textsc{R-Case}). Reduction goes under both restriction (\textsc{R-Res}) and parallel composition (\textsc{R-Par}), but not under output, input, selection or branching -- constructs that impose order in the communication. Lastly, reduction is defined up to structural congruence: any amount of syntax rewriting can be performed before and after reduction  (\textsc{R-Struct}).
+The operational semantics of the \picalc{} is specified by reduction rules, defined in Figure \ref{picalc-reduction}. Two parallel processes communicating over the same channel (by using opposite endpoints to send and receive a message) get reduced to the parallel composition of their continuations, with the continuation of the receiving process having all the references to the message substituted by the message term itself (\textsc{R-Comm}). Similarly, a process that makes a choice put in parallel with a process that offers a choice gets reduced to the continuation of the choosing process and the chosen continuation of the process offering the choice -- so long as the choice itself is valid (\textsc{R-Case}). Reduction goes under both restriction (\textsc{R-Res}) and parallel composition (\textsc{R-Par}), but not under output, input, selection or branching -- constructs that impose order in the communication. Finally, reduction is defined up to structural congruence: any amount of syntax rewriting can be performed before and after reduction  (\textsc{R-Struct}).
 
 \begin{figure}[H]
     \begin{mathpar}
@@ -469,7 +469,7 @@ In Coq, simultaneously pattern matching on multiple indexed data types can be ex
     SEven1 (S n) En ESn := SEven1 n ESn En}.
 \end{coq}
 
-Coq supports inductive and coinductive data types. The constructors of an inductive data type can contain recursive references to the data type --- as long as they are strictly positive \todo{cite}. The type of an inductive data type can accept both parameters and indices as arguments. Parameters appear on the left hand side of the colon, indices appear on the right hand side; parameters are fixed throughout the constructors, indices may change.
+Coq supports inductive and coinductive data types. The constructors of an inductive data type can contain recursive references to the data type --- as long as they are strictly positive, that is, do not appear inside an argument to the left of an arrow \cite{Dybjer1994}. The type of an inductive data type can accept both parameters and indices as arguments. Parameters appear on the left hand side of the colon, indices appear on the right hand side; parameters are fixed throughout the constructors, indices may change.
 
 The example below defines vectors: lists that keep track of their length on the type level. The parameter \coqe{A} refers to the type of elements within the list, and therefore stays fixed through the induction. However, the index (of type \coqe{nat}) changes through induction: \coqe{nil} initialises it to 0; \coqe{cons} is provided with a term of type \coqe{A} and a vector of length \coqe{n}, and results in a vector of length \coqe{n + 1}.
 
@@ -543,13 +543,10 @@ The main characteristic of our design is the use of a higher order abstract synt
     \item \todo{introduce congruence and reduction}
 \end{enumerate}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Encoding}\label{encoding}
-
-This section covers the different components that make up our encoding. We start with type definitions and defining the notion of duality of session types (\S \ref{types}). We then encode messages and processes (\S \ref{processes}), for which we define a linearity predicate (\S \ref{linearity}) to ensure that they are well-typed. Finally, we define structural congruence (\S \ref{structural-congruence}) and reduction (\S \ref{reduction}), and we then prove that reduction preserves linearity, and hence well-typedness.
+The next sections cover the different components that make up our encoding. We start with type definitions and defining the notion of duality of session types (\S \ref{types}). We then encode messages and processes (\S \ref{processes}), for which we define a linearity predicate (\S \ref{linearity}) to ensure that they are well-typed. Finally, we define structural congruence (\S \ref{structural-congruence}) and reduction (\S \ref{reduction}), and we then prove that reduction preserves linearity, and hence well-typedness.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Types}\label{types}
+\section{Types}\label{types}
 
 We start by defining \coqe{MType} (the type of messages) and \coqe{SType} (the types of channels) by mutual induction, as messages can contain channels and channels can send and receive messages. This definition encodes type type grammar in Figure \ref{session-types-grammar}. We admit every Coq \coqe{Type} as a base type: anything can be sent over a channel. We use vectors for branching and selection so that we can keep track in the types of the number of options available.
 
@@ -566,7 +563,7 @@ We then introduce the notion of duality of session types, modelling the definiti
 Finally, we prove that duality is commutative by providing a recursive program of the type \coqe|duality_comm {s r : SType} (d : Duality s r) : Duality r s|.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Polymorphic messages}\label{polymorphism}
+\section{Polymorphic messages}\label{polymorphism}
 
 Programs that depend on unconstrained types are said to be parametrically polymorphic. Terms inhabiting those types cannot possibly be constructed or eliminated by pattern matching, and are therefore said to be \emph{opaque}. In a purely functional language like Coq, programs of an unconstrained polymorphic type give rise to important theorems that stem purely from the polymorphism of the type \cite{Wadler1989}.
 
@@ -586,7 +583,7 @@ The users define processes without knowledge of the concrete instantiation of \c
 \coqi[139-142]{../src/Processes.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Processes}\label{processes}
+\section{Processes}\label{processes}
 
 We encode processes into a higher order abstract syntax where messages are parametric. Higher order abstract syntaxes use binders in the host language to encode binding in the object language \cite{Chlipala2008}. Here, we use it both to bind incoming messages, and to bind channels generated as a result of continuation passing. The constructors of the \coqe{Process} type are in one to one correspondence with typing rules for session types found in Figure \ref{session-types-typing-rules}. In this section we will argue that, \textbf{provided all channels are used exactly once, these constructors allow only correct processes to be built}. The assumption that all channels are used exactly one is later discharged on the linearity predicate defined on processes (\S \ref{linearity}).
 
@@ -618,18 +615,34 @@ Selection (\textsc{T-Select}) requires a channel of type $Select \{l_i : S_i\}_{
 
 \coqi[48-52]{../src/Processes.v}
 
-To make things easier for the end user, we provide convenient notations for process constructors.
+To make things easier for the end user, we provide convenient notations for process constructors. Refer to \S \ref{examples} to see example processes written using this notations.
 
-\coqi[147-162]{../src/Processes.v}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Structural congruence}\label{structural-congruence}
+\coqi[158-173]{../src/Processes.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Reduction}\label{reduction}
+\section{Structural congruence}\label{structural-congruence}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Linearity}\label{linearity}
+\section{Reduction}\label{reduction}
+
+We use an inductive family of types to describe the reduction rules (listed in Figure \ref{picalc-reduction}, extended with session types in \S \ref{session-types}) of session-typed \picalc{} processes. The data type is indexed by two processes: the former is the redex, the latter the reduction target. 
+
+\coqi[100-101]{../src/Processes.v}
+
+The \coqe{RComm} constructor expects two channel endpoints created as a result of scope restriction to be used by two parallel processes: one that outputs \coqe{m} and continues as \coqe{Q}, the other that expects input in \coqe{P}. The reduction creates a new scope restriction, and puts in parallel a process with the continuation \coqe{Q} and the process \coqe{P} fed with the input \coqe{m}. Note that this encoding works thanks to Coq's ability to pattern match on the body of functions.
+
+\coqi[102-106]{../src/Processes.v}
+
+Similarly to \coqe{RComm}, the \coqe{RCase} constructor transmits choice from one process to the other. Note, however, that thanks to the typing rules for the constructors \coqe{PBranch} and \coqe{PSelect}, the vectors \coqe{Ps} and \coqe{Qs} are guaranteed to be of the same length, and the choice \coqe{i} is guaranteed to be a valid index within the vectors. We therefore just need to select the \coqe{i}th vector of \coqe{Qs} as the continuation process after reduction.
+
+\coqi[108-113]{../src/Processes.v}
+
+The last three constructors are inductively defined, and serve to encode that reduction goes under scope restriction and parallel composition, and that reduction is defined up to structural congruence.
+
+\coqi[115-126]{../src/Processes.v}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Linearity}\label{linearity}
 
 The process constructors introduced in \S \ref{processes} rely on a linearity predicate that makes sure that every created channel is used exactly once. We define this proposition by induction on processes, in particular processes where the type for channels (\coqe{ST}) is a boolean, and the function on message types (\coqe{MT}) is a projection to the unit type. The idea is to mark each newly created channel in turn (by setting it to \coqe{true}), and to then check that exactly one marked channel is found in the subprocesses.
 
