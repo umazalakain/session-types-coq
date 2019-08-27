@@ -492,7 +492,7 @@ The next example encodes proofs of a natural number $n$ being less than or equal
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Design}\label{design}
 
-This chapter describes how we encode the session-typed \picalc{} into Coq. Our encoding only handles session-typed channels, specifically channels with finite (non-replicating, non-recursive) session types. The encoding has no intermediary models --- for instance, the polarised linear \picalc{}. The main characteristic of our design is the use of function abstraction to pass around both messages and channels (see \S \ref{overview}); alternative approaches are listed in \S \ref{alternative-encodings}. \todo{fixme}
+This chapter describes how our encoding of the session-typed \picalc{} into Coq works. This encoding only handles session-typed channels, specifically channels with finite (non-replicating, non-recursive) session types. The encoding has no intermediary models --- for instance, the polarised linear \picalc{}. The main characteristic of our design is the use of function abstraction to pass around both messages and channels (see \S \ref{overview}). Alternative approaches are listed in \S \ref{related-work}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Overview}\label{overview}
@@ -649,6 +649,9 @@ Finally, the example bellow demonstrates channel mobility (a channel that is sen
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Structural congruence}\label{structural-congruence}
 
+\todo{confirm that symmetry is not neeed}
+\todo{we do not define contexts separately, we introduce reflexivity and transitivity in the same datatype}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Reduction}\label{reduction}
 
@@ -746,8 +749,6 @@ Other efforts in formalising session types in Coq have created object languages 
 
 Linearity is strongly connected to session types: a session type must transition through each of its stages \emph{exactly} once. Session types can be encoded into a \picalc{} with linear types, as shown by \cite{Kobayashi1996,Dardha2012,Dardha2016}. As shown in \cite{Voinea}, in systems where session types are shared, the tokens allowing access to the session-typed channels must still be linear.
 
-The connection between session types and linearity can be drawn even further, at the logical level, where an isomorphism between linear logic and session types can be shown \cite{Caires2010} \cite{Wadler2014}. In \cite{Lindley2015} the operational semantics for a session-typed functional language that builds on Wadler's isomorphism are given. This work is continued in \cite{Lindley}, where the language is extended with polymorphism, row types, subkinding, and non-linear data types. \cite{Gay2010} uses a linear type-system to encode asynchronous session types with buffers --- and then verify properties of those buffers.
-
 In type systems with no linear types the linearity of channels has to be simulated. In these type systems, modelling channels through a parametric higher order abstract syntax \cite{Chlipala2008} is not possible per se: the host language is unable to check whether the channels passed along as arguments are used linearly. This means that typing judgments must happen at the object language, through the use of a context that keeps track of linear resources.  This context is usually tracked at the type level, using inductive \emph{families} \cite{Dybjer1994} indexed by a context of linear resources \cite{Power2000} --- though there are approaches that keep track of context through type-classes and use monadic binding to embed a linear calculus within non-linear hosts \cite{Paykin2017}.
 
 The \picalc{} has been an extensive subject of machine verification: \cite{Henry-Gerard1999} proofs subject reduction for it; \cite{Despeyroux2000} proofs subject reduction as well, but uses a higher order syntax; \cite{Affeldt2008} provides proofs of fairness and confluence; \cite{Honsell2001} formalises the bisimilarity proofs found in \cite{Walker1989}; \cite{Gay2001} provides a framework for formalisation on the \picalc{} with linear channels in Isabelle/HOL.
@@ -758,6 +759,7 @@ In \cite{Xi2016} session types are formalised in ATS, providing type preservatio
 \chapter{Results and conclusion}\label{conclusion}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\small
 \bibliographystyle{alpha}
 \bibliography{mproj}
 \end{document}

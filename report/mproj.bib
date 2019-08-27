@@ -1,4 +1,26 @@
 
+@book{Barendregt1984,
+  address = {{Amsterdam ; New York : New York, N.Y}},
+  author = {Barendregt, H. P.},
+  edition = {Rev. ed},
+  isbn = {978-0-444-86748-3 978-0-444-87508-2},
+  keywords = {Lambda calculus},
+  lccn = {QA9.5 .B36 1984},
+  number = {v. 103},
+  publisher = {{North-Holland ; Sole distributors for the U.S.A. and Canada, Elsevier Science Pub. Co}},
+  series = {Studies in Logic and the Foundations of Mathematics},
+  shorttitle = {The Lambda Calculus},
+  title = {The Lambda Calculus: Its Syntax and Semantics},
+  year = {1984}
+}
+
+@article{Bock2016,
+  author = {Bock, Peter Brottveit and Bruni, Alessandro and Murawska, Agata and Sch{\"u}rmann, Carsten},
+  journal = {Dale Miller's Festschrift},
+  title = {Representing {{Session Types}}},
+  year = {2016}
+}
+
 @inproceedings{Chlipala2008,
   author = {Chlipala, Adam},
   booktitle = {{{ACM SIGPLAN Notices}}},
@@ -81,6 +103,14 @@
   year = {1972}
 }
 
+@book{Despeyroux2000,
+  abstract = {We present a formalization of a typed pi-calculus in the Calculus of Inductive Constructions. We give the rules for type-checking and for evaluation and formalize a proof of type preservation in the Coq system. The encoding of the pi-calculus in Coq uses Coq fonctions to represent bindings of variables. This kind of encoding is called a higher-order specication. It provides a concise description of the calculus, leading to simple proofs. The specification we propose for the pi-calculus formalizes communication by means of function application.},
+  author = {Despeyroux, Jo{\"e}lle},
+  file = {/home/uma/references/papers/Despeyroux_2000_A Higher-Order Specification of the π-Calculus.pdf;/home/uma/.zotero/data/storage/P2ZN3T47/summary.html},
+  title = {A {{Higher}}-{{Order Specification}} of the {$\pi$}-{{Calculus}}},
+  year = {2000}
+}
+
 @inproceedings{Dezani-ciancaglini2010,
   author = {{Dezani-ciancaglini}, Mariangiola and De'Liguoro, Ugo},
   doi = {10.1007/978-3-642-14458-5_1},
@@ -135,6 +165,22 @@ The resulting theory is a flexible and powerful language for programming and con
   year = {1994}
 }
 
+@inproceedings{Gay2001,
+  abstract = {We present a formalisation, in the theorem proving system Isabelle/HOL, of a linear type system for the pi calculus, including a proof of runtime safety of typed processes. The use of a uniform encoding of pi calculus syntax in a meta language, the development of a general theory of type environments, and the structured formalisation of the main proofs, facilitate the adaptation of the Isabelle theories and proof scripts to variations on the language and other type systems.},
+  author = {Gay, Simon J.},
+  booktitle = {Theorem {{Proving}} in {{Higher Order Logics}}},
+  editor = {Boulton, Richard J. and Jackson, Paul B.},
+  file = {/home/uma/references/papers/Gay_2001_A Framework for the Formalisation of Pi Calculus Type Systems in Isabelle-HOL.pdf},
+  isbn = {978-3-540-44755-9},
+  keywords = {automatic theorem proving,pi calculus,semantics,Types},
+  language = {en},
+  pages = {217-232},
+  publisher = {{Springer Berlin Heidelberg}},
+  series = {Lecture {{Notes}} in {{Computer Science}}},
+  title = {A {{Framework}} for the {{Formalisation}} of {{Pi Calculus Type Systems}} in {{Isabelle}}/{{HOL}}},
+  year = {2001}
+}
+
 @inproceedings{Giunti2010,
   abstract = {We present a reconstruction of session types in a conventional pi calculus where types are qualified as linear or unrestricted. Linearly typed communication channels are guaranteed to occur in exactly one thread, possibly multiple times. We equip types with a constructor that denotes the two ends of a same communication channel. In order to assess the flexibility of the new type system, we provide three distinct encodings (from the linear lambda calculus, from the linear pi calculus, and from the pi calculus with polarized variables) into our system. For each language we present operational and typing correspondences, showing that our system effectively subsumes the linear pi calculus as well as foregoing works on session types.},
   author = {Giunti, Marco and Vasconcelos, Vasco T.},
@@ -145,6 +191,14 @@ The resulting theory is a flexible and powerful language for programming and con
   publisher = {{Springer Berlin Heidelberg}},
   title = {A {{Linear Account}} of {{Session Types}} in the {{Pi Calculus}}},
   year = {2010}
+}
+
+@book{Henry-Gerard1999,
+  abstract = {This paper presents a method for coding pi-calculus in the COQ proof assistant, in order to use this environment to formalize properties of the pi-calculus. This method consists in making a syntactic discrimination between free names (then called parameters) and bound names (then called variables) of the processes, so that implicit renamings of bound names are avoided in the substitution operation. This technique has been used by J.McKinna and R.Pollack in an extensive study of PTS [5]. We use this coding here to prove subject reduction property for a type system of a monadic pi-calculus.},
+  author = {{Henry-G{\'e}rard}, Lo{\"i}c and Meije, Projet},
+  file = {/home/uma/references/papers/Henry-Gérard_Meije_1999_Proof of the subject reduction property for a π-calculus in COQ.pdf;/home/uma/.zotero/data/storage/FVFRE453/summary.html},
+  title = {Proof of the Subject Reduction Property for a {$\pi$}-Calculus in {{COQ}}},
+  year = {1999}
 }
 
 @inproceedings{Honda1993,
@@ -177,6 +231,31 @@ The resulting theory is a flexible and powerful language for programming and con
   title = {Language Primitives and Type Discipline for Structured Communication-Based Programming},
   volume = {1381},
   year = {1998}
+}
+
+@article{Honsell2001,
+  abstract = {We present a large and we think also significant case study in computer assisted formal reasoning. We start by giving a higher-order abstract syntax encoding of {$\pi$}-calculus in the higher-order inductive/coinductive-type theories CIC and CC(Co)Ind. This encoding gives rise to a full-fledged proof editor/proof assistant for the {$\pi$}-calculus, once we embed it in Coq, an interactive proof-development environment for CC(Co)Ind. Using this computerized assistant we prove formally a substantial chapter of the theory of strong late bisimilarity, which amounts essentially to Section 2 of A calculus of mobile processes by Milner, Parrow, and Walker. This task is greatly simplified by the use of higher-order syntax. In fact, not only we can delegate conveniently to the metalanguage {$\alpha$}-conversion and substitution, but, introducing a suitable axiomatization of the theory of contexts, we can accommodate also the machinery for generating new names. The axiomatization we introduce is quite general and should be easily portable to other formalizations based on higher-order syntax. The use of coinductive types and corresponding tactics allows to give alternative, and possibly more natural, proofs of many properties of strong late bisimilarity, w.r.t. those originally given by Milner, Parrow, and Walker.},
+  author = {Honsell, Furio and Miculan, Marino and Scagnetto, Ivan},
+  doi = {10.1016/S0304-3975(00)00095-5},
+  file = {/home/uma/references/papers/Honsell et al_2001_π-calculus in (Co)inductive-type theory.pdf;/home/uma/.zotero/data/storage/KLRGFM2S/S0304397500000955.html},
+  issn = {0304-3975},
+  journal = {Theoretical Computer Science},
+  keywords = {-calculus,Higher-order abstract syntax,Logical frameworks,Proof checking,Typed -calculus},
+  month = feb,
+  number = {2},
+  pages = {239-285},
+  series = {{{IC}}-{{EATCS}}'97},
+  title = {{$\pi$}-Calculus in ({{Co}})Inductive-Type Theory},
+  volume = {253},
+  year = {2001}
+}
+
+@book{Kobayashi1996,
+  abstract = {The economy and flexibility of the pi-calculus make it attractive both as an object of theoretical study and as a basis for concurrent language design and implementation. However, such generality has a cost: encoding higher-level features like functional computation in pi-calculus throws away potentially useful information. We show how a linear type system can be used to recover important static information about a process's behaviour. In particular, we can guarantee that two processes communicating over a linear channel cannot interfere with other communicating processes. This enables more aggressive optimisation of communications over linear channels and allows useful refinements to the usual notions of process equivalence for pi-calculus. After},
+  author = {Kobayashi, Naoki and Pierce, Benjamin C. and Turner, David N.},
+  file = {/home/uma/references/papers/Kobayashi et al_1996_Linearity and the Pi-Calculus.pdf;/home/uma/.zotero/data/storage/7QEAP97G/summary.html},
+  title = {Linearity and the {{Pi}}-{{Calculus}}},
+  year = {1996}
 }
 
 @article{Kobayashi1999,
@@ -221,6 +300,18 @@ The resulting theory is a flexible and powerful language for programming and con
   year = {1991}
 }
 
+@article{Paykin2017,
+  author = {Paykin, Jennifer and Zdancewic, S},
+  doi = {10.1145/3156695.3122965},
+  file = {/home/uma/references/papers/Paykin_Zdancewic_2017_The Linearity Monad.pdf},
+  journal = {ACM SIGPLAN Notices},
+  month = sep,
+  pages = {117-132},
+  title = {The {{Linearity Monad}}},
+  volume = {52},
+  year = {2017}
+}
+
 @article{Petz,
   author = {Petz, Adam},
   file = {/home/uma/.zotero/data/storage/6SG39KD6/Petz - A Semantics for Attestation Protocols using Sessio.pdf},
@@ -228,6 +319,14 @@ The resulting theory is a flexible and powerful language for programming and con
   language = {en},
   pages = {61},
   title = {A {{Semantics}} for {{Attestation Protocols}} Using {{Session Types}} in {{Coq}}}
+}
+
+@article{Power2000,
+  author = {Power, James and Webster, Caroline},
+  file = {/home/uma/references/papers/Power_Webster_2000_Working with Linear Logic in Coq.pdf},
+  month = jul,
+  title = {Working with {{Linear Logic}} in {{Coq}}},
+  year = {2000}
 }
 
 @book{Sangiorgi2001,
@@ -280,6 +379,15 @@ The book is written at the graduate level, assuming no prior acquaintance with t
   year = {2009}
 }
 
+@article{Voinea,
+  abstract = {Multiparty Session Types (MPST) are a type formalism used to model communication protocols among components in distributed systems, by specifying type and direction of data transmitted. It is standard for multiparty session type systems to use access control based on linear or affine types. While useful in offering strong guarantees of communication safety and session fidelity, linearity and affinity run into the well-known problem of inflexible programming, excluding scenarios that make use of shared channels or need to store channels into shared data structures.},
+  author = {Voinea, A Laura and Dardha, Ornela and Gay, Simon J},
+  file = {/home/uma/references/papers/Voinea et al_Resource Sharing via Capability-Based Multiparty Session Types.pdf},
+  language = {en},
+  pages = {26},
+  title = {Resource {{Sharing}} via {{Capability}}-{{Based Multiparty Session Types}}}
+}
+
 @book{Wadler1989,
   abstract = {From the type of a polymorphic function we can derive a theorem that it satisfies. Every function of the same type satisfies the same theorem. This provides a free source of useful theorems, courtesy of Reynolds\&\#039; abstraction theorem for the polymorphic lambda calculus.},
   author = {Wadler, Philip},
@@ -302,6 +410,22 @@ The book is written at the graduate level, assuming no prior acquaintance with t
   month = dec,
   title = {{{FAQ}} on {{Pi}}-{{Calculus}}},
   year = {2002}
+}
+
+@article{Xi2016,
+  abstract = {We present a formalization of session types in a multi-threaded lambda-calculus (MTLC) equipped with a linear type system, establishing for the MTLC both type preservation and global progress. The latter (global progress) implies that the evaluation of a well-typed program in the MTLC can never reach a deadlock. As this formulated MTLC can be readily embedded into ATS, a full-fledged language with a functional programming core that supports both dependent types (of DML-style) and linear types, we obtain a direct implementation of session types in ATS. In addition, we gain immediate support for a form of dependent session types based on this embedding into ATS. Compared to various existing formalizations of session types, we see the one given in this paper is unique in its closeness to concrete implementation. In particular, we report such an implementation ready for practical use that generates Erlang code from well-typed ATS source (making use of session types), thus taking great advantage of the infrastructural support for distributed computing in Erlang.},
+  archivePrefix = {arXiv},
+  author = {Xi, Hongwei and Ren, Zhiqiang and Wu, Hanwen and Blair, William},
+  eprint = {1603.03727},
+  eprinttype = {arxiv},
+  file = {/home/uma/references/papers/Xi et al_2016_Session Types in a Linearly Typed Multi-Threaded Lambda-Calculus.pdf},
+  journal = {arXiv:1603.03727 [cs]},
+  keywords = {Computer Science - Logic in Computer Science,Computer Science - Programming Languages},
+  language = {en},
+  month = mar,
+  primaryClass = {cs},
+  title = {Session {{Types}} in a {{Linearly Typed Multi}}-{{Threaded Lambda}}-{{Calculus}}},
+  year = {2016}
 }
 
 
