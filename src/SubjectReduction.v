@@ -31,7 +31,7 @@ Ltac lin_IH :=
   end
 .
 
-Theorem congruence_linear {P Q} : Congruence _ _ P Q ->
+Lemma congruence_linear {P Q} : Congruence _ _ P Q ->
   (single_x P -> single_x Q) /\ (lin P -> lin Q).
 Proof.
   intros PcQ.
@@ -61,7 +61,7 @@ Proof.
 Qed.
 Hint Resolve branches_linear.
 
-Theorem reduction_linear {P Q} : Reduction _ _ P Q ->
+Lemma reduction_linear {P Q} : Reduction _ _ P Q ->
   (single_x P -> single_x Q) /\ (lin P -> lin Q).
 Proof.
   intro PrQ.

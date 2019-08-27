@@ -105,7 +105,8 @@ Section Processes.
       PNew s r sDr
            (fun a b => PComp (Q a) (P m b))
 
-  | RCase {n mt} {i : Fin.t n} {ss rs : Vector.t SType n} {sDr} {Ps Qs} {m : Message mt} :
+  | RCase {n mt} {i : Fin.t n} {ss rs : Vector.t SType n}
+          {sDr} {Ps Qs} {m : Message mt} :
       PNew (Select ss) (Branch rs) (SRight sDr)
            (fun a b => PComp (PSelect i a Ps) (PBranch Qs b)) ⇒
       PNew ss[@i] rs[@i] (nthForall2 sDr i)
@@ -144,23 +145,6 @@ Notation "P ≡ Q" := (forall ST MT mf, Congruence _ _ (P ST MT mf) (Q ST MT mf)
 Notation "P ⇒ Q" := (forall ST MT mf, Reduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 Notation "P ⇒* Q" := (forall ST MT mf, RTReduction _ _ (P ST MT mf) (Q ST MT mf))(at level 80).
 
-Notation "'(new' s <- S , r <- R , SdR ) p" :=
-  (PNew _ _ S R SdR (fun s r => p))(at level 90).
-Notation "P <|> Q" := (PComp _ _ P Q)(at level 80).
-Notation "![ m ]; p" := (POutput _ _ m p)(at level 80).
-Notation "c ![ m ]; p" := (POutput _ _ m p c)(at level 79).
-Notation "?[ m ]; p" := (PInput _ _ (fun m => p))(at level 80).
-Notation "c ?[ m ]; p" := (PInput _ _ (fun m => p) c)(at level 79).
-Notation "◃ i ; p" := (fun c => PSelect _ _ i c p)(at level 80).
-Notation "c ◃ i ; p" := (PSelect _ _ i c p)(at level 79).
-Notation "▹{ x ; .. ; y }" :=
-  (PBranch _ _ (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..))
-  (at level 80).
-Notation "c ▹{ x ; .. ; y }" :=
-  (PBranch _ _ (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..) c)
-  (at level 79).
-Definition ε {ST : Type} {MT: Type -> Type} := PEnd ST MT.
-
 Arguments V [ST MT M].
 Arguments C [ST MT S].
 Arguments PNew [ST MT].
@@ -170,3 +154,20 @@ Arguments PSelect [ST MT n S].
 Arguments PBranch [ST MT n S].
 Arguments PComp [ST MT].
 Arguments PEnd [ST MT].
+
+Notation "'(new' s <- S , r <- R , SdR ) p" :=
+  (PNew S R SdR (fun s r => p))(at level 90).
+Notation "P <|> Q" := (PComp P Q)(at level 80).
+Notation "![ m ]; p" := (POutput m p)(at level 80).
+Notation "c ![ m ]; p" := (POutput m p c)(at level 79).
+Notation "?[ m ]; p" := (PInput (fun m => p))(at level 80).
+Notation "c ?[ m ]; p" := (PInput (fun m => p) c)(at level 79).
+Notation "◃ i ; p" := (fun c => PSelect i c p)(at level 80).
+Notation "c ◃ i ; p" := (PSelect i c p)(at level 79).
+Notation "▹{ x ; .. ; y }" :=
+  (PBranch (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..))
+  (at level 80).
+Notation "c ▹{ x ; .. ; y }" :=
+  (PBranch (Forall_cons _ x .. (Forall_cons _ y (Forall_nil _)) ..) c)
+  (at level 79).
+Definition ε {ST : Type} {MT: Type -> Type} := @PEnd ST MT.
