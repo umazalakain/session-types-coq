@@ -1,3 +1,4 @@
+Require Import Program.Equality.
 From Equations Require Import Equations.
 
 Require Import Types.
@@ -9,6 +10,14 @@ Ltac constructors :=
 .
 Hint Extern 1 (Duality _ _) => constructors.
 Hint Extern 1 (_ ≡ _) => constructors.
+
+Ltac not_duality :=
+  intro;
+  match goal with
+  | [ H : Duality _ _ |- False ] => repeat (dependent induction H)
+  end
+.
+Hint Extern 1 (~ (Duality _ _)) => not_duality.
 
 Ltac reduction_step :=
   intros; compute;

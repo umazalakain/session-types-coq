@@ -562,6 +562,11 @@ We then introduce the notion of duality of session types, modelling the definiti
 
 Finally, we prove that duality is commutative by providing a recursive program of the type \coqe|duality_comm {s r : SType} (d : Duality s r) : Duality r s|.
 
+\paragraph{Examples.}
+The examples bellow introduce several session types using the aforementioned notations. We then prove that \coqe{type1} and \coqe{type2} are dual, while \coqe{type1} and \coqe{type3} are not. These proofs execute specialised tactics which are found in a hint database by \coqe{auto}.
+
+\coqi[12-16]{../src/Examples.v}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Polymorphic messages}\label{polymorphism}
 
@@ -615,9 +620,31 @@ Selection (\textsc{T-Select}) requires a channel of type $Select \{l_i : S_i\}_{
 
 \coqi[48-52]{../src/Processes.v}
 
-To make things easier for the end user, we provide convenient notations for process constructors. Refer to \S \ref{examples} to see example processes written using this notations.
+To make things easier for the end user, we provide convenient notations for process constructors:
 
 \coqi[158-173]{../src/Processes.v}
+
+\paragraph{Examples.} Bellow is a simple process definition that creates two channel endpoints \coqe{o} and \coqe{i}, and composes in parallel two processes that exchange a boolean value back and forth, and then end. Note the use of tactics to prove the duality of the channels. The function $\upsilon$ is used to \emph{lift} the boolean value \coqe{true} into a message.
+
+\coqi[18-20]{../src/Examples.v}
+
+The next example showcases type inference for session types. We introduce to parallel processes in where the session types for the channels \coqe{i} and \coqe{o} are left undefined. We use the tactic \coqe{refine} to leave the proof of their duality undefined as well, as it is yet too early to know about the types of \coqe{i} and \coqe{o}. Once the process bodies force their type, we are able to provide a proof of their duality with \coqe{auto}.
+
+\coqi[22-27]{../src/Examples.v}
+
+When we print the defined process, we can see that Coq has automatically deduced the required session types for \coqe{i} and \coqe{o}:
+
+\begin{coq}
+example2 = 
+fun (ST : Type) (MT : Type -> Type) (υ : forall S : Type, S -> Message ST MT B[ S]) =>
+(newi <- ? B[ bool]; ! B[ bool]; ø, o <- ! B[ bool]; ? B[ bool]; ø,
+MLeft (MRight Ends)) i ?[ m ]; (![ m ]; ε) <|> o ![ υ bool true ]; (?[ _ ]; ε)
+     : PProcess
+\end{coq}
+
+Finally, the example bellow demonstrates channel mobility (a channel that is sent over another channel):
+
+\coqi[57-64]{../src/Examples.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Structural congruence}\label{structural-congruence}
@@ -645,7 +672,15 @@ Lastly, we define an inductive type family that encodes big step reduction (redu
 
 \coqi[128-133]{../src/Processes.v}
 
-\todo{reduction tactic}
+\paragraph{Examples.}
+
+The following example defines the process \coqe{Example3}, and proves that \coqe{Example2} introduced in \S \ref{processes} reduces in one step to \coqe{Example3}. The reduction proof uses a specialised tactic executed by \coqe{auto} by searching through a hint database. The tactic is in itself incomplete: reduction might make use of zero or more steps of structural congruence rewriting, resulting in a wide search space. If the automatic tactic fails, the user is still able to provide an explicit proof of reducibility.
+
+\coqi[32-36]{../src/Examples.v}
+
+The next example goes further and shows that \coqe{Example2} reduces to \coqe{Example5} (a final irreducible value) in zero or more steps:
+
+\coqi[44-47]{../src/Examples.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Linearity}\label{linearity}
@@ -661,41 +696,43 @@ The predicate \coqe{lin} is defined by mutual recursion with \coqe{single_x}. Bo
     \item \coqe{single_x (P : Process bool TMT) : Prop} recursively checks that if newly created channels are unmarked, a single marked channel is found. Once that channel is found, it uses \coqe{lin} to check that continuing down recursively finds no marked channels. Worth nothing is the case of parallel composition, where \coqe{single_x} checks that \coqe{(lin P /\ single_x Q) \/ (single_x P /\ lin Q)}, that is, the marked channel must be in either \coqe{P} or \coqe{Q}, but not in both.
 \end{itemize}
 
-\todo{linearity tactic}
+
+\paragraph{Examples.}
+
+The next two examples (of example processes defined in \S \ref{processes}) introduce a tactic that proves that the process uses channels linearly. This tactic is called by \coqe{auto} through its hint database.
+
+\coqi[77-78]{../src/Examples.v}
+
+As a counterexample, we introduce a process for which we prove that its use of channels is \emph{not} linear.
+
+\coqi[80-86]{../src/Examples.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Subject reduction}\label{subject-reduction}
 
-As shown in \S \ref{processes}, provided that channels are used linearly, types the process constructors are accurate enough to rule out ill-typed processes. Here we show that well-typedness is preserved through reduction by showing that linearity is preserved through reduction. The main theorems to prove are therefore the following:
+As shown in \S \ref{processes}, assuming that channels are used linearly, process constructors are accurate enough to rule out ill-typed processes by construction. Here, we show that well-typedness is preserved through reduction, i.e. that linearity is preserved through reduction: if $P$ reduces to $Q$ and $P$ is linear (well-typed), then $Q$ is linear (well-typed) as well:
 
 \coqi[80-80]{../src/SubjectReduction.v}
 
 \coqi[95-95]{../src/SubjectReduction.v}
 
-The proofs are by induction on processes. As linearity is defined on processes where channels are represented as booleans and message types are projected to the unit type (\S \ref{linearity}), proofs showing that linearity is carried through reduction need to specialise processes. To make the induction hypothesis stronger, we prove both that linearity is preserved, and that the presence of a marked channel is preserved.
+As linearity is defined on processes where channels are represented as booleans and message types are projected to the unit type (\S \ref{linearity}), proofs that show that linearity is carried through reduction need to specialise their processes. The proofs themselves are by induction on processes. To make the induction hypothesis stronger, proofs show that both linearity and the presence of a marked channel are preserved.
 
 \coqi[64-65]{../src/SubjectReduction.v}
 
-Reduction has two cases that need special attention: case selection (\textsc{RCase}) needs to show that if an entire set of branches is considered to be linear, then so is any specific branch in the set; structural congruence (\textsc{RStruct}) needs to show that congruence preserves linearity too. Again, we strengthen the induction hypotheses for these lemmas with assertions of single marked channel preservation.
+Reduction has two cases in need of special attention: case selection (\textsc{RCase}) has to show that if an entire set of branches is considered to be linear, then so is any specific branch in that set; structural congruence (\textsc{RStruct}) needs to show that linearity is preserved through congruence too. Again, we strengthen the induction hypotheses for these lemmas with assertions of single marked channel preservation.
 
 \coqi[34-35]{../src/SubjectReduction.v}
 
 \coqi[48-52]{../src/SubjectReduction.v}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Examples}\label{examples}
+\paragraph{Examples.}
+We can apply the proof of linearity preservation through reduction to specific processes. The example bellow proves that any process that \coqe{example1} reduces to in zero or more steps must make a linear use of channels.
 
-\todo{Provide better example code, the things we do do not use the theorems}
-\todo{Type inference}
-\todo{do not dedicate a section, move to subsections}
-% \coqi[1-100]{../src/Examples.v}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Results}\label{results}
+\coqi[51-55]{../src/Examples.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Alternative approaches and related work}\label{related-work}
-
 
 Unfortunately, the approach in point (i) makes it impossible for processes to use any logic that is external to the calculus and depends on the type of messages. An alternative approach for simulating linearity is by doing it \emph{a priori}, at construction time, by keeping track of the linearly available channels through a context by which processes are indexed.  This means that channel creation cannot be represented through function abstraction, that process composition needs to explicitly split the context, and that there must be a way of addressing a particular channel within a context --- strings with the Barendregt convention \cite{Barendregt1984}, De Bruijn indices \cite{deBruijn1972}, locally nameless De Bruijn indices, or a parametric HOAS \cite{Chlipala2008} --- since only channels need to be used linearly, message input can still be represented as function abstraction whenever the message does not contain a channel. On the bright side, this approach allows processes to use logic that external to the calculus and depends on the types of messages.
 
@@ -716,8 +753,9 @@ In type systems with no linear types the linearity of channels has to be simulat
 The \picalc{} has been an extensive subject of machine verification: \cite{Henry-Gerard1999} proofs subject reduction for it; \cite{Despeyroux2000} proofs subject reduction as well, but uses a higher order syntax; \cite{Affeldt2008} provides proofs of fairness and confluence; \cite{Honsell2001} formalises the bisimilarity proofs found in \cite{Walker1989}; \cite{Gay2001} provides a framework for formalisation on the \picalc{} with linear channels in Isabelle/HOL.
 
 In \cite{Xi2016} session types are formalised in ATS, providing type preservation and global progress proofs. \cite{Bock2016} uses Celf to represent session types in intuitionistic linear logic.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Conclusion}\label{conclusion}
+\chapter{Results and conclusion}\label{conclusion}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \bibliographystyle{alpha}
