@@ -641,6 +641,12 @@ The last three constructors are inductively defined, and serve to encode that re
 
 \coqi[115-126]{../src/Processes.v}
 
+Lastly, we define an inductive type family that encodes big step reduction (reduction in zero or more steps):
+
+\coqi[128-133]{../src/Processes.v}
+
+\todo{reduction tactic}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Linearity}\label{linearity}
 
@@ -655,20 +661,33 @@ The predicate \coqe{lin} is defined by mutual recursion with \coqe{single_x}. Bo
     \item \coqe{single_x (P : Process bool TMT) : Prop} recursively checks that if newly created channels are unmarked, a single marked channel is found. Once that channel is found, it uses \coqe{lin} to check that continuing down recursively finds no marked channels. Worth nothing is the case of parallel composition, where \coqe{single_x} checks that \coqe{(lin P /\ single_x Q) \/ (single_x P /\ lin Q)}, that is, the marked channel must be in either \coqe{P} or \coqe{Q}, but not in both.
 \end{itemize}
 
+\todo{linearity tactic}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Subject reduction}\label{subject-reduction}
 
-\todo{Provide better example code, the things we do do not use the theorems}
+As shown in \S \ref{processes}, provided that channels are used linearly, types the process constructors are accurate enough to rule out ill-typed processes. Here we show that well-typedness is preserved through reduction by showing that linearity is preserved through reduction. The main theorems to prove are therefore the following:
 
-Ensuring that linearity is preserved through reduction is therefore essential:
-\begin{theorem}
-    $lin(P) \Rightarrow P \rightarrow Q \Rightarrow lin(Q).$
-\end{theorem}
+\coqi[80-80]{../src/SubjectReduction.v}
+
+\coqi[95-95]{../src/SubjectReduction.v}
+
+The proofs are by induction on processes. As linearity is defined on processes where channels are represented as booleans and message types are projected to the unit type (\S \ref{linearity}), proofs showing that linearity is carried through reduction need to specialise processes. To make the induction hypothesis stronger, we prove both that linearity is preserved, and that the presence of a marked channel is preserved.
+
+\coqi[64-65]{../src/SubjectReduction.v}
+
+Reduction has two cases that need special attention: case selection (\textsc{RCase}) needs to show that if an entire set of branches is considered to be linear, then so is any specific branch in the set; structural congruence (\textsc{RStruct}) needs to show that congruence preserves linearity too. Again, we strengthen the induction hypotheses for these lemmas with assertions of single marked channel preservation.
+
+\coqi[34-35]{../src/SubjectReduction.v}
+
+\coqi[48-52]{../src/SubjectReduction.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Examples}\label{examples}
 
+\todo{Provide better example code, the things we do do not use the theorems}
 \todo{Type inference}
+\todo{do not dedicate a section, move to subsections}
 % \coqi[1-100]{../src/Examples.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
