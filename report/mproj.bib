@@ -1,4 +1,20 @@
 
+@article{Affeldt2008,
+  abstract = {Thanks to recent advances, modern proof assistants now enable verification of realistic sequential programs. However, regarding the concurrency paradigm, previous work essentially focused on formalization of abstract systems, such as pure concurrent calculi, which are too minimal to be realistic. In this paper, we propose a library that enables verification of realistic concurrent programs in the Coq proof assistant. Our approach is based on an extension of the {$\pi$}-calculus whose encoding enables such programs to be modeled conveniently. This encoding is coupled with a specification language akin to spatial logics, including in particular a notion of fairness, which is important to write satisfactory specifications for realistic concurrent programs. In order to facilitate formal proof, we propose a collection of lemmas that can be reused in the context of different verifications. Among these lemmas, the most effective for simplifying the proof task take advantage of confluence properties. In order to evaluate feasibility of verification of concurrent programs using this library, we perform verification for a non-trivial application.},
+  author = {Affeldt, Reynald and Kobayashi, Naoki},
+  doi = {10.1016/j.entcs.2007.11.010},
+  file = {/home/uma/references/papers/Affeldt_Kobayashi_2008_A Coq Library for Verification of Concurrent Programs.pdf;/home/uma/.zotero/data/storage/EL75KDDA/S1571066108000765.html},
+  issn = {1571-0661},
+  journal = {Electronic Notes in Theoretical Computer Science},
+  keywords = {concurrent programs,Coq,pi-calculus,Proof assistant},
+  month = feb,
+  pages = {17-32},
+  series = {Proceedings of the {{Fourth International Workshop}} on {{Logical Frameworks}} and {{Meta}}-{{Languages}} ({{LFM}} 2004)},
+  title = {A {{Coq Library}} for {{Verification}} of {{Concurrent Programs}}},
+  volume = {199},
+  year = {2008}
+}
+
 @book{Barendregt1984,
   address = {{Amsterdam ; New York : New York, N.Y}},
   author = {Barendregt, H. P.},
@@ -19,6 +35,22 @@
   journal = {Dale Miller's Festschrift},
   title = {Representing {{Session Types}}},
   year = {2016}
+}
+
+@article{Chargueraud2012,
+  abstract = {This paper provides an introduction to the locally nameless approach to the representation of syntax with variable binding, focusing in particular on the use of this technique in formal proofs. First, we explain the benefits of representing bound variables with de Bruijn indices while retaining names for free variables. Then, we explain how to describe and manipulate syntax in that form, and show how to define and reason about judgments on locally nameless terms.},
+  author = {Chargu{\'e}raud, Arthur},
+  doi = {10.1007/s10817-011-9225-2},
+  file = {/home/uma/.zotero/data/storage/6RT2UBX4/Charguéraud - 2012 - The Locally Nameless Representation.pdf},
+  issn = {0168-7433, 1573-0670},
+  journal = {Journal of Automated Reasoning},
+  language = {en},
+  month = oct,
+  number = {3},
+  pages = {363-408},
+  title = {The {{Locally Nameless Representation}}},
+  volume = {49},
+  year = {2012}
 }
 
 @inproceedings{Chlipala2008,
@@ -191,6 +223,22 @@ The resulting theory is a flexible and powerful language for programming and con
   publisher = {{Springer Berlin Heidelberg}},
   title = {A {{Linear Account}} of {{Session Types}} in the {{Pi Calculus}}},
   year = {2010}
+}
+
+@article{Goto2016,
+  abstract = {Session types describe and constrain the input/output behaviour of systems. Existing session typing systems have limited support for polymorphism. For example, existing systems cannot provide the most general type for a generic proxy process that forwards messages between two channels. We provide a polymorphic session typing system for the {$\pi$} calculus, and demonstrate the utility of session-type-level functions in combination with polymorphic session typing. The type system guarantees subject reduction and safety properties, but not deadlock freedom. We describe a formalization of the type system in Coq. The proofs of subject reduction and safety properties, as well as typing of example processes, have been mechanically verified.},
+  author = {Goto, Matthew and Jagadeesan, Radha and Jeffrey, Alan and Pitcher, Corin and Riely, James},
+  doi = {10.1017/S0960129514000231},
+  file = {/home/uma/.zotero/data/storage/E6TZEIHF/Goto et al. - 2016 - An extensible approach to session polymorphism.pdf},
+  issn = {0960-1295, 1469-8072},
+  journal = {Mathematical Structures in Computer Science},
+  language = {en},
+  month = mar,
+  number = {3},
+  pages = {465-509},
+  title = {An Extensible Approach to Session Polymorphism},
+  volume = {26},
+  year = {2016}
 }
 
 @book{Henry-Gerard1999,
