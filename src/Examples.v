@@ -57,7 +57,7 @@ Qed.
 Example channel_over_channel : PProcess :=
   [υ]>
     (new x <- ? C[! B[bool] ; ø] ; ø, y <- ! C[! B[bool] ; ø] ; ø, MLeft Ends)
-    (new w <- ? B[bool] ; ø,            z <- _, MLeft Ends)
+    (new w <- ? B[bool] ; ø, z <- _, MLeft Ends)
 
     (x?[c]; fun a => (ε a <|> c![υ _ true]; ε))
     <|>
