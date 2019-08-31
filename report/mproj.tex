@@ -99,8 +99,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-\todo{go over this again}
-    This project formalises the session-typed \picalc{} in Coq using a mix of continuation passing, parametric HOAS, dependent types and ad-hoc linearity checks. Each action a process takes requires a channel capable of that action. The head of that channel's type is then stripped off and its continuation is passed to the next action the process takes. Dependent types guarantee this continuation passing is correct by construction. The type of channels is parametrised over, so that users are unable to skip the proper mechanisms to create channels. The HOAS makes the syntax easy to use for both the end user and the designer: all variables are lifted to Coq, no typing contexts are required. The continuation passing always creates channels that must be used exactly once, but unfortunately Coq has no support for linearity, so this check needs to happen ad-hoc, by traversing processes. Ultimately, the claim is this: if the definition of a process typechecks in Coq, and the process uses channels linearly, then type safety and type preservation through reduction hold.
+    This project formalises the session-typed \picalc{} in the proof assistant Coq using a mix of continuation passing, parametric HOAS, dependent types and ad-hoc linearity checks. Each action a process takes requires a channel capable of that action. The action strips off the head of that channel's type and passes its continuation to the next action taken by the process. Dependent types guarantee this continuation passing is correct by construction. The type of channels is parametrised over, so that users are unable to skip the proper mechanisms to create channels. The HOAS makes the syntax easy to use for both the end user and the designer: all variable references are lifted to Coq, no typing contexts are required. Continuation passing always creates channels that must be used exactly once, but unfortunately Coq has no support for linearity, so this check needs to happen ad-hoc, by recursively traversing processes. Ultimately, the claim is this: if the definition of a process typechecks in Coq, and the process uses channels linearly, then well-typedness through reduction holds.
 \end{abstract}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -114,13 +113,13 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Acknowledgements}
 
-This thesis has been nearly four months in the making. Particularly during the early days, but all the way throughout, the guidance and care offered by my supervisor Ornela Dardha has played a crucial role in the steering of this project. Everything I learned about the \picalc{} and session types I learned through her.
+This thesis has been months in the making. All the way though, but particularly during the early days, the care and guidance that my supervisor Ornela Dardha has offered has played a crucial role in this project. Everything I learned about the \picalc{} and session types I learned through her.
 
-Although limited, my ability to do dependent typed programming  and think of propositions as types and of proofs as programs is entirely due to Conor McBride and the people at Strathclyde (especially Fredrik Nordvall and Bob Atkey). Others have inspired me as well, notably Wen Kokke and James Wood.
+Although limited, my ability to do dependently typed programming and to think of propositions as types and of proofs as programs is entirely due to Conor McBride and the amazing people at Strathclyde (especially Fredrik Nordvall and Bob Atkey). Indirectly, others have inspired me as well, especially Wen Kokke and James Wood.
 
-The nice people on the \#coq, \#agda and \#dependent channels on Freenode are to thank for answering many of my (often silly) questions. Special thanks to Paolo Giarrusso. I also want to thank the developers of the Equations package for Coq: it has avoided me many dependently typed headaches.
+The nice people from the \#coq, \#agda and \#dependent channels on Freenode are to be thanked for answering many of my (often silly) questions. Special thanks to Paolo Giarrusso. I also want to thank the developers of the Equations package for Coq: it has avoided me many dependently typed headaches.
 
-Lastly, and perhaps most importantly, I want to thank the people close to me: my girlfriends Mia and Tilde, my friends, and my family. They are the ones that have provided the care and affection that has kept me afloat.
+Lastly, and perhaps most importantly, I want to thank the people close to me: my girlfriends Mia and Tilde, my friends, and my family. They are the ones that have provided the care and affection that has kept me going.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \tableofcontents
@@ -144,7 +143,7 @@ The mechanised formalisation and verification of programming languages and calcu
 
 We choose Coq \cite{Coquand1990, CoqDeveloperCommunity} to machine-verify the session-typed \picalc{}, mainly due to its widespread use as a proof assistant (refer to \S \ref{coq} for an overview). A first challenge with Coq is that it offers \emph{no} support for \emph{linearity}, which is at the very heart of session types (as communication occurs, a session type must transition through each of its stages exactly once). As a result, extra work is required to simulate the linearity of the terms in the object language.
 
-We use a parametric higher order abstract syntax \cite{Chlipala2008} (\S \ref{polymorphism}) to lift bindings (of both channels and messages) in the object language into bindings in Coq. As a result, the object language requires \emph{no typing contexts} and \emph{no substitution lemmas}. Linearity is simulated through an inductive predicate on processes (\S \ref{linearity}). Dependent types ensure that processes (\S \ref{processes}) are correct by construction up to linearity: processes satisfying the linearity predicate are guaranteed to use session-typed channels according to their specification (\S \ref{subject-reduction}).
+We use a parametric higher order abstract syntax \cite{Chlipala2008} (\S \ref{polymorphism}) to lift bindings (of both channels and messages) in the object language into bindings in Coq. As a result, the object language requires \emph{no typing contexts} and \emph{no substitution lemmas}. Linearity is simulated through an recursive predicate on processes (\S \ref{linearity}). Dependent types ensure that processes (\S \ref{processes}) are correct by construction up to linearity: processes satisfying the linearity predicate are guaranteed to use session-typed channels according to their specification (\S \ref{subject-reduction}).
 
 We provide basic background on the \picalc{}, session types, linearly typed \picalc{}, continuation passing, and Coq in \S \ref{background}. We then introduce our design in \S \ref{design} and introduce alternative approaches in \S \ref{related-work}. Closing, \S \ref{conclusion} suggests future work of interest, and offers conclusions on what this project has achieved.
 
@@ -394,10 +393,14 @@ As a result of this setup, session types guarantee three properties:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Linearly typed \picalc{}}\label{linear-picalc}
 
-Our design is based on \emph{continuation passing}, where channels are \textbf{used exactly once}: channels get destroyed and created with every action taken by a process. This approach has its origin in the encoding of session types into the polarised linear \picalc{} \cite{Kobayashi1999, Dardha2012, Dardha2017}: session-typed channels are transformed into single-use polarised channels, each containing the type of data being transmitted and the encoding of the channel's continuation. For instance, the session type $\Send{A} \Recv{B} \End$ is encoded as $\ell_o [A,\ell_i [B,\ell_\emptyset []]]$ where $\ell_i [A, Cont]$ is a single-use channel signifying input $A$, then continue as $Cont$ --- and similarly for output. When a process uses a channel with such a type to communicate, that channel gets destroyed, the \emph{head} of the channel's type is consumed, and a new channel with the \emph{tail} of the type ($\ell_i [B, \ell_\emptyset []]$) is created.
+\todo{}
+
+ each containing the type of data being transmitted and the encoding of the channel's continuation. For instance, the session type $\Send{A} \Recv{B} \End$ is encoded as $\ell_o [A,\ell_i [B,\ell_\emptyset []]]$ where $\ell_i [A, Cont]$ is a single-use channel signifying input $A$, then continue as $Cont$ --- and similarly for output. When a process uses a channel with such a type to communicate, that channel gets destroyed, the \emph{head} of the channel's type is consumed, and a new channel with the \emph{tail} of the type ($\ell_i [B, \ell_\emptyset []]$) is created.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Continuation passing}\label{continuation-passing}
+\section{Encoding}\label{continuation-passing}
+
+\todo{}
 
 Our design is based on \emph{continuation passing}, where channels are \textbf{used exactly once}: channels get destroyed and created with every action taken by a process. This approach has its origin in the encoding of session types into the polarised linear \picalc{} \cite{Kobayashi1999, Dardha2012, Dardha2017}: session-typed channels are transformed into single-use polarised channels, each containing the type of data being transmitted and the encoding of the channel's continuation. For instance, the session type $\Send{A} \Recv{B} \End$ is encoded as $\ell_o [A,\ell_i [B,\ell_\emptyset []]]$ where $\ell_i [A, Cont]$ is a single-use channel signifying input $A$, then continue as $Cont$ --- and similarly for output. When a process uses a channel with such a type to communicate, that channel gets destroyed, the \emph{head} of the channel's type is consumed, and a new channel with the \emph{tail} of the type ($\ell_i [B, \ell_\emptyset []]$) is created.
 
@@ -753,7 +756,7 @@ We can apply the proof of linearity preservation through reduction to specific p
 \coqi[51-55]{../src/Examples.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Related work}\label{related-work}
+\chapter{Related Work}\label{related-work}
 
 The \picalc{} has been an extensive subject of machine verification: \cite{Henry-Gerard1999} proves subject reduction; \cite{Despeyroux2000} proves subject reduction as well, but uses a higher order syntax; \cite{Affeldt2008} provides proofs of fairness and confluence; \cite{Honsell2001} formalises the bisimilarity proofs found in \cite{Walker1989}.
 
@@ -766,11 +769,11 @@ Once linearity is simulated, session types can be encoded into a \picalc{} with 
 On the other hand, in type systems with linear types linearity constraints can be encoded into the host language. In \cite{Xi2016} session types are formalised in ATS, providing type preservation and global progress proofs. \cite{Bock2016} uses Celf to represent session types in intuitionistic linear logic.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Conclusion}\label{conclusion}
+\chapter{Conclusion and Future Work}\label{conclusion}
 
-we have encoded the session-typed \picalc{}
-successfully proven subject reduction for it
+We have encoded a subset of the session-typed \picalc{} into the proof assistant Coq. We have modelled continuation passing through the use of dependently typed channels. We have lifted variable references in the object language into variable references in Coq. We have simulated linearity (which Coq lacks) in the use of channels through a recursive predicate on processes. We have proven that the operational semantics respects the well-typedness of processes.
 
+\todo{}
 future work:
 replication
 separate linear picalc (locally nameless)
