@@ -24,6 +24,9 @@
 % Allows to place figures HERE!
 \usepackage{float}
 
+% Updown ampersand
+\usepackage{cmll}
+
 % Enums
 \usepackage[inline]{enumitem}
 \setlist{nolistsep}
@@ -578,7 +581,7 @@ Coq does not directly admit misfix notation like Agda does, and so we need to in
 
 \coqi[16-21]{../src/Types.v}
 
-We then introduce the notion of duality of session types, modelling the definition in Figure \ref{session-types-duality} through an inductive proposition. The constructor suffixes \coqe{Right} and \coqe{Left} signify the direction of information flow. For branching and selection, we require both option vectors to be of the same length, and for every ith selection option and every ith branching option to be dual --- \coqe{Forall2 Duality xs ys} encodes evidence that that is the case. 
+We then introduce the notion of duality of session types, modelling the definition in Figure \ref{session-types-duality} through an inductive proposition. The constructor suffixes \coqe{Right} and \coqe{Left} signify the direction of information flow. For branching and selection, we require both option vectors to be of the same length, and for every ith selection option and every ith branching option to be dual --- \coqe{Forall2 Duality xs ys} encodes evidence that this is the case. 
 
 \coqi[23-31]{../src/Types.v}
 
@@ -771,13 +774,51 @@ On the other hand, in type systems with linear types linearity constraints can b
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Conclusion and Future Work}\label{conclusion}
 
-We have encoded a subset of the session-typed \picalc{} into the proof assistant Coq. We have modelled continuation passing through the use of dependently typed channels. We have lifted variable references in the object language into variable references in Coq. We have simulated linearity (which Coq lacks) in the use of channels through a recursive predicate on processes. We have proven that the operational semantics respects the well-typedness of processes.
+We have encoded a subset of the session-typed \picalc{} into the proof assistant Coq. We have used dependently typed channels to model continuation passing. We have used polymorphism to prevent the user from forging channels. We have lifted variable references in the object language into variable references in Coq. We have simulated linearity (which Coq lacks) in the use of channels through a recursive predicate on processes. We have proven that the operational semantics respects such linearity predicate, and therefore the well-typedness of processes.
 
-\todo{}
-future work:
-replication
-separate linear picalc (locally nameless)
-correct by construction
+I intend to continue working on the machine verification of process calculi during my oncoming PhD. These are some of the areas I plan to work on:
+
+\paragraph{Explore the foundations of session types.} \hfill
+
+The theory of session types can be supported through embeddings into simpler calculi, or through correspondences with logics.
+
+\begin{enumerate}[label=(\roman*), itemsep=1em]
+    \item
+        \emph{Encoding session types into more primitive types.}
+
+        Describing session types in terms of a simpler calculi has several benefits: it is easier to make adaptations to the typing rules of session types without incurring into unnecessary work duplication; and it relegates the simulation of linearity far from session type representation and to the \picalc, allowing languages with linear type systems to replace the linear \picalc{} while keeping the encoding of session types unaltered.              
+
+        So, the next step is to formalise the linear \picalc{}, encode session types in it, and verify the properties of the encoding. This work would allow for the benefits of the encoding to be transferred into the mechanically verified session-typed \picalc{} and will form the basis for adding further extensions to the types.
+
+    \item
+        \emph{Session types and linear logic.}
+
+        Session types gave rise to a line of research on Curry-Howard correspondences \cite{Curry1980} between concurrency and linear logic.
+
+        A correspondence between session types and \emph{intuitionistic} linear logic is constructed in \cite{Caires2010}. Based on sequent calculus, output is represented by $\otimes$ on the right and $\multimap$ on the left, while input is represented by $\multimap$ on the right and $\otimes$ on the left. This means that certain combinations of input and output constructs cannot be connected through cut elimination.
+
+        In \cite{Wadler2014}, Wadler builds a correspondence between session types and \emph{classical} linear logic. Without a sequent calculus with left and right rules, Wadler uses $\otimes$ for output and $\parr$ for input, and restricts any two communicating processes to share a \emph{single} channel to communicate over, thus avoiding races and deadlocks.  Through Wadler's lens, cut elimination is isomorphic to process reduction. 
+
+        In \cite{Dardha2018} the authors present a more expressive correspondence between session types and classical linear logic, allowing processes to share more than one channel to communicate over, while still guaranteeing deadlock-freedom by construction.
+
+        As part of my PhD, I intend to formalise these correspondences and machine-check their properties.
+\end{enumerate}
+
+\paragraph{Formalise the more advanced extensions to session types.} \hfill
+
+Considerable research has been conducted in extending session types with more advanced features, which lead to more flexible concurrent programming.
+
+Adding subtyping to session types enables clients to only know about a subset of the services offered by a server \cite{Gay2005}. In combination with subtyping, polymorphism results in bounded polymorphism, where session types can be specialised to a type implementing a specific supertype \cite{Gay2008}.
+
+Asynchronous communication has been explored through the permutation of actions \cite{Mostrous2009}. Deadlock freedom \cite{Kobayashi2002,Kobayashi2006} and progress \cite{Dezani-Ciancaglini2008} have also been added into the type system, leading to necessarily terminating processes. Typing rules for the higher-order \picalc{} ---  capturing \emph{process mobility}, where processes are sent over channels --- are given in \cite{Mostrous2007}.
+
+In \cite{Dardha2017}, the authors show that the encoding of session types into linear \picalc{} types is robust by extending it to accommodate subtyping, polymorphism and higher-order processes, hence the properties of the linear \picalc{} can be used to prove the properties of session types.
+
+During my PhD, I will use the formalisation of session types into the linear \picalc{} to verify the properties of the aforementioned extensions to session types.
+
+\paragraph{Translate representation into other proof assistants.} \hfill
+
+Coq is one of the current most popular proof assistants, and as such I consider encoding session types in Coq a priority.  However, translating this encoding into other proof assistants widens the reach of this project and provides opportunities for further learning and experimentation.  Possible candidate proof assistants that have linearity built into their type systems are ATS, Idris2, Granule, Ling and Celf. Encoding session types into a linear \picalc{} will help to make this translation easier.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \small

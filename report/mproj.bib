@@ -37,6 +37,22 @@
   year = {2016}
 }
 
+@incollection{Caires2010,
+  address = {{Berlin, Heidelberg}},
+  author = {Caires, Lu{\'i}s and Pfenning, Frank},
+  booktitle = {{{CONCUR}} 2010 - {{Concurrency Theory}}},
+  doi = {10.1007/978-3-642-15375-4_16},
+  editor = {Hutchison, David and Kanade, Takeo and Kittler, Josef and Kleinberg, Jon M. and Mattern, Friedemann and Mitchell, John C. and Naor, Moni and Nierstrasz, Oscar and Pandu Rangan, C. and Steffen, Bernhard and Sudan, Madhu and Terzopoulos, Demetri and Tygar, Doug and Vardi, Moshe Y. and Weikum, Gerhard and Gastin, Paul and Laroussinie, Fran{\c c}ois},
+  file = {/home/uma/references/papers/Caires_Pfenning_2010_Session Types as Intuitionistic Linear Propositions.pdf},
+  isbn = {978-3-642-15374-7 978-3-642-15375-4},
+  language = {en},
+  pages = {222-236},
+  publisher = {{Springer Berlin Heidelberg}},
+  title = {Session {{Types}} as {{Intuitionistic Linear Propositions}}},
+  volume = {6269},
+  year = {2010}
+}
+
 @article{Chargueraud2012,
   abstract = {This paper provides an introduction to the locally nameless approach to the representation of syntax with variable binding, focusing in particular on the use of this technique in formal proofs. First, we explain the benefits of representing bound variables with de Bruijn indices while retaining names for free variables. Then, we explain how to describe and manipulate syntax in that form, and show how to define and reason about judgments on locally nameless terms.},
   author = {Chargu{\'e}raud, Arthur},
@@ -100,6 +116,18 @@
   year = {1990}
 }
 
+@book{Curry1980,
+  address = {{London ; New York}},
+  editor = {Curry, Haskell B. and Hindley, J. Roger and Seldin, J. P.},
+  isbn = {978-0-12-349050-6},
+  keywords = {Curry; Haskell B,Haskell Brooks,Logic; Symbolic and mathematical},
+  lccn = {QA9.2 .T6},
+  publisher = {{Academic Press}},
+  shorttitle = {To {{H}}.{{B}}. {{Curry}}},
+  title = {To {{H}}.{{B}}. {{Curry}}: Essays on Combinatory Logic, Lambda Calculus, and Formalism},
+  year = {1980}
+}
+
 @inproceedings{Dardha2012,
   author = {Dardha, Ornela and Giachino, Elena and Sangiorgi, Davide},
   booktitle = {Principles and {{Practice}} of {{Declarative Programming}}, {{PPDP}}'12, {{Leuven}}, {{Belgium}} - {{September}} 19 - 21, 2012},
@@ -139,6 +167,23 @@
   year = {2017}
 }
 
+@incollection{Dardha2018,
+  abstract = {The {$\pi$}-calculus, viewed as a core concurrent programming language, has been used as the target of much research on type systems for concurrency. In this paper we propose a new type system for deadlockfree session-typed {$\pi$}-calculus processes, by integrating two separate lines of work. The first is the propositions-as-types approach by Caires and Pfenning, which provides a linear logic foundation for session types and guarantees deadlock-freedom by forbidding cyclic process connections. The second is Kobayashi's approach in which types are annotated with priorities so that the type system can check whether or not processes contain genuine cyclic dependencies between communication operations. We combine these two techniques for the first time, and define a new and more expressive variant of classical linear logic with a proof assignment that gives a session type system with Kobayashi-style priorities. This can be seen in three ways: (i) as a new linear logic in which cyclic structures can be derived and a Cycle-elimination theorem generalises Cut-elimination; (ii) as a logically-based session type system, which is more expressive than Caires and Pfenning's; (iii) as a logical foundation for Kobayashi's system, bringing it into the sphere of the propositionsas-types paradigm.},
+  address = {{Cham}},
+  author = {Dardha, Ornela and Gay, Simon J.},
+  booktitle = {Foundations of {{Software Science}} and {{Computation Structures}}},
+  doi = {10.1007/978-3-319-89366-2_5},
+  editor = {Baier, Christel and Dal Lago, Ugo},
+  file = {/home/uma/.zotero/data/storage/JSHNKASQ/Dardha and Gay - 2018 - A New Linear Logic for Deadlock-Free Session-Typed.pdf},
+  isbn = {978-3-319-89365-5 978-3-319-89366-2},
+  language = {en},
+  pages = {91-109},
+  publisher = {{Springer International Publishing}},
+  title = {A {{New Linear Logic}} for {{Deadlock}}-{{Free Session}}-{{Typed Processes}}},
+  volume = {10803},
+  year = {2018}
+}
+
 @inproceedings{deBruijn1972,
   author = {{de Bruijn}, Nicolaas Govert},
   booktitle = {Indagationes {{Mathematicae}} ({{Proceedings}})},
@@ -155,6 +200,17 @@
   file = {/home/uma/references/papers/Despeyroux_2000_A Higher-Order Specification of the π-Calculus.pdf;/home/uma/.zotero/data/storage/P2ZN3T47/summary.html},
   title = {A {{Higher}}-{{Order Specification}} of the {$\pi$}-{{Calculus}}},
   year = {2000}
+}
+
+@inproceedings{Dezani-Ciancaglini2008,
+  author = {{Dezani-Ciancaglini}, Mariangiola and {de'Liguoro}, Ugo and Yoshida, Nobuko},
+  booktitle = {Trustworthy {{Global Computing}}},
+  editor = {Barthe, Gilles and Fournet, C{\'e}dric},
+  isbn = {978-3-540-78663-4},
+  pages = {257-275},
+  publisher = {{Springer Berlin Heidelberg}},
+  title = {On {{Progress}} for {{Structured Communications}}},
+  year = {2008}
 }
 
 @inproceedings{Dezani-ciancaglini2010,
@@ -243,6 +299,32 @@ The resulting theory is a flexible and powerful language for programming and con
   series = {Lecture {{Notes}} in {{Computer Science}}},
   title = {A {{Framework}} for the {{Formalisation}} of {{Pi Calculus Type Systems}} in {{Isabelle}}/{{HOL}}},
   year = {2001}
+}
+
+@article{Gay2005,
+  abstract = {Extending the pi calculus with the session types proposed by Honda et al. allows high-level specifications of structured patterns of communication, such as client-server protocols, to be expressed as types and verified by static typechecking. We define a notion of subtyping for session types, which allows protocol specifications to be extended in order to describe richer behaviour; for example, an implemented server can be refined without invalidating type-correctness of an overall system. We formalize the syntax, operational semantics and typing rules of an extended pi calculus, prove that typability guarantees absence of run-time communication errors, and show that the typing rules can be transformed into a practical typechecking algorithm.},
+  author = {Gay, Simon and Hole, Malcolm},
+  doi = {10.1007/s00236-005-0177-z},
+  issn = {1432-0525},
+  journal = {Acta Informatica},
+  month = nov,
+  number = {2},
+  pages = {191-225},
+  title = {Subtyping for {{Session Types}} in the {{Pi Calculus}}},
+  volume = {42},
+  year = {2005}
+}
+
+@article{Gay2008,
+  author = {Gay, Simon},
+  doi = {10.1017/S0960129508006944},
+  file = {/home/uma/references/papers/Gay_2008_Bounded Polymorphism in Session Types.pdf},
+  journal = {Mathematical Structures in Computer Science},
+  month = oct,
+  pages = {895-930},
+  title = {Bounded {{Polymorphism}} in {{Session Types}}},
+  volume = {18},
+  year = {2008}
 }
 
 @inproceedings{Giunti2010,
@@ -350,6 +432,17 @@ The resulting theory is a flexible and powerful language for programming and con
   year = {1999}
 }
 
+@article{Kobayashi2002,
+  author = {Kobayashi, Naoki},
+  doi = {10.1006/inco.2002.3171},
+  journal = {Information and Computation},
+  month = sep,
+  pages = {122-159},
+  title = {A {{Type System}} for {{Lock}}-{{Free Processes}}},
+  volume = {177},
+  year = {2002}
+}
+
 @incollection{Kobayashi2003,
   address = {{Berlin, Heidelberg}},
   author = {Kobayashi, Naoki},
@@ -365,6 +458,17 @@ The resulting theory is a flexible and powerful language for programming and con
   title = {Type {{Systems}} for {{Concurrent Programs}}},
   volume = {2757},
   year = {2003}
+}
+
+@inproceedings{Kobayashi2006,
+  abstract = {We extend a previous type system for the {$\pi$}-calculus that guarantees deadlock-freedom. The previous type systems for deadlock- freedom either lacked a reasonable type inference algorithm or were not strong enough to ensure deadlock-freedom of processes using recursion. Although the extension is fairly simple, the new type system admits type inference and is much more expressive than the previous type systems that admit type inference. In fact, we show that the simply-typed {$\lambda$}- calculus with recursion can be encoded into the deadlock-free fragment of our typed {$\pi$}-calculus. To enable analysis of realistic programs, we also present an extension of the type system to handle recursive data structures like lists. Both extensions have already been incorporated into the recent release of TyPiCal, a type-based analyzer for the {$\pi$}-calculus.},
+  author = {Kobayashi, Naoki},
+  doi = {10.1007/11817949_16},
+  file = {/home/uma/.zotero/data/storage/BDGUANKY/Kobayashi - 2006 - A New Type System for Deadlock-Free Processes.pdf},
+  month = jan,
+  pages = {233-247},
+  title = {A {{New Type System}} for {{Deadlock}}-{{Free Processes}}},
+  year = {2006}
 }
 
 @techreport{Kobayashi2007,
@@ -403,6 +507,27 @@ The resulting theory is a flexible and powerful language for programming and con
   publisher = {{MIT Press}},
   title = {Operational and Algebraic Semantics of Concurrent Processes},
   year = {1991}
+}
+
+@inproceedings{Mostrous2007,
+  abstract = {Abstract. This paper proposes two typing systems for session interactions in higherorder mobile processes. Session types for the HO{$\pi$}-calculus capture high-level structures of communication protocols and code mobility as type abstraction, and can be used to statically check the safe and consistent process composition in communication-centric distributed software. Integration of arbitrary higher-order code mobility and sessions leads to technical difficulties in type soundness, because linear usage of session channels and completion of sessions are required in executed code. By using techniques from the linear {$\lambda$}-calculus, we develop a coherent and tractable session typing system for the HO{$\pi$}-calculus. We also present an alternative system based on fine-grained process types. The formal comparison between the two systems offers insight on the interplay between higher-order code mobility and session types. 1},
+  author = {Mostrous, Dimitris and Yoshida, Nobuko},
+  booktitle = {In {{TLCA}}'07, {{LNCS}}},
+  file = {/home/uma/references/papers/Mostrous_Yoshida_2007_Two session typing systems for higher-order mobile processes.pdf;/home/uma/.zotero/data/storage/6M5A559Q/summary.html},
+  pages = {321--335},
+  publisher = {{Springer-Verlag}},
+  title = {Two Session Typing Systems for Higher-Order Mobile Processes},
+  year = {2007}
+}
+
+@inproceedings{Mostrous2009,
+  author = {Mostrous, Dimitris and Yoshida, Nobuko and Honda, Kohei},
+  doi = {10.1007/978-3-642-00590-9_23},
+  file = {/home/uma/references/papers/Mostrous et al_2009_Global Principal Typing in Partially Commutative Asynchronous Sessions.pdf},
+  month = aug,
+  pages = {316-332},
+  title = {Global {{Principal Typing}} in {{Partially Commutative Asynchronous Sessions}}},
+  year = {2009}
 }
 
 @article{Paykin2017,
@@ -497,6 +622,18 @@ The book is written at the graduate level, assuming no prior acquaintance with t
   author = {Wadler, Philip},
   title = {Theorems for {{Free}}!},
   year = {1989}
+}
+
+@article{Wadler2014,
+  author = {Wadler, Philip},
+  doi = {10.1017/S095679681400001X},
+  file = {/home/uma/references/papers/Wadler_2014_Propositions as Sessions.pdf;/home/uma/references/papers/Wadler_2014_Propositions as Sessions2.pdf},
+  journal = {Journal of Functional Programming},
+  number = {2-3},
+  pages = {384-418},
+  title = {Propositions as {{Sessions}}},
+  volume = {24},
+  year = {2014}
 }
 
 @book{Walker1989,
