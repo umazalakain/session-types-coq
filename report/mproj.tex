@@ -522,35 +522,31 @@ The next example encodes proofs of a natural number $n$ being less than or equal
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Design}\label{design}
 
-This chapter describes how our encoding of the session-typed \picalc{} into Coq works. This encoding is limited to session-typed channels, specifically channels with finite (non-replicating, non-recursive) session types. The encoding has no intermediary models --- for instance, the polarised linear \picalc{}. Our design is based on \emph{continuation passing} (\S \ref{continuation passing}), where channels are \textbf{used exactly once}: channels get destroyed and created with every action taken by a process.  The main characteristic of our design is the use of a higher order abstract syntax to lift the bindings of channels and messages in the object language into bindings in the host language. This approach offers several advantages, but also creates several challenges that must be addressed:
+This chapter describes how our encoding of the session-typed \picalc{} into Coq works. This encoding is limited to session-typed channels, specifically channels with finite (non-replicating, non-recursive) session types. The encoding has no intermediary models --- for instance, the polarised linear \picalc{}. Our design is based on \emph{continuation passing} (\S \ref{continuation-passing}), where channels are \textbf{used exactly once}: channels get destroyed and created with every action taken by a process.  The main characteristic of our design is the use of a higher order abstract syntax to lift the bindings of channels and messages in the object language into bindings in the host language. As a result of this approach, we limit our encoding to closed processes --- processes where all variables are bound. This, however, in no way limits expressivity: after all, free variables are only meaningful if they are bound at some point.
 
-\todo{We do not do open processes}
+Our design offers several advantages, but comes with several challenges that need to be solved:
 
 \paragraph{Advantages}
 \begin{enumerate}
     \item \emph{Users can refer naturally to both messages and channels}
 
-    Our approach lifts all variable references into Coq. The example session-typed \picalc{} process bellow has two branches: one that outputs \coqe{true} and receives some \coqe{m}; the other that receives some \coqe{m} and outputs that same \coqe{m}. Note that \coqe{m} gets bound as a variable in Coq. Alternative approaches that encode variable references in the object language itself need to use de Bruijn indices \cite{deBruijn1972} or similar techniques, resulting in a processing overhead for users.
+        Our approach lifts all variable references into Coq. The example session-typed \picalc{} process bellow has two branches: one that outputs \coqe{true} and receives some \coqe{m}; the other that receives some \coqe{m} and outputs that same \coqe{m}. Note that \coqe{m} gets bound as a variable in Coq. Alternative approaches that encode variable references in the object language itself need to use de Bruijn indices \cite{deBruijn1972} or similar techniques, resulting in a processing overhead for users.
         
     \begin{coq}
-    Example example2 : PProcess := ([v]>
+    Example example2 : PProcess := [v]>
         (new o <- ! B[bool] ; ? B[bool] ; ø,
              i <- ? B[bool] ; ! B[bool] ; ø,
              ltac:(auto))
-        (o![v _ true]; ?[m]; $\epsilon$) <|> i?[m]; ![m]; $\epsilon$).
+        (o![v _ true]; ?[m]; $\epsilon$) <|> i?[m]; ![m]; $\epsilon$.
     \end{coq}
 
     \item \emph{No typing contexts are required}
 
-    Using dependent types, our approach carries the types of both channels and messages in the host language. Common alternative approaches index object terms with an explicit context of channel types.
-    \todo{more}
+        Using dependent types, our approach keeps track of the types of both channels and messages in the host language. A linearity predicate ensures that each channel is used exactly once. Common alternative approaches index object terms with an explicit context of channel types, and handle linearity at construction time, resulting in complex typing rules.
 
-    \item \emph{Substitution lemmas come for free}
-        there is no need for capture avoiding machinery
-        \cite{Felty2010}
+    \item \emph{No need for capture avoiding machinery}
 
-        \todo{Explanation}
-
+        Techniques for representing variable references need to avoid the capture of free variables. This involves some extra machinery: it is minimal in the case of de Bruijn indices \cite{deBruijn1972} or locally nameless representations, considerable in the case of names with the Barendregt convention \cite{Barendregt1984}. This extra machinery in turn requires one to prove substitution lemmas. As a result of lifting references into the host language, in our case, no such need exists.
 \end{enumerate}
 
 \paragraph{Challenges}
@@ -667,7 +663,7 @@ MLeft (MRight Ends)) i ?[ m ]; (![ m ]; ε) <|> o ![ υ bool true ]; (?[ _ ]; ε
      : PProcess
 \end{coq}
 
-Finally, the example bellow demonstrates channel mobility (a channel that is sent over another channel):
+Finally, the example bellow demonstrates channel mobility (sending a channel over another channel):
 
 \coqi[57-64]{../src/Examples.v}
 
@@ -821,7 +817,6 @@ During my PhD, I will use the formalisation of session types into the linear \pi
 Coq is one of the current most popular proof assistants, and as such I consider encoding session types in Coq a priority.  However, translating this encoding into other proof assistants widens the reach of this project and provides opportunities for further learning and experimentation.  Possible candidate proof assistants that have linearity built into their type systems are ATS, Idris2, Granule, Ling and Celf. Encoding session types into a linear \picalc{} will help to make this translation easier.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\small
 \bibliographystyle{alpha}
 \bibliography{mproj}
 \end{document}
