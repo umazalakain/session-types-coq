@@ -27,26 +27,26 @@ Example example2 : PProcess.
 Defined.
 Print example2.
 
-Example congruent_example1 : example1 ≡ example2. auto. Qed.
+Example congruent_example1 : example1 ≡* example2. eauto 0 10. Qed.
 
 Example example3 : PProcess :=
   [υ]> (new o <- ? B[bool] ; ø, i <- ! B[bool] ; ø, ltac:(auto))
     (o?[m]; ε) <|> i![υ _ true]; ε.
 
-Example reduction_example1 : example2 ⇒ example3. auto. Qed.
+Example reduction_example1 : example2 ⇒ example3. eauto 0 10. Qed.
 
 Example example4 : PProcess :=
   [υ]> (new i <- ! B[bool] ; ø, o <- ? B[bool] ; ø, ltac:(auto))
     (i![υ _ true]; ε <|> o?[m]; ε).
 
-Example congruent_example2 : example3 ≡ example4. auto. Qed.
+Example congruent_example2 : example3 ≡* example4. eauto 0 10. Qed.
 
 Example example5 : PProcess :=
   [υ]> (new i <- ø, o <- ø, Ends) (ε i <|> ε o).
 
-Example reduction_example2 : example4 ⇒ example5. auto. Qed.
+Example reduction_example2 : example4 ⇒ example5. eauto 0 10. Qed.
 
-Example big_step_reduction : example1 ⇒* example5. auto. Qed.
+Example big_step_reduction : example1 ⇒* example5. eauto 0 10. Qed.
 
 Example big_step_subject_reduction_example1 {P : PProcess}
   : example1 ⇒* P -> Linear example1 -> Linear P.
@@ -62,17 +62,6 @@ Example channel_over_channel : PProcess :=
     (x?[c]; fun a => (ε a <|> c![υ _ true]; ε))
     <|>
     (y![z]; fun a => (ε a <|> w?[_]; ε)).
-
-Example channel_over_channel1 : PProcess :=
-  [υ]>
-    (new i' <- ? B[bool] ; ø, o' <- ! B[bool] ; ø, MLeft Ends)
-    (new i <- ? C[ ! B[bool] ; ø ] ; ø, o <- ! C[ ! B[bool] ; ø ] ; ø, MLeft Ends)
-
-    (i?[c]; fun a => c![υ _ true]; ε <|> ε a)
-    <|>
-    (o![o']; fun a => i'?[_]; ε <|> ε a).
-
-Example congruent_example3 : channel_over_channel ≡ channel_over_channel1. auto. Qed.
 
 Example linear_example1 : Linear example1. auto. Qed.
 Example linear_channel_over_channel : Linear channel_over_channel. auto. Qed.
@@ -91,21 +80,3 @@ Example branch_and_select : PProcess :=
            o <- ⊕{ (? B[bool] ; ø) :: (! B[bool] ; ø) :: [] },
            ltac:(auto))
           i▹{(![υ _ true]; ε) ; (?[m]; ε)} <|> o◃Fin.F1; ?[_]; ε).
-
-Example foo : PProcess :=
-  [υ]>
-  (new a <- ø, b <- ø, Ends )
-  (new c <- ø, d <- ø, Ends )
-  ε a <|> (ε b <|> ε c <|> ε d).
-
-Example bar : PProcess :=
-  [υ]>
-  (new a <- ø, b <- ø, Ends )
-    ε a <|> ((new c <- ø, d <- ø, Ends ) (ε b <|> ε c <|> ε d)).
-
-	    (*
-Example fuz : bar ≡ foo.
-Proof.
-  intros.
-  apply CNewCongruent.
-  *)

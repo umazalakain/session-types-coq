@@ -10,20 +10,8 @@ Require Import Linearity.
 
 Ltac lin_IH :=
   match goal with
-  | [ H : Message bool TMT C[_] -> Message bool TMT C[_] ->
-          Message bool TMT C[_] -> Message bool TMT C[_] ->
-          _ |- _ ] =>
-    destruct
-      (H o o o o),
-      (H x o o o),
-      (H o x o o),
-      (H o o x o),
-      (H o o o x)
   | [ H : Message bool TMT C[_] -> Message bool TMT C[_] -> _ |- _ ] =>
-    destruct
-      (H o o),
-      (H x o),
-      (H o x)
+    destruct (H o o), (H x o), (H o x)
   | [ H : Message bool TMT B[_] -> Message bool TMT C[_] -> _ |- _ ] =>
     destruct (H (V tt) o), (H (V tt) x)
   | [ H : Message bool TMT C[_] -> _ |- _ ] =>
@@ -35,15 +23,41 @@ Lemma congruence_linear {P Q} : Congruence _ _ P Q ->
   (single_x P -> single_x Q) /\ (lin P -> lin Q).
 Proof.
   intros PcQ.
-  induction PcQ; simp lin; try lin_IH; try tauto.
-  - dependent destruction c; destruct b; destruct m; simp lin.
-    + tauto.
-    + destruct b; simp lin; tauto.
-    + tauto.
-    + destruct b; simp lin; tauto.
-  - dependent destruction c; destruct b; destruct mt; lin_IH; simp lin; tauto.
+  induction PcQ; simp lin; intuition; dependent destruction c.
+  - destruct b, m;
+      simp lin in *;
+      intuition;
+      destruct b;
+      simp lin;
+      intuition.
+  - destruct b, mt, m;
+      lin_IH;
+      simp lin in *;
+      intuition;
+      destruct b;
+      simp lin in *;
+      tauto.
+  - destruct b, mt;
+      lin_IH;
+      simp lin in *;
+      tauto.
+  - destruct b, mt;
+      lin_IH;
+      simp lin in *;
+      tauto.
 Qed.
 Hint Resolve congruence_linear.
+
+Lemma rtcongruence_linear {P Q} : RTCongruence _ _ P Q ->
+  (single_x P -> single_x Q) /\ (lin P -> lin Q).
+Proof.
+  intro PcQ.
+  induction PcQ.
+  - tauto.
+  - destruct (congruence_linear H).
+    tauto.
+Qed.
+Hint Resolve rtcongruence_linear.
 
 Lemma branches_linear {n} (i : Fin.t n) {xs : Vector.t SType n}
       {Ps : Forall (fun s => Message _ _ C[s] -> Process _ _) xs} :
@@ -72,7 +86,7 @@ Proof.
   - destruct (@branches_linear _ i rs Qs); split; intro A; decompose [and or] A; tauto.
   - lin_IH; tauto.
   - tauto.
-  - destruct (congruence_linear H).
+  - destruct (rtcongruence_linear H).
     tauto.
 Qed.
 Hint Resolve reduction_linear.

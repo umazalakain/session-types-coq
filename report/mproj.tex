@@ -434,69 +434,69 @@ Coq \cite{CoqDeveloperCommunity} is a popular proof assistant and dependently ty
 The following example introduces some of the basic building blocks of dependent type programming. The type \coqe{Zero} (also known as $\bot$) has no constructors: there exist no programs that inhabit it. The proposition \coqe{P -> Zero} represents negation, that \coqe{P} is provably false. Conversely, from a proof of falsity one might conclude anything: \coqe{Zero -> P}, for any \coqe{P}. The dual of $\bot$ is $\top$, here represented as \coqe{One}: the trivial type that contains no information, also known as the unit type. Sigma is the existential type, or dependent tuple: for some $A$ and some predicate $P$, the first element of the tuple is an $A$; the second element of the tuple is a proof that $P$ holds for that particular $A$.
 
 \begin{coq}
-    Inductive Zero : Type :=.
-    Definition neg (P : Type) : Type := P -> Zero.
-    Inductive One : Type := tt.
+Inductive Zero : Type :=.
+Definition neg (P : Type) : Type := P -> Zero.
+Inductive One : Type := tt.
 
-    Inductive Sig (A : Type) (P : A -> Type) : Type :=
-      sig : forall (a : A), P a -> Sig A P.
-    Arguments sig {A P}.
+Inductive Sig (A : Type) (P : A -> Type) : Type :=
+  sig : forall (a : A), P a -> Sig A P.
+Arguments sig {A P}.
 \end{coq}
 
 Coq is dependently typed: types can depend on --- or even contain --- programs. Since that is the case, programs in Coq must exhibit termination --- recursion must occur on structurally smaller terms. The example bellow introduces the recursive function \coqe{Even}, which given a natural number returns a type --- that is to say, it relates each natural number with a proposition, in these case capturing their evenness. Below it, a proof that uses sigma types to show that there is at least one natural number that is even.
 
 \begin{coq}
-    Fixpoint Even (n : nat) : Type :=
-      match n with
-      | Z         => One
-      | (S Z)     => Zero
-      | (S (S n)) => Even n
-      end.
+Fixpoint Even (n : nat) : Type :=
+  match n with
+  | Z         => One
+  | (S Z)     => Zero
+  | (S (S n)) => Even n
+  end.
 
-    Example _ : Sig nat Even := sig 42 tt.
+Example _ : Sig nat Even := sig 42 tt.
 \end{coq}
 
 Coq allows users to build proofs using \emph{tactics}: programs written in $L_{tac}$ that manipulate hypotheses and transform goals. While these programs might be incorrect, or not terminate, their outcome is ultimately checked by \emph{Gallina}, the specification language of Coq. The example below proves for every natural number $n$ that if $n$ is even, then $n+1$ is not. It does so through the sequential application of tactics. Each tactic manipulates the goal and context of the proof (see annotations in comments). The proof proceeds by induction on $n$: the proof obligation in the base case reduces to \coqe{neg (Even (S Z))}, which by definition of \coqe{Even} reduces to \coqe{neg Zero}, that is, \coqe{Zero -> Zero}, the identity function. The inductive step is provable thanks to the fact that \coqe{Even (S (S n))} reduces to \coqe{Even n}.
 
 \begin{coq}
-    Lemma SEven0 (n : nat) : Even n -> neg (Even (S n)).
-    Proof.
-      (* n : nat
-         --------------------
-         Even n -> neg (Even (S n)) *)
-      intros En ESn.
+Lemma SEven0 (n : nat) : Even n -> neg (Even (S n)).
+Proof.
+  (* n : nat
+     --------------------
+     Even n -> neg (Even (S n)) *)
+  intros En ESn.
 
-      (* n : nat 
-         En : Even n
-         ESn : Even (S n)
-         --------------------
-         Zero *)
-      induction n.
+  (* n : nat 
+     En : Even n
+     ESn : Even (S n)
+     --------------------
+     Zero *)
+  induction n.
 
-      (* En : Even 0
-         ESn : Even 1
-         --------------------
-         Zero *)
-      contradiction.
+  (* En : Even 0
+     ESn : Even 1
+     --------------------
+     Zero *)
+  contradiction.
 
-      (* n : nat
-         En : Even (S (S n))
-         ESn : Even (S (S n))
-         IHn : Even n -> Even (S n) -> Zero
-         --------------------
-         Zero *)
-      apply (IHn ESn En).
-    Qed.
+  (* n : nat
+     En : Even (S (S n))
+     ESn : Even (S (S n))
+     IHn : Even n -> Even (S n) -> Zero
+     --------------------
+     Zero *)
+  apply (IHn ESn En).
+Qed.
 \end{coq}
 
 In Coq, simultaneously pattern matching on multiple indexed data types can be extremely clunky and arduous. The \emph{Equations} package eases this inconvenience by enabling an equational definition style, pattern matching on the left, and \texttt{with} constructs (\cite{McBride2004}), making Coq as convenient for dependent pattern matching as Agda. The theorem \coqe{SEven0} is proven again below, this time using dependent pattern matching. Coq is able to use tactics to solve the base case automatically, as \coqe{ESn} is uninhabited.
 
 \begin{coq}
-    From Equations Require Import Equations.
+From Equations Require Import Equations.
 
-    Equations SEven1 (n : nat) : Even n -> neg (Even (S n)) := {
-    SEven1 Z     En ESn := _ ;
-    SEven1 (S n) En ESn := SEven1 n ESn En}.
+Equations SEven1 (n : nat) : Even n -> neg (Even (S n)) := {
+SEven1 Z     En ESn := _ ;
+SEven1 (S n) En ESn := SEven1 n ESn En}.
 \end{coq}
 
 Coq supports inductive and coinductive data types. The constructors of an inductive data type can contain recursive references to the data type --- as long as they are strictly positive, that is, do not appear inside an argument to the left of an arrow \cite{Dybjer1994}. The type of an inductive data type can accept both parameters and indices as arguments. Parameters appear on the left hand side of the colon, indices appear on the right hand side; parameters are fixed throughout the constructors, indices may change.
@@ -504,19 +504,19 @@ Coq supports inductive and coinductive data types. The constructors of an induct
 The example below defines vectors: lists that keep track of their length on the type level. The parameter \coqe{A} refers to the type of elements within the list, and therefore stays fixed through the induction. However, the index (of type \coqe{nat}) changes through induction: \coqe{nil} initialises it to 0; \coqe{cons} is provided with a term of type \coqe{A} and a vector of length \coqe{n}, and results in a vector of length \coqe{n + 1}.
 
 \begin{coq}
-    Inductive Vec (A : Type) : nat -> Type :=
-    | nil  : Vec A Z
-    | cons : forall {n}, A -> Vec A n -> Vec A (S n)
-    .
+Inductive Vec (A : Type) : nat -> Type :=
+| nil  : Vec A Z
+| cons : forall {n}, A -> Vec A n -> Vec A (S n)
+.
 \end{coq}
 
 The next example encodes proofs of a natural number $n$ being less than or equal to a natural number $m$. These two naturals are kept as indices in \coqe{lte}. The constructor \coqe{zlte} initialises $n$ to 0 and $m$ to any number --- 0 is less than or equal to any natural. The constructor \coqe{slte} increments both $n$ and $m$. Every proof of $n \leq m$ can thus be encoded into exactly one recursive combination of the contructors \coqe{zlte} and \coqe{slte}.
 
 \begin{coq}
-    Inductive lte : nat -> nat -> Type :=
-    | zlte : forall {m}, lte Z m
-    | slte : forall {n m}, lte n m -> lte (S n) (S m)
-    .
+Inductive lte : nat -> nat -> Type :=
+| zlte : forall {m}, lte Z m
+| slte : forall {n m}, lte n m -> lte (S n) (S m)
+.
 \end{coq}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -532,13 +532,13 @@ Our design offers several advantages, but comes with several challenges that nee
 
         Our approach lifts all variable references into Coq. The example session-typed \picalc{} process bellow has two branches: one that outputs \coqe{true} and receives some \coqe{m}; the other that receives some \coqe{m} and outputs that same \coqe{m}. Note that \coqe{m} gets bound as a variable in Coq. Alternative approaches that encode variable references in the object language itself need to use de Bruijn indices \cite{deBruijn1972} or similar techniques, resulting in a processing overhead for users.
         
-    \begin{coq}
-    Example example2 : PProcess := [v]>
-        (new o <- ! B[bool] ; ? B[bool] ; ø,
-             i <- ? B[bool] ; ! B[bool] ; ø,
-             ltac:(auto))
-        (o![v _ true]; ?[m]; $\epsilon$) <|> i?[m]; ![m]; $\epsilon$.
-    \end{coq}
+\begin{coq}
+Example example2 : PProcess := [v]>
+    (new o <- ! B[bool] ; ? B[bool] ; ø,
+         i <- ? B[bool] ; ! B[bool] ; ø,
+         ltac:(auto))
+    (o![v _ true]; ?[m]; $\epsilon$) <|> i?[m]; ![m]; $\epsilon$.
+\end{coq}
 
     \item \emph{No typing contexts are required}
 
@@ -606,7 +606,7 @@ The linearity predicate introduced in \S \ref{linearity} is defined recursively 
 
 The users define processes without knowledge of the concrete instantiation of \coqe{ST} and \coqe{MT}. As a result, they have no information about the type \coqe{MT M} required to build messages of type \coqe{B[M]}. To remedy this, \coqe{PProcess} is provided the assumption \coqe{mt}: for any type \coqe{S}, no matter what \coqe{MT} is, a message of base type \coqe{S} can be constructed. Processes can use this assumption to create messages out of Coq terms. For convenience, we introduce a shortcut that ignores \coqe{ST} and \coqe{MT}:
 
-\coqi[139-142]{../src/Processes.v}
+\coqi[138-141]{../src/Processes.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Processes}\label{processes}
@@ -637,13 +637,13 @@ Branching (\textsc{T-Branch}) requires a channel of type $\Branch \{l_i : S_i\}_
 
 \coqi[42-46]{../src/Processes.v}
 
-Selection (\textsc{T-Select}) requires a channel of type $Select \{l_i : S_i\}_{i \in I}$, a choice $j$, and a process where the continuation channel $x : S_j$ is put in context. The \coqe{PSelect} constructor uses finite sets to ensure that the choice is a valid one, and function abstraction to model the addition of a channel of the chosen session type to the context. The linearity predicate needs to ensure that context is split between the two premises, and that the consumed channel cannot be used again.
+Selection (\textsc{T-Select}) requires a channel of type $\Select \{l_i : S_i\}_{i \in I}$, a choice $j$, and a process where the continuation channel $x : S_j$ is put in context. The \coqe{PSelect} constructor uses finite sets to ensure that the choice is a valid one, and function abstraction to model the addition of a channel of the chosen session type to the context. The linearity predicate needs to ensure that context is split between the two premises, and that the consumed channel cannot be used again.
 
 \coqi[48-52]{../src/Processes.v}
 
 To make things easier for the end user, we provide convenient notations for process constructors:
 
-\coqi[158-173]{../src/Processes.v}
+\coqi[157-172]{../src/Processes.v}
 
 \paragraph{Examples.} Bellow is a simple process definition that creates two channel endpoints \coqe{o} and \coqe{i}, and composes in parallel two processes that exchange a boolean value back and forth, and then end. Note the use of tactics to prove the duality of the channels. The function $\upsilon$ is used to \emph{lift} the boolean value \coqe{true} into a message.
 
@@ -678,27 +678,27 @@ Finally, the example bellow demonstrates channel mobility (sending a channel ove
 
 We use an inductive family of types to describe the reduction rules (listed in Figure \ref{picalc-reduction}, extended with session types in \S \ref{session-types}) of session-typed \picalc{} processes. The data type is indexed by two processes: the former is the redex, the latter the reduction target. 
 
-\coqi[100-101]{../src/Processes.v}
+\coqi[98-99]{../src/Processes.v}
 
 The \coqe{RComm} constructor expects two channel endpoints created as a result of scope restriction to be used by two parallel processes: one that outputs \coqe{m} and continues as \coqe{Q}, the other that expects input in \coqe{P}. The reduction creates a new scope restriction, and puts in parallel a process with the continuation \coqe{Q} and the process \coqe{P} fed with the input \coqe{m}. Note that this encoding works thanks to Coq's ability to pattern match on the body of functions.
 
-\coqi[102-106]{../src/Processes.v}
+\coqi[100-104]{../src/Processes.v}
 
 Similarly to \coqe{RComm}, the \coqe{RCase} constructor transmits choice from one process to the other. Note, however, that thanks to the typing rules for the constructors \coqe{PBranch} and \coqe{PSelect}, the vectors \coqe{Ps} and \coqe{Qs} are guaranteed to be of the same length, and the choice \coqe{i} is guaranteed to be a valid index within the vectors. We therefore just need to select the \coqe{i}th vector of \coqe{Qs} as the continuation process after reduction.
 
-\coqi[108-113]{../src/Processes.v}
+\coqi[106-111]{../src/Processes.v}
 
 The last three constructors are inductively defined, and serve to encode that reduction goes under scope restriction and parallel composition, and that reduction is defined up to structural congruence.
 
-\coqi[115-126]{../src/Processes.v}
+\coqi[113-124]{../src/Processes.v}
 
 Lastly, we define an inductive type family that encodes big step reduction (reduction in zero or more steps):
 
-\coqi[128-133]{../src/Processes.v}
+\coqi[126-131]{../src/Processes.v}
 
 \paragraph{Examples.}
 
-The following example defines the process \coqe{Example3}, and proves that \coqe{Example2} introduced in \S \ref{processes} reduces in one step to \coqe{Example3}. The reduction proof uses a specialised tactic executed by \coqe{auto} by searching through a hint database. The tactic is in itself incomplete: reduction might make use of zero or more steps of structural congruence rewriting, resulting in a wide search space. If the automatic tactic fails, the user is still able to provide an explicit proof of reducibility.
+The following example defines the process \coqe{Example3}, and proves that \coqe{Example2} introduced in \S \ref{processes} reduces in one step to \coqe{Example3}. The reduction proof uses breath first search of depth 10 and executes specialised tactics found in a hint database. The tactic is in itself incomplete: reduction might make use of zero or more steps of structural congruence rewriting, resulting in a wide search space. If the automatic tactic fails, the user is still able to provide an explicit proof of reducibility.
 
 \coqi[32-36]{../src/Examples.v}
 
@@ -724,30 +724,30 @@ The predicate \coqe{lin} is defined by mutual recursion with \coqe{single_x}. Bo
 
 The next two examples (of example processes defined in \S \ref{processes}) introduce a tactic that proves that the process uses channels linearly. This tactic is called by \coqe{auto} through its hint database.
 
-\coqi[77-78]{../src/Examples.v}
+\coqi[66-67]{../src/Examples.v}
 
 As a counterexample, we introduce a process for which we prove that its use of channels is \emph{not} linear.
 
-\coqi[80-86]{../src/Examples.v}
+\coqi[69-75]{../src/Examples.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Subject reduction}\label{subject-reduction}
 
 As shown in \S \ref{processes}, assuming that channels are used linearly, process constructors are accurate enough to rule out ill-typed processes by construction. Here, we show that well-typedness is preserved through reduction, i.e. that linearity is preserved through reduction: if $P$ reduces to $Q$ and $P$ is linear (well-typed), then $Q$ is linear (well-typed) as well:
 
-\coqi[80-80]{../src/SubjectReduction.v}
+\coqi[94-94]{../src/SubjectReduction.v}
 
-\coqi[95-95]{../src/SubjectReduction.v}
+\coqi[109-109]{../src/SubjectReduction.v}
 
 As linearity is defined on processes where channels are represented as booleans and message types are projected to the unit type (\S \ref{linearity}), proofs that show that linearity is carried through reduction need to specialise their processes. The proofs themselves are by induction on processes. To make the induction hypothesis stronger, proofs show that both linearity and the presence of a marked channel are preserved.
 
-\coqi[64-65]{../src/SubjectReduction.v}
+\coqi[78-79]{../src/SubjectReduction.v}
 
 Reduction has two cases in need of special attention: case selection (\textsc{RCase}) has to show that if an entire set of branches is considered to be linear, then so is any specific branch in that set; structural congruence (\textsc{RStruct}) needs to show that linearity is preserved through congruence too. Again, we strengthen the induction hypotheses for these lemmas with assertions of single marked channel preservation.
 
-\coqi[34-35]{../src/SubjectReduction.v}
+\coqi[51-52]{../src/SubjectReduction.v}
 
-\coqi[48-52]{../src/SubjectReduction.v}
+\coqi[62-66]{../src/SubjectReduction.v}
 
 \paragraph{Examples.}
 We can apply the proof of linearity preservation through reduction to specific processes. The example bellow proves that any process that \coqe{example1} reduces to in zero or more steps must make a linear use of channels.

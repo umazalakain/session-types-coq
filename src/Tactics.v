@@ -10,6 +10,11 @@ Ltac constructors :=
 .
 Hint Extern 1 (Duality _ _) => constructors.
 Hint Extern 1 (_ ≡ _) => constructors.
+Hint Extern 1 (_ ≡* _) => intros; econstructor.
+Hint Extern 1 (RTCongruence _ _ _ _) => econstructor.
+Hint Extern 1 (Congruence _ _ _ _) => constructors.
+Hint Constructors Congruence.
+Hint Constructors RTCongruence.
 
 Ltac not_duality :=
   intro;
