@@ -670,32 +670,35 @@ Finally, the example bellow demonstrates channel mobility (sending a channel ove
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Structural congruence}\label{structural-congruence}
 
-We use an inductive family of types to describe the structural congruence rules of session-typed \picalc{} processes. The data type is indexed by the two processes structurally congruent processes.
+We use an inductive family of types to describe the structural congruence rules of session-typed \picalc{} processes. The data type is indexed by the two structurally equivalent processes.
 
 \coqi[55-56]{../src/Processes.v}
 
-Our design does not discard channels that need closing: a channel of type $\End$ still needs a process $\epsilon$ that closes it. For this reason, the equivalence rules of the \picalc{} that have to do with process termination will be absent from our encoding. Note however that this in no way impacts expressivity: it is possible to traverse a process and decide whether it has terminated by making sure that only scope restriction, parallel composition and termination are present.
+Our encoding does not discard any channels, including those of type $\End$: they still need a process $\epsilon$ to close them. For this reason, the equivalence rules of the \picalc{} that have to do with process termination will be absent from our encoding. Note however that this in no way impacts expressivity: it is possible to decide whether a process has terminated by traversing it and making sure that scope restriction, parallel composition and termination are the only present constructs.
 
-The \coqe{CComp} rules define commutativity and associativity for process compositition, and structural congruence to \emph{go under} composition.
+The \coqe{CComp} rules define commutativity and associativity for process compositition, respectively. The \coqe{CScope} rules express scope expansion, scope commutativity, and session type commutativity, respectively.
 
-\coqi[57-64]{../src/Processes.v}
+\coqi[57-61]{../src/Processes.v}
+\coqi[66-75]{../src/Processes.v}
 
-The \coqe{CScope} rules express scope expansion, scope commutativity, and session type commutativity, and allow structural congruence to \emph{go under} scope restriction.
+If processes $P$ and $Q$ are structurally congruent, then replacing them within the same context $C[]$ results in two processes $C[P]$ and $C[Q]$ that are structurally congruent as well. Contexts are defined as processes \emph{with holes}: every possible place where $\PO$ can appear can be replaced by a hole. This includes continuation processes coming after input, output, branching, and selection. However, in these cases congruence is not a necessity: reduction needs to operate on the outer layer first, then congruence can be used on the inner layer. Although omitting congruence relations under these constructs means that not all structurally congruent processes can have their equivalence expressed, it does in no way affect the operational semantics on which our final proof of subject reduction is based upon. We therefore only define congruence under parallel composition and scope restriction.
 
-\coqi[66-78]{../src/Processes.v}
+\coqi[63-64]{../src/Processes.v}
+\coqi[77-79]{../src/Processes.v}
 
-Finally, \coqe{COutCong} and \coqe{CInCong} allow structural congruence to \emph{go under} input and output.
+Finally, as structural congruence is an equivalence relationship, we need to define reflexivity, symmetry and transitivity. In this project we have only defined reflexivity and transitivity: we were \textbf{unable} to successfully add \textbf{symmetry to structural congruence and prove that linearity is preserved} (see \S \ref{subject-reduction} for details). As a result, we have successfully proven subject reduction for only a \textbf{subset of the calculus}. This difficulty was only noticed during the final stages of the project. The affected processes are the ones which need structural congruence rules that are asymmetric (\coqe{CCompAssoc} and \coqe{CScopeExpa}), these constructs only work in \emph{one direction}. As a temporary workaround, \coqe|Axiom CSymm : forall {P Q}, Congruence P Q -> Congruence Q P| can be postulated.
 
-\coqi[80-86]{../src/Processes.v}
+We defined reflexivity and transitivity as a separate inductive data type. This is so that transitivity can be defined asymmetrically, making automatic proof search easier.
 
-\todo{we defined reflexivity and transitivity separately to make proof search easier}
-\todo{we didn't manage to add symmetry}
-\todo{this involves a <-> proof}
-\todo{the linearity predicate does not make it easy for scope expansion}
-\todo{the only affected thing is scope expansion which is now directional}
-\todo{so we have encoded a subset of structural congruence, it is still sound}
+\coqi[83-87]{../src/Processes.v}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Examples.}
+
+The following example proves that \coqe{Example1} and \coqe{Example2} introduced in \S \ref{processes} are structurally congruent. The congruence proof performs breath first search at depth 10. If the automatic tactic fails, the user is still able to provide an explicit proof of reducibility.
+
+\coqi[30-30]{../src/Examples.v}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%30
 \section{Reduction}\label{reduction}
 
 We use an inductive family of types to describe the reduction rules (listed in Figure \ref{picalc-reduction}, extended with session types in \S \ref{session-types}) of session-typed \picalc{} processes. The data type is indexed by two processes: the former is the redex, the latter the reduction target. 
@@ -766,6 +769,10 @@ As linearity is defined on processes where channels are represented as booleans 
 \coqi[41-42]{../src/SubjectReduction.v}
 
 Reduction has two cases in need of special attention: case selection (\textsc{RCase}) has to show that if an entire set of branches is considered to be linear, then so is any specific branch in that set; structural congruence (\textsc{RStruct}) needs to show that linearity is preserved through congruence too. Again, we strengthen the induction hypotheses for these lemmas with assertions of single marked channel preservation.
+
+\todo{we didn't manage to add symmetry}
+\todo{the linearity predicate does not make it easy for scope expansion}
+\todo{this involves a <-> proof}
 
 \coqi[18-19]{../src/SubjectReduction.v}
 

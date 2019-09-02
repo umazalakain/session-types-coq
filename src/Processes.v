@@ -71,11 +71,11 @@ Section Processes.
       PNew p q pDq (fun c d => PNew s r sDr (fun a b => P a b c d))
 
   | CScopeTypesComm {s r sDr P} :
-      PNew s r sDr (fun a b => P a b) ≡ PNew r s (duality_comm sDr) (fun b a => P a b)
+      PNew s r sDr (fun a b => P a b) ≡
+      PNew r s (duality_comm sDr) (fun b a => P a b)
 
   | CScopeCong {s r sDr P Q} :
-      (forall (a : Message C[s]) (b : Message C[r]), P a b ≡  Q a b) ->
-      PNew s r sDr P ≡ PNew s r sDr Q
+      (forall a b, P a b ≡  Q a b) -> PNew s r sDr P ≡ PNew s r sDr Q
 
   where "P ≡ Q" := (Congruence P Q)
   .
@@ -103,7 +103,7 @@ Section Processes.
            (fun a b => PComp (Ps a) (nthForall Qs i b))
 
   | RRes {s r P Q} :
-      (forall (a : Message C[s]) (b : Message C[r]), P a b ⇒ Q a b) ->
+      (forall a b, P a b ⇒ Q a b) ->
       (forall (sDr : Duality s r), PNew s r sDr P ⇒ PNew s r sDr Q)
 
   | RPar {P Q R} :
