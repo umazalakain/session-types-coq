@@ -77,14 +77,6 @@ Section Processes.
       (forall (a : Message C[s]) (b : Message C[r]), P a b ≡  Q a b) ->
       PNew s r sDr P ≡ PNew s r sDr Q
 
-  | COutCong {mt st} {m : Message mt} {c : Message C[! mt; st]} {P Q} :
-      (forall (a : Message C[st]), P a ≡ Q a) ->
-      POutput m P c ≡ POutput m Q c
-
-  | CInCong {mt st} {c : Message C[? mt; st]} {P Q} :
-      (forall (a : Message mt) (b : Message C[st]), P a b ≡ Q a b) ->
-      PInput P c ≡ PInput Q c
-
   where "P ≡ Q" := (Congruence P Q)
   .
 

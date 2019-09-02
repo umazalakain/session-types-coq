@@ -606,7 +606,7 @@ The linearity predicate introduced in \S \ref{linearity} is defined recursively 
 
 The users define processes without knowledge of the concrete instantiation of \coqe{ST} and \coqe{MT}. As a result, they have no information about the type \coqe{MT M} required to build messages of type \coqe{B[M]}. To remedy this, \coqe{PProcess} is provided the assumption \coqe{mt}: for any type \coqe{S}, no matter what \coqe{MT} is, a message of base type \coqe{S} can be constructed. Processes can use this assumption to create messages out of Coq terms. For convenience, we introduce a shortcut that ignores \coqe{ST} and \coqe{MT}:
 
-\coqi[138-141]{../src/Processes.v}
+\coqi[130-133]{../src/Processes.v}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Processes}\label{processes}
@@ -643,7 +643,7 @@ Selection (\textsc{T-Select}) requires a channel of type $\Select \{l_i : S_i\}_
 
 To make things easier for the end user, we provide convenient notations for process constructors:
 
-\coqi[157-172]{../src/Processes.v}
+\coqi[149-164]{../src/Processes.v}
 
 \paragraph{Examples.} Bellow is a simple process definition that creates two channel endpoints \coqe{o} and \coqe{i}, and composes in parallel two processes that exchange a boolean value back and forth, and then end. Note the use of tactics to prove the duality of the channels. The function $\upsilon$ is used to \emph{lift} the boolean value \coqe{true} into a message.
 
@@ -670,31 +670,53 @@ Finally, the example bellow demonstrates channel mobility (sending a channel ove
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Structural congruence}\label{structural-congruence}
 
-\todo{confirm that symmetry is not neeed}
-\todo{we do not define contexts separately, we introduce reflexivity and transitivity in the same datatype}
+We use an inductive family of types to describe the structural congruence rules of session-typed \picalc{} processes. The data type is indexed by the two processes structurally congruent processes.
+
+\coqi[55-56]{../src/Processes.v}
+
+Our design does not discard channels that need closing: a channel of type $\End$ still needs a process $\epsilon$ that closes it. For this reason, the equivalence rules of the \picalc{} that have to do with process termination will be absent from our encoding. Note however that this in no way impacts expressivity: it is possible to traverse a process and decide whether it has terminated by making sure that only scope restriction, parallel composition and termination are present.
+
+The \coqe{CComp} rules define commutativity and associativity for process compositition, and structural congruence to \emph{go under} composition.
+
+\coqi[57-64]{../src/Processes.v}
+
+The \coqe{CScope} rules express scope expansion, scope commutativity, and session type commutativity, and allow structural congruence to \emph{go under} scope restriction.
+
+\coqi[66-78]{../src/Processes.v}
+
+Finally, \coqe{COutCong} and \coqe{CInCong} allow structural congruence to \emph{go under} input and output.
+
+\coqi[80-86]{../src/Processes.v}
+
+\todo{we defined reflexivity and transitivity separately to make proof search easier}
+\todo{we didn't manage to add symmetry}
+\todo{this involves a <-> proof}
+\todo{the linearity predicate does not make it easy for scope expansion}
+\todo{the only affected thing is scope expansion which is now directional}
+\todo{so we have encoded a subset of structural congruence, it is still sound}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Reduction}\label{reduction}
 
 We use an inductive family of types to describe the reduction rules (listed in Figure \ref{picalc-reduction}, extended with session types in \S \ref{session-types}) of session-typed \picalc{} processes. The data type is indexed by two processes: the former is the redex, the latter the reduction target. 
 
-\coqi[98-99]{../src/Processes.v}
+\coqi[90-91]{../src/Processes.v}
 
 The \coqe{RComm} constructor expects two channel endpoints created as a result of scope restriction to be used by two parallel processes: one that outputs \coqe{m} and continues as \coqe{Q}, the other that expects input in \coqe{P}. The reduction creates a new scope restriction, and puts in parallel a process with the continuation \coqe{Q} and the process \coqe{P} fed with the input \coqe{m}. Note that this encoding works thanks to Coq's ability to pattern match on the body of functions.
 
-\coqi[100-104]{../src/Processes.v}
+\coqi[92-96]{../src/Processes.v}
 
 Similarly to \coqe{RComm}, the \coqe{RCase} constructor transmits choice from one process to the other. Note, however, that thanks to the typing rules for the constructors \coqe{PBranch} and \coqe{PSelect}, the vectors \coqe{Ps} and \coqe{Qs} are guaranteed to be of the same length, and the choice \coqe{i} is guaranteed to be a valid index within the vectors. We therefore just need to select the \coqe{i}th vector of \coqe{Qs} as the continuation process after reduction.
 
-\coqi[106-111]{../src/Processes.v}
+\coqi[98-103]{../src/Processes.v}
 
 The last three constructors are inductively defined, and serve to encode that reduction goes under scope restriction and parallel composition, and that reduction is defined up to structural congruence.
 
-\coqi[113-124]{../src/Processes.v}
+\coqi[105-116]{../src/Processes.v}
 
-Lastly, we define an inductive type family that encodes big step reduction (reduction in zero or more steps):
+Lastly, we define an inductive family of types that encodes big step reduction (reduction in zero or more steps). We do so asymmetrically, in a way that makes big step reduction proofs unique.
 
-\coqi[126-131]{../src/Processes.v}
+\coqi[118-123]{../src/Processes.v}
 
 \paragraph{Examples.}
 
@@ -735,19 +757,19 @@ As a counterexample, we introduce a process for which we prove that its use of c
 
 As shown in \S \ref{processes}, assuming that channels are used linearly, process constructors are accurate enough to rule out ill-typed processes by construction. Here, we show that well-typedness is preserved through reduction, i.e. that linearity is preserved through reduction: if $P$ reduces to $Q$ and $P$ is linear (well-typed), then $Q$ is linear (well-typed) as well:
 
-\coqi[94-94]{../src/SubjectReduction.v}
+\coqi[57-57]{../src/SubjectReduction.v}
 
-\coqi[109-109]{../src/SubjectReduction.v}
+\coqi[72-72]{../src/SubjectReduction.v}
 
 As linearity is defined on processes where channels are represented as booleans and message types are projected to the unit type (\S \ref{linearity}), proofs that show that linearity is carried through reduction need to specialise their processes. The proofs themselves are by induction on processes. To make the induction hypothesis stronger, proofs show that both linearity and the presence of a marked channel are preserved.
 
-\coqi[78-79]{../src/SubjectReduction.v}
+\coqi[41-42]{../src/SubjectReduction.v}
 
 Reduction has two cases in need of special attention: case selection (\textsc{RCase}) has to show that if an entire set of branches is considered to be linear, then so is any specific branch in that set; structural congruence (\textsc{RStruct}) needs to show that linearity is preserved through congruence too. Again, we strengthen the induction hypotheses for these lemmas with assertions of single marked channel preservation.
 
-\coqi[51-52]{../src/SubjectReduction.v}
+\coqi[18-19]{../src/SubjectReduction.v}
 
-\coqi[62-66]{../src/SubjectReduction.v}
+\coqi[25-29]{../src/SubjectReduction.v}
 
 \paragraph{Examples.}
 We can apply the proof of linearity preservation through reduction to specific processes. The example bellow proves that any process that \coqe{example1} reduces to in zero or more steps must make a linear use of channels.
@@ -769,6 +791,8 @@ On the other hand, in type systems with linear types linearity constraints can b
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Conclusion and Future Work}\label{conclusion}
+
+\todo{mention structural congruence}
 
 We have encoded a subset of the session-typed \picalc{} into the proof assistant Coq. We have used dependently typed channels to model continuation passing. We have used polymorphism to prevent the user from forging channels. We have lifted variable references in the object language into variable references in Coq. We have simulated linearity (which Coq lacks) in the use of channels through a recursive predicate on processes. We have proven that the operational semantics respects such linearity predicate, and therefore the well-typedness of processes.
 

@@ -8,54 +8,17 @@ Require Import Types.
 Require Import Processes.
 Require Import Linearity.
 
-Ltac lin_IH :=
-  match goal with
-  | [ H : Message bool TMT C[_] -> Message bool TMT C[_] -> _ |- _ ] =>
-    destruct (H o o), (H x o), (H o x)
-  | [ H : Message bool TMT B[_] -> Message bool TMT C[_] -> _ |- _ ] =>
-    destruct (H (V tt) o), (H (V tt) x)
-  | [ H : Message bool TMT C[_] -> _ |- _ ] =>
-    destruct (H o), (H x)
-  end
-.
-
 Lemma congruence_linear {P Q} : Congruence _ _ P Q ->
   (single_x P -> single_x Q) /\ (lin P -> lin Q).
 Proof.
-  intros PcQ.
-  induction PcQ; simp lin; intuition; dependent destruction c.
-  - destruct b, m;
-      simp lin in *;
-      intuition;
-      destruct b;
-      simp lin;
-      intuition.
-  - destruct b, mt, m;
-      lin_IH;
-      simp lin in *;
-      intuition;
-      destruct b;
-      simp lin in *;
-      tauto.
-  - destruct b, mt;
-      lin_IH;
-      simp lin in *;
-      tauto.
-  - destruct b, mt;
-      lin_IH;
-      simp lin in *;
-      tauto.
+  intros PcQ; induction PcQ; simp lin; intuition.
 Qed.
 Hint Resolve congruence_linear.
 
 Lemma rtcongruence_linear {P Q} : RTCongruence _ _ P Q ->
   (single_x P -> single_x Q) /\ (lin P -> lin Q).
 Proof.
-  intro PcQ.
-  induction PcQ.
-  - tauto.
-  - destruct (congruence_linear H).
-    tauto.
+  intro PcQ; induction PcQ; intuition; destruct (congruence_linear H); auto.
 Qed.
 Hint Resolve rtcongruence_linear.
 
@@ -84,7 +47,7 @@ Proof.
       [ destruct t; simp lin in *; tauto
       | destruct b; simp lin in *; tauto ]).
   - destruct (@branches_linear _ i rs Qs); split; intro A; decompose [and or] A; tauto.
-  - lin_IH; tauto.
+  - destruct (H0 o o), (H0 x o), (H0 o x); tauto.
   - tauto.
   - destruct (rtcongruence_linear H).
     tauto.
