@@ -770,13 +770,18 @@ As linearity is defined on processes where channels are represented as booleans 
 
 Reduction has two cases in need of special attention: case selection (\textsc{RCase}) has to show that if an entire set of branches is considered to be linear, then so is any specific branch in that set; structural congruence (\textsc{RStruct}) needs to show that linearity is preserved through congruence too. Again, we strengthen the induction hypotheses for these lemmas with assertions of single marked channel preservation.
 
-\todo{we didn't manage to add symmetry}
-\todo{the linearity predicate does not make it easy for scope expansion}
-\todo{this involves a <-> proof}
-
 \coqi[18-19]{../src/SubjectReduction.v}
 
 \coqi[25-29]{../src/SubjectReduction.v}
+
+As mentioned in \S \ref{structural-congruence}, we were unable to add symmetry to structural congruence. To prove that linearity is preserved through a symmetric structural congruence, we would need to show that both implications above are in fact bidirectional:
+
+\begin{coq}
+Lemma rtcongruence_linear {P Q} : RTCongruence _ _ P Q ->
+  (single_x P <-> single_x Q) /\ (lin P <-> lin Q).
+\end{coq}
+
+Proving implication in the other direction has proven difficult in the case of scope expansion: it involves showing that if \coqe{PNew s r sDr (fun a b => PComp (P a b) Q} has a single marked variable, so does \coqe{PComp (PNew s r sDr P) Q}. This boils down to showing that \coqe{lin (P o o) /\ single_x Q} implies \coqe{lin (P o o) /\ single_x (P x o) /\ single_x (P o x) /\ single_x Q}. This stems from the way in which the linearity predicate is defined. We were unable to find a quick workaround.
 
 \paragraph{Examples.}
 We can apply the proof of linearity preservation through reduction to specific processes. The example bellow proves that any process that \coqe{example1} reduces to in zero or more steps must make a linear use of channels.
@@ -798,8 +803,6 @@ On the other hand, in type systems with linear types linearity constraints can b
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Conclusion and Future Work}\label{conclusion}
-
-\todo{mention structural congruence}
 
 We have encoded a subset of the session-typed \picalc{} into the proof assistant Coq. We have used dependently typed channels to model continuation passing. We have used polymorphism to prevent the user from forging channels. We have lifted variable references in the object language into variable references in Coq. We have simulated linearity (which Coq lacks) in the use of channels through a recursive predicate on processes. We have proven that the operational semantics respects such linearity predicate, and therefore the well-typedness of processes.
 
