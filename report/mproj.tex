@@ -396,12 +396,55 @@ As a result of this setup, session types guarantee three properties:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Linearly typed \picalc{}}\label{linear-picalc}
 
-\todo{}
+In this section we present a linearly typed \picalc{} in which scope restriction creates \emph{two} opposite linear channel endpoints. This differs from the standard literature as found in \cite{Dardha2017}, where a single channel capable of linearly sending and then receiving is created. In doing so, our aim is to avoid the introduction of machinery that we will not use.
 
- each containing the type of data being transmitted and the encoding of the channel's continuation. For instance, the session type $\Send{A} \Recv{B} \End$ is encoded as $\ell_o [A,\ell_i [B,\ell_\emptyset []]]$ where $\ell_i [A, Cont]$ is a single-use channel signifying input $A$, then continue as $Cont$ --- and similarly for output. When a process uses a channel with such a type to communicate, that channel gets destroyed, the \emph{head} of the channel's type is consumed, and a new channel with the \emph{tail} of the type ($\ell_i [B, \ell_\emptyset []]$) is created.
+The linearly typed \picalc{} adds linear channel types to the shared channel types of the standard \picalc{}. These linear channel types specify the direction in which data is exchanged, and must be used exactly once. Their grammar is given in Figure \ref{linear-types-grammar}. Channels of type $\ell_i T$ must be used exactly once to receive $T$, while channels of type $\ell_o T$ must be use exactly once to send $T$. The type $\langle l_1 T \ldots l_n T \rangle$ is a disjoint union of labelled types in which order is irrelevant.
+
+\begin{figure}[H]
+    \begin{align*}
+        T ::= \; &\ell_i T                           & \text{linear input}\\
+                 &\ell_o T                           & \text{linear output}\\
+                 &\langle l_1 T \ldots l_n T \rangle & \text{variant type}\\
+                 &\ldots                             & \text{base type}\\
+    \end{align*}
+    \caption{Grammar for linear \picalc{} types}
+    \label{linear-types-grammar}
+\end{figure}
+
+The typing rules shown in Figure \ref{linear-picalc-typing-rules} must handle typing contexts with care: linear channels must not be duplicated or discarded. The context split operator $\uplus$ takes care to split the linear resources into two disjoint sets. Shared resources can however freely be copied or ignored.
+
+\begin{figure}[H]
+    \begin{mathpar}
+    \inferrule
+        {\Gamma, x : \ell_i T, y : \ell_o T \types P}
+        {\Gamma \types \new{x : \ell_i T}{\;y : \ell_o T}P}
+        \quad (\textsc{T$\pi$-Res})
+
+    \inferrule
+        {\Gamma_1 \types P \\
+         \Gamma_2 \types Q}
+        {\Gamma_1 \uplus \Gamma_2 \types \comp{P}{Q}}
+        \quad (\textsc{T$\pi$-Par})
+
+    \inferrule
+        {\Gamma_1 \types x:\ell_i T \\
+         \Gamma_2,y:T \types P}
+        {\Gamma_1 \uplus \Gamma_2 \types \cin{x}{y}P}
+        \quad (\textsc{T$\pi$-In})
+
+    \inferrule
+        {\Gamma_1 \types x:\ell_o T \\
+         \Gamma_2 \types v:T \\
+         \Gamma_3 \types P}
+        {\Gamma_1 \uplus \Gamma_2 \uplus \Gamma_3 \types \cout{x}{v}P}
+        \quad (\textsc{T$\pi$-Out})
+    \end{mathpar}
+    \caption{Some of the typing rules for linearly typed \picalc{}}
+    \label{linear-picalc-typing-rules}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Encoding}\label{continuation-passing}
+\section{Encoding session types into the linearly typed \picalc{}}\label{continuation-passing}
 
 \todo{}
 
@@ -851,6 +894,7 @@ During my PhD, I will use the formalisation of session types into the linear \pi
 Coq is one of the current most popular proof assistants, and as such I consider encoding session types in Coq a priority.  However, translating this encoding into other proof assistants widens the reach of this project and provides opportunities for further learning and experimentation.  Possible candidate proof assistants that have linearity built into their type systems are ATS, Idris2, Granule, Ling and Celf. Encoding session types into a linear \picalc{} will help to make this translation easier.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\small
 \bibliographystyle{alpha}
 \bibliography{mproj}
 \end{document}
