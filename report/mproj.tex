@@ -24,15 +24,15 @@
 % Allows to place figures HERE!
 \usepackage{float}
 
-% Updown ampersand
-\usepackage{cmll}
-
 % Enums
 \usepackage[inline]{enumitem}
 \setlist{nolistsep}
 
 % Inference rules
 \usepackage{mathpartir}
+
+% Double brackets
+\usepackage{stmaryrd}
 
 % Links and their colors
 \usepackage{url}
@@ -90,6 +90,7 @@
 \newcommand{\reduce}{\rightarrow}
 \renewcommand{\emptyset}{\varnothing}
 \newcommand{\types}{\vdash}
+\newcommand{\encode}[1]{\llbracket #1 \rrbracket}
 
 \begin{document}
 
@@ -444,30 +445,24 @@ The typing rules shown in Figure \ref{linear-picalc-typing-rules} must handle ty
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Encoding session types into the linearly typed \picalc{}}\label{continuation-passing}
+\section{Encoding session types into linear \picalc{} types}
+\label{continuation-passing}
 
-\todo{}
+The encoding of the session-typed \picalc{} into the linearly-typed \picalc{} is introduced in \cite{Kobayashi2003, Kobayashi2007, Dardha2017}, where both session types and their processes are encoded into linear \picalc{} types and their processes. This project encodes session types into linear \picalc{} types as shown in Figure \ref{session-to-linear-types} --- note that termination gets encoded as a channel with no input or output capabilities. However, it differs from the existing work in that processes do not exchange continuations, and thus there is no need to encode processes. More on this can be found in \S \ref{reduction}.
 
-Our design is based on \emph{continuation passing}, where channels are \textbf{used exactly once}: channels get destroyed and created with every action taken by a process. This approach has its origin in the encoding of session types into the polarised linear \picalc{} \cite{Kobayashi1999, Dardha2012, Dardha2017}: session-typed channels are transformed into single-use polarised channels, each containing the type of data being transmitted and the encoding of the channel's continuation. For instance, the session type $\Send{A} \Recv{B} \End$ is encoded as $\ell_o [A,\ell_i [B,\ell_\emptyset []]]$ where $\ell_i [A, Cont]$ is a single-use channel signifying input $A$, then continue as $Cont$ --- and similarly for output. When a process uses a channel with such a type to communicate, that channel gets destroyed, the \emph{head} of the channel's type is consumed, and a new channel with the \emph{tail} of the type ($\ell_i [B, \ell_\emptyset []]$) is created.
-
-\cite{Kobayashi2003, Kobayashi2007, Dardha2017}
-
-\todo{
-   Since your mechanisation is based on the continuation-passing style
-   encoding, I'm wondering if you should add a section Encoding at the end
-   of background, which you can take from my journal Session Types
-   Revisited at Info and Comput 2017 (you need to cite this too, btw). You
-   also need to cite Kobayashi extended version of Type Systems for
-   Concurrent Programs, where there was a proposition of such encoding.
-   Again, you can find this reference in my journal.
-
-   What you can do is have separate sections of session types, linear
-   types and encoding, even though the last two might be short sections.
-   Look at how I did it in Session Types Revisited, and follow that, so
-   that you don't need to "invent" a new way of presenting it. You can of
-   course get inspired from the text in the journal, as well, as long as
-   you don't copy paste (avoid plagiarism! :)
-}
+\begin{figure}[H]
+    \begin{align*}
+        \encode{\End}      &= \ell_\emptyset[]                  \\
+        \encode{\Recv{T}S} &= \ell_i [ \encode{T}, \encode{S} ] \\
+        \encode{\Send{T}S} &= \ell_o [ \encode{T}, \encode{S} ] \\
+        \encode{\{l_1 : S_1 \&, \ldots, \&l_n : S_n\}} &= 
+        \ell_i [\langle l_1 : \encode{S_1}, \ldots, l_n : \encode{S_n} \rangle] \\
+        \encode{\{l_1 : S_1 \oplus, \ldots, \oplus l_n : S_n\}} &= 
+        \ell_o [\langle l_1 : \encode{S_1}, \ldots, l_n : \encode{S_n} \rangle] \\
+    \end{align*}
+    \caption{Encoding of session types into linear types}
+    \label{session-to-linear-types}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Coq proof assistant}\label{coq}
@@ -565,34 +560,8 @@ Inductive lte : nat -> nat -> Type :=
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Design}\label{design}
 
-This chapter describes how our encoding of the session-typed \picalc{} into Coq works. This encoding is limited to session-typed channels, specifically channels with finite (non-replicating, non-recursive) session types. The encoding has no intermediary models --- for instance, the polarised linear \picalc{}. Our design is based on \emph{continuation passing} (\S \ref{continuation-passing}), where channels are \textbf{used exactly once}: channels get destroyed and created with every action taken by a process.  The main characteristic of our design is the use of a higher order abstract syntax to lift the bindings of channels and messages in the object language into bindings in the host language. As a result of this approach, we limit our encoding to closed processes --- processes where all variables are bound. This, however, in no way limits expressivity: after all, free variables are only meaningful if they are bound at some point.
+This chapter describes how our encoding of the session-typed \picalc{} into Coq works. This encoding is limited to session-typed channels, specifically channels with finite (non-replicating, non-recursive) session types. The encoding has no intermediary models --- for instance, the polarised linear \picalc{}. Our design is based on \emph{continuation passing} (\S \ref{continuation-passing}), where channels are \textbf{used exactly once}: channels get destroyed and created with every action taken by a process.  The main characteristic of our design is the use of a higher order abstract syntax to lift the bindings of channels and messages in the object language into bindings in the host language. As a result of this approach, we limit our encoding to closed processes --- processes where all variables are bound. This, however, in no way limits expressivity: after all, free variables are only meaningful if they are at some point bound. The main aspects of our design focus around the following key issues:
 
-Our design offers several advantages, but comes with several challenges that need to be solved:
-
-\paragraph{Advantages}
-\begin{enumerate}
-    \item \emph{Users can refer naturally to both messages and channels}
-
-        Our approach lifts all variable references into Coq. The example session-typed \picalc{} process bellow has two branches: one that outputs \coqe{true} and receives some \coqe{m}; the other that receives some \coqe{m} and outputs that same \coqe{m}. Note that \coqe{m} gets bound as a variable in Coq. Alternative approaches that encode variable references in the object language itself need to use de Bruijn indices \cite{deBruijn1972} or similar techniques, resulting in a processing overhead for users.
-        
-\begin{coq}
-Example example2 : PProcess := [v]>
-    (new o <- ! B[bool] ; ? B[bool] ; ø,
-         i <- ? B[bool] ; ! B[bool] ; ø,
-         ltac:(auto))
-    (o![v _ true]; ?[m]; $\epsilon$) <|> i?[m]; ![m]; $\epsilon$.
-\end{coq}
-
-    \item \emph{No typing contexts are required}
-
-        Using dependent types, our approach keeps track of the types of both channels and messages in the host language. A linearity predicate ensures that each channel is used exactly once. Common alternative approaches index object terms with an explicit context of channel types, and handle linearity at construction time, resulting in complex typing rules.
-
-    \item \emph{No need for capture avoiding machinery}
-
-        Techniques for representing variable references need to avoid the capture of free variables. This involves some extra machinery: it is minimal in the case of de Bruijn indices \cite{deBruijn1972} or locally nameless representations, considerable in the case of names with the Barendregt convention \cite{Barendregt1984}. This extra machinery in turn requires one to prove substitution lemmas. As a result of lifting references into the host language, in our case, no such need exists.
-\end{enumerate}
-
-\paragraph{Challenges}
 \begin{enumerate}
     \item \emph{Channels can be manufactured outside the calculus}
 
@@ -607,7 +576,27 @@ Example example2 : PProcess := [v]>
     Our approach encodes session-typed channels as single-use channels that are created and destroyed with every action taken by a process. To invoke these actions, an appropriate session-typed channel has to provided. The action then use function abstraction to provide an environment in which a channel with the tail of the original session type is received as an argument. This channel passed as an argument must be used exactly once. Unfortunately, Coq has no support for linearity, and thus this property has to be checked ad-hoc. How to do this is covered in \S \ref{linearity}.
 \end{enumerate}
 
-The next sections cover the different components that make up our encoding. We start defining types and the notion of duality of session types (\S \ref{types}). We then encode messages (\S \ref{polymorphism}) and processes (\S \ref{processes}), for which we define a linearity predicate (\S \ref{linearity}) to ensure that they are well-typed. Finally, we define structural congruence (\S \ref{structural-congruence}) and reduction (\S \ref{reduction}), after which we prove that reduction preserves linearity, and hence well-typedness (\S \ref{subject-reduction}).
+The advantages over other alternative approaches (introduced in \S \ref{related-work}) are listed bellow. The next sections cover the different components that make up our encoding. We start defining types and the notion of duality of session types (\S \ref{types}). We then encode messages (\S \ref{polymorphism}) and processes (\S \ref{processes}), for which we define a linearity predicate (\S \ref{linearity}) to ensure that they are well-typed. Finally, we define structural congruence (\S \ref{structural-congruence}) and reduction (\S \ref{reduction}), after which we prove that reduction preserves linearity, and hence well-typedness (\S \ref{subject-reduction}).
+
+\paragraph{Users can refer naturally to both messages and channels}
+
+Our approach lifts all variable references into Coq. The example session-typed \picalc{} process bellow has two branches: one that outputs \coqe{true} and receives some \coqe{m}; the other that receives some \coqe{m} and outputs that same \coqe{m}. Note that \coqe{m} gets bound as a variable in Coq. Alternative approaches that encode variable references in the object language itself need to use de Bruijn indices \cite{deBruijn1972} or similar techniques, resulting in a processing overhead for users.
+        
+\begin{coq}
+Example example2 : PProcess := [v]>
+    (new o <- ! B[bool] ; ? B[bool] ; ø,
+         i <- ? B[bool] ; ! B[bool] ; ø,
+         ltac:(auto))
+    (o![v _ true]; ?[m]; $\epsilon$) <|> i?[m]; ![m]; $\epsilon$.
+\end{coq}
+
+\paragraph{No typing contexts are required}
+
+Using dependent types, our approach keeps track of the types of both channels and messages in the host language. A linearity predicate ensures that each channel is used exactly once. Common alternative approaches index object terms with an explicit context of channel types, and handle linearity at construction time, resulting in complex typing rules.
+
+\paragraph{No need for capture avoiding machinery}
+
+Techniques for representing variable references need to avoid the capture of free variables. This involves some extra machinery: it is minimal in the case of de Bruijn indices \cite{deBruijn1972} or locally nameless representations, considerable in the case of names with the Barendregt convention \cite{Barendregt1984}. This extra machinery in turn requires one to prove substitution lemmas. As a result of lifting references into the host language, in our case, no such need exists.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Types}\label{types}
@@ -713,6 +702,8 @@ Finally, the example bellow demonstrates channel mobility (sending a channel ove
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Structural congruence}\label{structural-congruence}
 
+Structural congruence is an equivalence relation, and as such it is reflexive, symmetric and transitive. In this project, we were \textbf{unable} to \textbf{add symmetry to structural congruence and still prove that linearity is preserved} (see \S \ref{subject-reduction} for details). This difficulty was only noticed during the final stages of the project. We have therefore limited the relation to a \textbf{structural precongruence} relation where only reflexivity and transitivity are defined. This limitation boils down to the following: the equivalence rules \coqe{CCompAssoc} and \coqe{CScopeExpa} can only be used to rewrite from left to right, and not the other way around. As a workaround, \coqe|Axiom CSymm : forall {P Q}, Congruence P Q -> Congruence Q P| can be postulated.
+
 We use an inductive family of types to describe the structural congruence rules of session-typed \picalc{} processes. The data type is indexed by the two structurally equivalent processes.
 
 \coqi[55-56]{../src/Processes.v}
@@ -729,7 +720,6 @@ If processes $P$ and $Q$ are structurally congruent, then replacing them within 
 \coqi[63-64]{../src/Processes.v}
 \coqi[77-79]{../src/Processes.v}
 
-Finally, as structural congruence is an equivalence relationship, we need to define reflexivity, symmetry and transitivity. In this project we have only defined reflexivity and transitivity: we were \textbf{unable} to successfully add \textbf{symmetry to structural congruence and prove that linearity is preserved} (see \S \ref{subject-reduction} for details). As a result, we have successfully proven subject reduction for only a \textbf{subset of the calculus}. This difficulty was only noticed during the final stages of the project. The affected processes are the ones which need structural congruence rules that are asymmetric (\coqe{CCompAssoc} and \coqe{CScopeExpa}), these constructs only work in \emph{one direction}. As a temporary workaround, \coqe|Axiom CSymm : forall {P Q}, Congruence P Q -> Congruence Q P| can be postulated.
 
 We defined reflexivity and transitivity as a separate inductive data type. This is so that transitivity can be defined asymmetrically, making automatic proof search easier.
 
@@ -748,7 +738,7 @@ We use an inductive family of types to describe the reduction rules (listed in F
 
 \coqi[90-91]{../src/Processes.v}
 
-The \coqe{RComm} constructor expects two channel endpoints created as a result of scope restriction to be used by two parallel processes: one that outputs \coqe{m} and continues as \coqe{Q}, the other that expects input in \coqe{P}. The reduction creates a new scope restriction, and puts in parallel a process with the continuation \coqe{Q} and the process \coqe{P} fed with the input \coqe{m}. Note that this encoding works thanks to Coq's ability to pattern match on the body of functions.
+The \coqe{RComm} constructor expects two channel endpoints created through scope restriction to be used by two parallel processes: one that outputs \coqe{m} and continues as \coqe{Q}, the other that expects input in \coqe{P}. The reduction creates a new scope restriction, and puts in parallel the process \coqe{Q} and the process \coqe{P} fed with the input \coqe{m}. Note that unlike the formalisation presented in \cite{Dardha17}, processes do not transmit continuation channels over: it is rather the channels created through scope restriction that are rewritten in the processes. This encoding works thanks to Coq's ability to pattern match against the body of functions.
 
 \coqi[92-96]{../src/Processes.v}
 
@@ -844,54 +834,30 @@ Once linearity is simulated, session types can be encoded into a \picalc{} with 
 
 On the other hand, in type systems with linear types linearity constraints can be encoded into the host language. In \cite{Xi2016} session types are formalised in ATS, providing type preservation and global progress proofs. \cite{Bock2016} uses Celf to represent session types in intuitionistic linear logic.
 
+\todo{mention wen's work, francisco ferreira locally nameless, evan about linear types}
+\todo{compare our work to theirs}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Conclusion and Future Work}\label{conclusion}
 
 We have encoded a subset of the session-typed \picalc{} into the proof assistant Coq. We have used dependently typed channels to model continuation passing. We have used polymorphism to prevent the user from forging channels. We have lifted variable references in the object language into variable references in Coq. We have simulated linearity (which Coq lacks) in the use of channels through a recursive predicate on processes. We have proven that the operational semantics respects such linearity predicate, and therefore the well-typedness of processes.
 
-I intend to continue working on the machine verification of process calculi during my oncoming PhD. These are some of the areas I plan to work on:
+The present work can be expanded in several different directions:
 
-\paragraph{Explore the foundations of session types.} \hfill
+\todo{expand on these}
+\begin{itemize}
+    \item Extending structural precongruence to structural congruence.
 
-The theory of session types can be supported through embeddings into simpler calculi, or through correspondences with logics.
+    \item Including shared types from the standard \picalc{}.
 
-\begin{enumerate}[label=(\roman*), itemsep=1em]
-    \item
-        \emph{Encoding session types into more primitive types.}
+    \item Supporting replicating session types and processes.
 
-        Describing session types in terms of a simpler calculi has several benefits: it is easier to make adaptations to the typing rules of session types without incurring into unnecessary work duplication; and it relegates the simulation of linearity far from session type representation and to the \picalc, allowing languages with linear type systems to replace the linear \picalc{} while keeping the encoding of session types unaltered.              
+    \item Supporting recursive session types and processes.
 
-        So, the next step is to formalise the linear \picalc{}, encode session types in it, and verify the properties of the encoding. This work would allow for the benefits of the encoding to be transferred into the mechanically verified session-typed \picalc{} and will form the basis for adding further extensions to the types.
+    \item Formalising our operational semantics.
+\end{itemize}
 
-    \item
-        \emph{Session types and linear logic.}
-
-        Session types gave rise to a line of research on Curry-Howard correspondences \cite{Curry1980} between concurrency and linear logic.
-
-        A correspondence between session types and \emph{intuitionistic} linear logic is constructed in \cite{Caires2010}. Based on sequent calculus, output is represented by $\otimes$ on the right and $\multimap$ on the left, while input is represented by $\multimap$ on the right and $\otimes$ on the left. This means that certain combinations of input and output constructs cannot be connected through cut elimination.
-
-        In \cite{Wadler2014}, Wadler builds a correspondence between session types and \emph{classical} linear logic. Without a sequent calculus with left and right rules, Wadler uses $\otimes$ for output and $\parr$ for input, and restricts any two communicating processes to share a \emph{single} channel to communicate over, thus avoiding races and deadlocks.  Through Wadler's lens, cut elimination is isomorphic to process reduction. 
-
-        In \cite{Dardha2018} the authors present a more expressive correspondence between session types and classical linear logic, allowing processes to share more than one channel to communicate over, while still guaranteeing deadlock-freedom by construction.
-
-        As part of my PhD, I intend to formalise these correspondences and machine-check their properties.
-\end{enumerate}
-
-\paragraph{Formalise the more advanced extensions to session types.} \hfill
-
-Considerable research has been conducted in extending session types with more advanced features, which lead to more flexible concurrent programming.
-
-Adding subtyping to session types enables clients to only know about a subset of the services offered by a server \cite{Gay2005}. In combination with subtyping, polymorphism results in bounded polymorphism, where session types can be specialised to a type implementing a specific supertype \cite{Gay2008}.
-
-Asynchronous communication has been explored through the permutation of actions \cite{Mostrous2009}. Deadlock freedom \cite{Kobayashi2002,Kobayashi2006} and progress \cite{Dezani-Ciancaglini2008} have also been added into the type system, leading to necessarily terminating processes. Typing rules for the higher-order \picalc{} ---  capturing \emph{process mobility}, where processes are sent over channels --- are given in \cite{Mostrous2007}.
-
-In \cite{Dardha2017}, the authors show that the encoding of session types into linear \picalc{} types is robust by extending it to accommodate subtyping, polymorphism and higher-order processes, hence the properties of the linear \picalc{} can be used to prove the properties of session types.
-
-During my PhD, I will use the formalisation of session types into the linear \picalc{} to verify the properties of the aforementioned extensions to session types.
-
-\paragraph{Translate representation into other proof assistants.} \hfill
-
-Coq is one of the current most popular proof assistants, and as such I consider encoding session types in Coq a priority.  However, translating this encoding into other proof assistants widens the reach of this project and provides opportunities for further learning and experimentation.  Possible candidate proof assistants that have linearity built into their type systems are ATS, Idris2, Granule, Ling and Celf. Encoding session types into a linear \picalc{} will help to make this translation easier.
+As part of a wider effort, I intend to continue working on the machine verification of process calculi during my oncoming PhD. Some of the aspects I plan to work on are encoding session types into more primitive types in simpler calculi, formalising and machine verifying the properties of the correspondences between session types and linear logic, formalising the more advanced extensions to session types, and translating these representations into other proof assistants. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \small
