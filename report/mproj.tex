@@ -847,7 +847,7 @@ The type system can be extended in several directions as well. Shared channel ty
 
 Without explicit environments, adding process replication seems more challenging: the channels created outside of a replicating process but used inside need to be replicating. Without explicit environments, making sure that this typing obligation is fulfilled requires of an approach similar to our linearity predicate. At this point, it would be probably best to switch to a representation with explicit typing contexts.
 
-Branching off this project, formalising our operational semantics would be interesting. \todo{}
+Slightly branching off from this project, we also want to formalise the operational semantics presented in \S \ref{reduction}, where we work with session types encoded as linear \picalc{} types, but avoid the need of sending over continuation channels. We do so by instead modifying the operational semantics of the linear \picalc{}, granting it the knowledge about how to manage session types encoded as linear types with heads and tails.
 
 As part of a wider effort, I intend to continue working on the machine verification of process calculi during my oncoming PhD. Some of the aspects I plan to work on are: encoding session types into more primitive types in simpler calculi; formalising and machine verifying the properties of the correspondences between session types and linear logic; representing the more advanced extensions to session types; and translating these representations into other proof assistants. 
 
